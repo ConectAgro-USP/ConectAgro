@@ -67,7 +67,7 @@ uvicorn src.main:app --reload --env-file ../.env
 ```
 
 > Ao rodar o backend fora do Docker, ajuste `DATABASE_URL` no `.env` para usar
-> `localhost` no lugar de `db` como host do Postgres — `db` só é resolvido dentro
+> `localhost` no lugar de `db` como host do Postgres, `db` só é resolvido dentro
 > da rede do Docker Compose.
 
 Em outro terminal, rode o frontend:

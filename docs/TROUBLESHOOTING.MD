@@ -12,7 +12,7 @@ no `.env` para uma porta livre (ex.: `5433`) e suba novamente.
 
 Se estiver rodando o backend **fora** do Docker (`uvicorn` local) enquanto o Postgres
 roda via `docker compose up db`, confirme que `DATABASE_URL` no `.env` aponta para
-`localhost`, não para `db` — esse hostname só é resolvido dentro da rede do Docker Compose.
+`localhost`, não para `db`, esse hostname só é resolvido dentro da rede do Docker Compose.
 
 ## Erro `redirect_uri_mismatch` no login com Google
 
@@ -23,8 +23,9 @@ desenvolvimento. Verifique também se `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` 
 
 ## `alembic` não encontra as tabelas / migration gerada vazia
 
-Certifique-se de que o model novo está importado em `server/src/models/__init__.py` —
-o Alembic só detecta tabelas cujos models foram importados antes de gerar a migration.
+Certifique-se de que o model novo está importado em `server/src/models/__init__.py`.
+
+O Alembic só detecta tabelas cujos models foram importados antes de gerar a migration.
 
 ## Mudanças no frontend não aparecem em produção
 

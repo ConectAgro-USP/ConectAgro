@@ -6,7 +6,7 @@ tipo de contribuição.
 ## Boas Práticas
 
 - Escreva títulos claros e concisos para Issues e PRs
-- Evite duplicações — verifique se já existe uma issue/PR semelhante
+- Evite duplicações, verifique se já existe uma issue/PR semelhante
 - Uma issue ou PR por problema/funcionalidade
 - Priorize código bem escrito e testado
 
@@ -32,11 +32,11 @@ docs: atualizar instruções de instalação
 test: adicionar testes para o fluxo de autenticação
 ```
 
-Commits devem ser atômicos — cada commit deve representar uma mudança lógica única.
+Commits devem ser atômicos, cada commit deve representar uma mudança lógica única.
 
 ## Comentários no Código
 
-Escreva comentários que expliquem o "porquê", não o "o quê" — o código já diz o que
+Escreva comentários que expliquem o "porquê", não o "o quê", o código já diz o que
 está fazendo. Evite comentários óbvios ou temporários deixados no código.
 
 ## Testes

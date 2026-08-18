@@ -7,8 +7,8 @@ repositório, junto com o log de desenvolvimento do projeto.
 
 - **Backend**: FastAPI + SQLModel + PostgreSQL
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS
-- **Autenticação**: OAuth 2.0 (Google) — sem cadastro por e-mail/senha
-- **Infra**: Docker Compose — o backend serve o build de produção do frontend
+- **Autenticação**: OAuth 2.0 (Google) sem cadastro por e-mail/senha
+- **Infra**: Docker Compose: o backend serve o build de produção do frontend
 
 ## Primeiros Passos
 
