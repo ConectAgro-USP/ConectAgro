@@ -1,0 +1,69 @@
+name: Bug
+description: Relate um comportamento inesperado
+title: "<Seu Título>"
+labels: ["Bug", "status: Aguardando revisão"]
+body:
+  - type: markdown
+    attributes:
+      value: "Preencha o máximo de detalhes possível. NÃO ESQUEÇA DE TROCAR O TÍTULO"
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição
+      description: Qual o bug observado?
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: "1. Acesse a plataforma\n2.\n3."
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Especifique o que era esperado nesta seção
+  - type: textarea
+    id: atual
+    attributes:
+      label: Especifique o que de fato aconteceu nesta seção
+    validations:
+      required: true
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Componente afetado
+      description: Selecione em qual parte do repositório o bug foi encontrado
+      options:
+        - Frontend (web)
+        - Backend (server)
+        - Banco de dados
+        - Infraestrutura (Docker/CI)
+        - Outro
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Navegador
+      description: Qual o navegador que você usou ao encontrar o bug
+      options:
+        - Google Chrome
+        - Microsoft Edge
+        - Firefox
+        - Opera
+        - Safari
+        - Outros
+        - N/A
+  - type: dropdown
+    id: modo_execucao
+    attributes:
+      label: Como você está rodando o projeto?
+      options:
+        - Docker (make up)
+        - Hot-reload local (server + web separados)
+        - N/A
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Insira qualquer outra informação extra que julgar relevante

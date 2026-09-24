@@ -1,0 +1,72 @@
+name: Performance
+description: Lentidão, travamentos ou consumo alto de recursos
+title: "<Seu Título>"
+labels: ["Performance", "status: Aguardando revisão"]
+body:
+  - type: markdown
+    attributes:
+      value: "# Informe onde ocorre e como medir o problema. NÃO ESQUEÇA DE TROCAR O TÍTULO"
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição
+    validations:
+      required: true
+  - type: dropdown
+    id: tipo_de_problema
+    attributes:
+      label: Tipo de problema
+      description: Selecione o tipo de problema de performance encontrado.
+      options:
+        - Lentidão no carregamento da página
+        - Timeout ou erro de servidor (5xx)
+        - Consulta lenta ao banco de dados
+        - Alto consumo de memória/CPU no navegador
+        - Alto consumo de memória/CPU no servidor
+    validations:
+      required: true
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Componente afetado
+      description: Selecione em qual parte do monorepositório o problema foi encontrado
+      options:
+        - Frontend (web)
+        - Backend (server)
+        - Banco de dados
+        - Infraestrutura (Docker/CI)
+        - Outro
+    validations:
+      required: true
+  - type: textarea
+    id: onde
+    attributes:
+      label: Dê mais detalhes do problema (Especifique a tela, o que você estava fazendo e o que observou)
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: "1. Acesse a plataforma\n2.\n3."
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Navegador
+      description: Qual o navegador que você usou (se o problema ocorreu no frontend)
+      options:
+        - Google Chrome
+        - Microsoft Edge
+        - Firefox
+        - Opera
+        - Safari
+        - Outros
+        - N/A
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Insira qualquer outra informação extra que julgar relevante
+

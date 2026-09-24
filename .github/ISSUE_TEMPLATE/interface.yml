@@ -1,0 +1,53 @@
+name: Interface
+description: Problemas de interface, layout ou fluxo
+title: "<Seu Título>"
+labels: ["Interface", "status: Aguardando revisão"]
+body:
+  - type: markdown
+    attributes:
+      value: "Inclua capturas de tela quando possível. NÃO ESQUEÇA DE TROCAR O TÍTULO"
+  - type: input
+    id: tela
+    attributes:
+      label: Tela/Menu afetado
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descreva o problema na interface
+    validations:
+      required: true
+  - type: textarea
+    id: capturas
+    attributes:
+      label: Capturas de tela
+      description: "Cole links ou arraste imagens relevantes."
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Navegador
+      description: Qual o navegador que você usou ao encontrar o problema
+      options:
+        - Google Chrome
+        - Microsoft Edge
+        - Firefox
+        - Opera
+        - Safari
+        - Outros
+        - N/A
+    validations:
+      required: true
+  - type: dropdown
+    id: viewport
+    attributes:
+      label: Tamanho de tela
+      description: O problema ocorre em qual tipo de viewport?
+      options:
+        - Desktop
+        - Mobile (navegador)
+        - Ambos
+        - N/A
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Insira qualquer outra informação extra que julgar relevante
