@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from sqlmodel import Field, Relationship
+from typing import Optional
 
 from .user import UserBase
 
@@ -16,4 +17,4 @@ class Buyer(UserBase, table=True):
         foreign_key="apartments.id",
     )
 
-    apartment: "Apartment | None" = Relationship(back_populates="buyers")
+    apartment: Optional["Apartment"] = Relationship(back_populates="buyers")
