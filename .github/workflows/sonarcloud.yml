@@ -60,10 +60,9 @@ jobs:
           pip install --no-cache-dir pytest-cov
 
       - name: Run server tests with coverage
-        working-directory: ./server
         run: |
-          if [ -d tests ] || [ -d src/tests ]; then
-            pytest --cov=src --cov-report=xml:coverage.xml
+          if [ -d server/tests ]; then
+            pytest -c server/pyproject.toml server/tests --cov=server/src --cov-config=server/pyproject.toml --cov-report=xml:server/coverage.xml
           else
             echo "No tests directory found in server; skipping tests"
           fi
