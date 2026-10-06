@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import select
 
 from src.api.deps import CurrentUser, SessionDep
 from src.auth.oauth import oauth
 from src.core.config import settings
-from src.core.security import create_access_token
-from src.models.user import User, UserRead
+from src.core.security import create_access_token, get_password_hash, verify_password
+from src.models.user import User, UserCreate, UserLogin, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,3 +56,44 @@ async def read_current_user(current_user: CurrentUser):
 async def logout(response: Response):
     response.delete_cookie("access_token")
     return {"ok": True}
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register_farmer(user_in: UserCreate, session: SessionDep):
+    existing_user = session.exec(select(User).where(User.email == user_in.email)).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado")
+    
+    new_user = User(
+        name=user_in.name,
+        email=user_in.email,
+        address=user_in.address,
+        hashed_password=get_password_hash(user_in.password),
+    )
+
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+    return {"status_code": 200, "message": "Conta criada com sucesso", "user_id": new_user.id}
+
+
+@router.post("/login")
+async def login_farmer(user_in: UserLogin, session: SessionDep, response: Response):
+    user = session.exec(select(User).where(User.email == user_in.email)).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Senha incorreta")
+    
+    access_token = create_access_token(subject=str(user.id))
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.is_prod,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return {"status_code": 200, "message": "Login realizado com sucesso"}
