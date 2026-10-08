@@ -1,3 +1,4 @@
+from fastapi import status
 from fastapi.testclient import TestClient
 
 user_sign_in = {
@@ -16,7 +17,7 @@ user_login = {
 def test_register(client: TestClient):
     response = client.post("/api/auth/register", json = user_sign_in)
 
-    assert response.status_code == 201
+    assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["message"] == "Conta criada com sucesso"
 
 
@@ -30,7 +31,7 @@ def test_register_duplicate_email(client: TestClient):
     
     response = client.post("/api/auth/register", json = user_repeated_email)
 
-    assert response.status_code == 400
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "E-mail já cadastrado" in response.json()["detail"]
 
 
@@ -38,7 +39,7 @@ def test_login_success(client: TestClient):
     client.post("/api/auth/register", json = user_sign_in)
     response = client.post("/api/auth/login", json = user_login)
 
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
     assert "access_token" in response.cookies
 
 
@@ -49,5 +50,6 @@ def test_login_wrong_password(client: TestClient):
     user_wrong_password['password'] = "123456"
 
     response = client.post("/api/auth/login", json = user_wrong_password)
-    assert response.status_code == 401
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert "E-mail ou senha incorretos" in response.json()["detail"]

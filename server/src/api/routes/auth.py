@@ -61,8 +61,9 @@ async def logout(response: Response):
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_farmer(user_in: UserCreate, session: SessionDep):
     existing_user = session.exec(select(User).where(User.email == user_in.email)).first()
+
     if existing_user:
-        raise HTTPException(status_code=400, detail="E-mail já cadastrado")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="E-mail já cadastrado")
     
     new_user = User(
         name=user_in.name,
@@ -74,7 +75,8 @@ async def register_farmer(user_in: UserCreate, session: SessionDep):
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
-    return {"status_code": 200, "message": "Conta criada com sucesso", "user_id": new_user.id}
+    return {"status_code": status.HTTP_201_CREATED, "message": "Conta criada com sucesso",
+            "user_id": new_user.id}
 
 
 @router.post("/login")
@@ -82,7 +84,8 @@ async def login_farmer(user_in: UserLogin, session: SessionDep, response: Respon
     user = session.exec(select(User).where(User.email == user_in.email)).first()
     
     if not user or not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                             detail="E-mail ou senha incorretos")
     
     access_token = create_access_token(subject=str(user.id))
     response.set_cookie(
@@ -93,4 +96,4 @@ async def login_farmer(user_in: UserLogin, session: SessionDep, response: Respon
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
-    return {"status_code": 200, "message": "Login realizado com sucesso"}
+    return {"status_code": status.HTTP_200_OK, "message": "Login realizado com sucesso"}
