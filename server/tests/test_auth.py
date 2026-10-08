@@ -50,4 +50,4 @@ def test_login_wrong_password(client: TestClient):
 
     response = client.post("/api/auth/login", json = user_wrong_password)
     assert response.status_code == 401
-    assert "Senha incorreta" in response.json()["detail"]
+    assert "E-mail ou senha incorretos" in response.json()["detail"]

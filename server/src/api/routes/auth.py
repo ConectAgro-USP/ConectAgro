@@ -81,11 +81,8 @@ async def register_farmer(user_in: UserCreate, session: SessionDep):
 async def login_farmer(user_in: UserLogin, session: SessionDep, response: Response):
     user = session.exec(select(User).where(User.email == user_in.email)).first()
     
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-    if not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Senha incorreta")
+    if not user or not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
     
     access_token = create_access_token(subject=str(user.id))
     response.set_cookie(
