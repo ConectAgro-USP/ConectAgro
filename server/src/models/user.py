@@ -23,9 +23,9 @@ class UserRead(UserBase):
 
 
 class UserCreate(SQLModel):
-    name: str
-    email: str
-    password: str
+    name: str = Field(min_length=5)
+    email: str = Field(min_length=8)
+    password: str = Field(min_length=8)
     address: str | None = None
 
 

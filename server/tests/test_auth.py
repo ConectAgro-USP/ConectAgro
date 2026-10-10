@@ -35,6 +35,14 @@ def test_register_duplicate_email(client: TestClient):
     assert "E-mail já cadastrado" in response.json()["detail"]
 
 
+def test_register_short_email(client: TestClient):
+    user_short_email = user_sign_in.copy()
+    user_short_email['email'] = "c@g.com"
+    response = client.post("/api/auth/register", json = user_short_email)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
 def test_login_success(client: TestClient):
     client.post("/api/auth/register", json = user_sign_in)
     response = client.post("/api/auth/login", json = user_login)
