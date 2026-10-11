@@ -66,4 +66,4 @@ class ProductUpdate(SQLModel):
 class ProductRead(ProductBase):
     public_id: UUID
     created_at: datetime
-    farmer_id: int
+    farmer_public_id: UUID
