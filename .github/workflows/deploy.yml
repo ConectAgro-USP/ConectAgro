@@ -1,0 +1,144 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/sonarcloud.yml
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  backend:
+    name: Backend on Render
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: producao
+
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL not set in producao environment"
+            exit 1
+          fi
+          curl --fail --silent --show-error --output /dev/null --request POST "$RENDER_DEPLOY_HOOK_URL&ref=$GITHUB_SHA"
+
+  build_frontend:
+    name: Build frontend
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            .github/tools/vercel/package-lock.json
+            web/package-lock.json
+
+      - name: Install Vercel CLI
+        working-directory: .github/tools/vercel
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Copy Vercel project settings
+        run: |
+          mkdir -p .vercel
+          cp .github/tools/vercel/project.json .vercel/project.json
+
+      - name: Build frontend
+        run: vercel build --prod
+
+      - name: Upload build output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: built-frontend
+          path: .vercel/output
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  frontend:
+    name: Frontend on Vercel
+    needs: [backend, build_frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: producao
+
+    steps:
+      - name: Check Vercel secrets
+        env:
+          TOKEN_CONFIGURED: ${{ secrets.VERCEL_TOKEN != '' }}
+          ORG_CONFIGURED: ${{ secrets.VERCEL_ORG_ID != '' }}
+          PROJECT_CONFIGURED: ${{ secrets.VERCEL_PROJECT_ID != '' }}
+        run: |
+          missing=""
+          [ "$TOKEN_CONFIGURED" = "true" ] || missing="$missing VERCEL_TOKEN"
+          [ "$ORG_CONFIGURED" = "true" ] || missing="$missing VERCEL_ORG_ID"
+          [ "$PROJECT_CONFIGURED" = "true" ] || missing="$missing VERCEL_PROJECT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets in producao environment:$missing (backend already deployed)"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Install Vercel CLI
+        working-directory: .github/tools/vercel
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Copy Vercel project settings
+        run: |
+          mkdir -p .vercel
+          cp .github/tools/vercel/project.json .vercel/project.json
+
+      - name: Download build output
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: built-frontend
+          path: .vercel/output
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prebuilt --prod --yes

@@ -1,0 +1,13 @@
+{
+  "projectId": "built-by-ci-without-token",
+  "orgId": "built-by-ci-without-token",
+  "settings": {
+    "framework": "vite",
+    "rootDirectory": "web",
+    "nodeVersion": "22.x",
+    "installCommand": "npm ci --ignore-scripts",
+    "buildCommand": "npm run build:ci",
+    "outputDirectory": null,
+    "devCommand": null
+  }
+}
