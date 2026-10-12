@@ -1,9 +1,12 @@
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlmodel import Field, Relationship
-from typing import Optional
 
 from .user import UserBase
+
+if TYPE_CHECKING:
+    from .apartment import Apartment
 
 
 class Buyer(UserBase, table=True):

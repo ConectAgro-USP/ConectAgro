@@ -26,7 +26,6 @@ class UserCreate(SQLModel):
     name: str = Field(min_length=5)
     email: str = Field(min_length=8)
     password: str = Field(min_length=8)
-    address: str | None = None
 
 
 class UserLogin(SQLModel):

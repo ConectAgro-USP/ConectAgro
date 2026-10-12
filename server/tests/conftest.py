@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("SESSION_SECRET_KEY", "test-secret")
@@ -31,6 +32,12 @@ def setup_database():
     yield
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(engine_test)
+
+
+@pytest.fixture()
+def session() -> Generator[Session, None, None]:
+    with Session(engine_test) as session:
+        yield session
 
 
 @pytest.fixture()

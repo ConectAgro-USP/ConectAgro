@@ -1,8 +1,10 @@
 from fastapi import status
 from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
 from src.auth.oauth import oauth
+from src.models.user import User
 
 user_sign_in = {
   'name': "Cintia",
@@ -78,3 +80,31 @@ def test_login_google_uses_frontend_callback(client: TestClient, monkeypatch):
     client.get("/api/auth/login/google", follow_redirects=False)
 
     assert redirect_uris == ["http://localhost:5173/api/auth/callback/google"]
+
+
+def test_login_google_account_without_password(client: TestClient, session: Session):
+    session.add(User(email="google@gmail.com", name="Conta Google"))
+    session.commit()
+
+    response = client.post(
+        "/api/auth/login", json = {"email": "google@gmail.com", "password": "qualquer-senha"}
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "E-mail ou senha incorretos" in response.json()["detail"]
+
+
+def test_me_returns_logged_user(client: TestClient):
+    client.post("/api/auth/register", json = user_sign_in)
+    client.post("/api/auth/login", json = user_login)
+
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["email"] == "cintia@gmail.com"
+
+
+def test_me_without_cookie(client: TestClient):
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
