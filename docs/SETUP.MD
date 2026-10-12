@@ -30,7 +30,9 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 1. Acesse o [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Crie um "OAuth 2.0 Client ID" do tipo "Web application"
-3. Adicione como Redirect URI (desenvolvimento): `http://localhost:8000/api/auth/callback/google`
+3. Adicione como Redirect URI `<FRONTEND_URL>/api/auth/callback/google`. Em desenvolvimento com o Vite,
+   `http://localhost:5173/api/auth/callback/google`. Rodando só com Docker (`make up`), defina
+   `FRONTEND_URL=http://localhost:8000` no `.env` e use `http://localhost:8000/api/auth/callback/google`
 4. Copie o Client ID e o Client Secret para `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`
 
 ## 3. Subir o projeto com Docker

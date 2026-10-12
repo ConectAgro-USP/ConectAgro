@@ -1,0 +1,7 @@
+{
+  "name": "conectagro-vercel-tools",
+  "private": true,
+  "dependencies": {
+    "vercel": "62.4.0"
+  }
+}

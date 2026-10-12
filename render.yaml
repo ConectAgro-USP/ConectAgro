@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: conectagro-api
+    runtime: python
+    rootDir: server
+    buildCommand: pip install -r requirements.txt
+    startCommand: sh start.sh
+    plan: free
+    region: virginia
+    branch: main
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_FLAVOR
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: conectagro-db
+          property: connectionString
+      - key: SESSION_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_METADATA_URL
+        value: https://accounts.google.com/.well-known/openid-configuration
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+databases:
+  - name: conectagro-db
+    databaseName: conectagro
+    user: conectagro
+    plan: free
+    region: virginia
+    postgresMajorVersion: "16"
+    ipAllowList: []
