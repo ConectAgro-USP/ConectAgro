@@ -1,16 +1,20 @@
 from uuid import UUID
 
+from pydantic import ConfigDict
 from sqlmodel import Field, Relationship
+
+from src.utils.validate_phone import Phone
 
 from .user import UserBase
 
 
 class Apartment(UserBase, table=True):
     __tablename__ = "apartments"
+    model_config = ConfigDict(validate_assignment=True)
 
     id: int | None = Field(default=None, primary_key=True)
     public_id: UUID = Field(unique=True, index=True)
-
+    phone: Phone
     zip_code: str
     building_manager_id: str
     building_tax_id: str
