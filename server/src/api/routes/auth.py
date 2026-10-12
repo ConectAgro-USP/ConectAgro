@@ -13,7 +13,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.get("/login/google")
 async def login_google(request: Request):
-    redirect_uri = str(request.url_for("auth_google_callback"))
+    # O callback passa pelo /api do frontend (Vite/Vercel) para receber o cookie de estado do OAuth.
+    callback_path = request.url_for("auth_google_callback").path
+    redirect_uri = settings.FRONTEND_URL.rstrip("/") + callback_path
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 

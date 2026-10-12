@@ -1,5 +1,8 @@
 from fastapi import status
+from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
+
+from src.auth.oauth import oauth
 
 user_sign_in = {
   'name': "Cintia",
@@ -61,3 +64,17 @@ def test_login_wrong_password(client: TestClient):
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert "E-mail ou senha incorretos" in response.json()["detail"]
+
+
+def test_login_google_uses_frontend_callback(client: TestClient, monkeypatch):
+    redirect_uris = []
+
+    async def fake_authorize_redirect(request, redirect_uri):
+        redirect_uris.append(redirect_uri)
+        return RedirectResponse("https://accounts.google.com")
+
+    monkeypatch.setattr(oauth.google, "authorize_redirect", fake_authorize_redirect)
+
+    client.get("/api/auth/login/google", follow_redirects=False)
+
+    assert redirect_uris == ["http://localhost:5173/api/auth/callback/google"]
