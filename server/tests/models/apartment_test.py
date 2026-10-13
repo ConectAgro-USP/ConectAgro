@@ -11,7 +11,8 @@ def test_apartment_creation():
         email="apartment@example.com",
         name="Edifício Araraquara",
         picture_url="https://example.com/photo.jpg",
-        phone="(11) 94464-4502",
+        cellphone="(11) 94464-4502",
+        homephone="11 2464-4502",
         zip_code="01000-000",
         building_manager_id="123",
         building_tax_id="12.345.678/0001-90",
@@ -20,7 +21,8 @@ def test_apartment_creation():
     assert apartment.name == "Edifício Araraquara"
     assert apartment.email == "apartment@example.com"
     assert apartment.picture_url == "https://example.com/photo.jpg"
-    assert apartment.phone == "11944644502"
+    assert apartment.cellphone == "11944644502"
+    assert apartment.homephone == "1124644502"
     assert apartment.zip_code == "01000-000"
     assert apartment.building_manager_id == "123"
     assert apartment.building_tax_id == "12.345.678/0001-90"
@@ -32,7 +34,7 @@ def test_apartment_inherits_user_base_fields():
         email="apartment@example.com",
         name="Edifício Araraquara",
         picture_url=None,
-        phone="(11) 94464-4502",
+        cellphone="(11) 94464-4502",
         zip_code="01000-000",
         building_manager_id="123",
         building_tax_id="12.345.678/0001-90",
@@ -49,7 +51,7 @@ def test_change_manager():
         email="apartment@example.com",
         name="Edifício Araraquara",
         picture_url=None,
-        phone="(11) 94464-4502",
+        cellphone="(11) 94464-4502",
         zip_code="01000-000",
         building_manager_id="123",
         building_tax_id="12.345.678/0001-90",
@@ -60,20 +62,37 @@ def test_change_manager():
     assert apartment.building_manager_id == "456"
 
 
-def test_apartment_invalid_phone():
+def test_apartment_invalid_cellphone():
     with pytest.raises(ValueError) as exc_info:
         Apartment(
             public_id=uuid4(),
             email="apartment@example.com",
             name="Edifício Araraquara",
             picture_url=None,
-            phone="(11) 944-402",
+            cellphone="(11) 944-402",
             zip_code="01000-000",
             building_manager_id="123",
             building_tax_id="12.345.678/0001-90",
         )
         
-    assert "Não é um número válido" in str(exc_info.value)
+    assert "Não é um número de telefone celular válido" in str(exc_info.value)
+
+
+def test_apartment_invalid_homephone():
+    with pytest.raises(ValueError) as exc_info:
+        Apartment(
+            public_id=uuid4(),
+            email="apartment@example.com",
+            name="Edifício Araraquara",
+            picture_url=None,
+            cellphone="(11) 94464-4502",
+            homephone="(11) 98954-3202",
+            zip_code="01000-000",
+            building_manager_id="123",
+            building_tax_id="12.345.678/0001-90",
+        )
+        
+    assert "Não é um número de telefone fixo válido" in str(exc_info.value)
 
 
 def test_apartment_invalid_ddd():
@@ -83,10 +102,10 @@ def test_apartment_invalid_ddd():
             email="apartment@example.com",
             name="Edifício Araraquara",
             picture_url=None,
-            phone="(25) 94002 8922",
+            cellphone="(25) 94002 8922",
             zip_code="01000-000",
             building_manager_id="123",
             building_tax_id="12.345.678/0001-90",
         )
         
-    assert "O DDD do número é inválido" in str(exc_info.value)
+    assert "O DDD 25 é inválido" in str(exc_info.value)

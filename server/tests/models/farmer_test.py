@@ -11,14 +11,16 @@ def test_farmer_creation():
         email="farmer@example.com",
         name="João",
         picture_url="https://example.com/photo.jpg",
-        phone="(11) 95724-9062",
+        cellphone="(11) 95724-9062",
+        homephone="11 4002-8922",
         zip_code="01000-000",
     )
 
     assert farmer.name == "João"
     assert farmer.email == "farmer@example.com"
     assert farmer.picture_url == "https://example.com/photo.jpg"
-    assert farmer.phone == "11957249062"
+    assert farmer.cellphone == "11957249062"
+    assert farmer.homephone == "1140028922"
     assert farmer.zip_code == "01000-000"
 
 
@@ -30,7 +32,7 @@ def test_farmer_public_id_is_uuid():
         email="farmer@example.com",
         name="João",
         picture_url="https://example.com/photo.jpg",
-        phone="(11) 95724-9062",
+        cellphone="(11) 95724-9062",
         zip_code="01000-000",
     )
 
@@ -43,7 +45,7 @@ def test_farmer_inherits_user_base_fields():
         email="farmer@example.com",
         name="João",
         picture_url=None,
-        phone="(11) 95724-9062",
+        cellphone="(11) 95724-9062",
         zip_code="01000-000",
     )
 
@@ -52,17 +54,31 @@ def test_farmer_inherits_user_base_fields():
     assert farmer.picture_url is None
 
 
-def test_farmer_invalid_phone():
+def test_farmer_invalid_cellphone():
     with pytest.raises(ValueError) as exc_info:
         Farmer(
             public_id=uuid4(),
             email="farmer@example.com",
             name="João",
-            phone="(11) 950-653",
+            cellphone="(11) 950-653",
             zip_code="01000-000",
         )
         
-    assert "Não é um número válido" in str(exc_info.value)
+    assert "Não é um número de telefone celular válido" in str(exc_info.value)
+
+
+def test_farmer_invalid_homephone():
+    with pytest.raises(ValueError) as exc_info:
+        Farmer(
+            public_id=uuid4(),
+            email="farmer@example.com",
+            name="João",
+            cellphone="(11) 95724-9062",
+            homephone="(11) 94002-8922",
+            zip_code="01000-000",
+        )
+        
+    assert "Não é um número de telefone fixo válido" in str(exc_info.value)
 
 
 def test_farmer_invalid_ddd():
@@ -71,8 +87,8 @@ def test_farmer_invalid_ddd():
             public_id=uuid4(),
             email="farmer@example.com",
             name="João",
-            phone="(25) 94002 8922",
+            cellphone="(25) 94002 8922",
             zip_code="01000-000",
         )
         
-    assert "O DDD do número é inválido" in str(exc_info.value)
+    assert "O DDD 25 é inválido" in str(exc_info.value)

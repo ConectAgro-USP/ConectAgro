@@ -22,13 +22,17 @@ VALID_DDD = {
     91, 92, 93, 94, 95, 96, 97,
 }
 
+REGEX_CELLPHONE = re.compile(r"^([1-9]{2})(9\d{8}|[2-5]\d{7})$")
 
-def validate_phone(phone: str) -> str:
-    digits = re.sub(r"\D", "", phone)
-    match = re.match(r"^([1-9]{2})(9\d{8}|[2-5]\d{7})$", digits)
+REGEX_HOMEPHONE = re.compile(r"^([1-9]{2})([2-5]\d{7})$")
+
+
+def validate_cellphone(number: str) -> str:
+    digits = re.sub(r"\D", "", number)
+    match = REGEX_CELLPHONE.match(digits)
     
     if not match:
-        raise ValueError("Não é um número válido") 
+        raise ValueError("Não é um número de telefone celular válido") 
 
     ddd = int(match.group(1))
 	
@@ -38,4 +42,20 @@ def validate_phone(phone: str) -> str:
     return digits
 
 
-Phone = Annotated[str, BeforeValidator(validate_phone)]
+def validate_homephone(number: str) -> str:
+    digits = re.sub(r"\D", "", number)
+    match = REGEX_HOMEPHONE.match(digits)
+    
+    if not match:
+        raise ValueError("Não é um número de telefone fixo válido") 
+
+    ddd = int(match.group(1))
+	
+    if ddd not in VALID_DDD:
+        raise ValueError(f"O DDD {ddd} é inválido")
+
+    return digits
+
+
+CellPhone = Annotated[str, BeforeValidator(validate_cellphone)]
+HomePhone = Annotated[str, BeforeValidator(validate_homephone)]
