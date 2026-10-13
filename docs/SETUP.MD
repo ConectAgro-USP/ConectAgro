@@ -1,14 +1,15 @@
 # Configuração do Ambiente de Desenvolvimento
 
-Este projeto usa **Docker Compose** para rodar o PostgreSQL e o backend. O backend, ao
-ser construído, já inclui o build de produção do frontend. Para desenvolvimento com
-hot-reload, backend e frontend também podem ser executados separadamente fora do Docker.
+Este projeto usa **Docker Compose** para rodar o PostgreSQL e o backend localmente. A imagem
+do backend já inclui o build do frontend (em produção, o frontend fica na Vercel e o backend
+no Render). Para desenvolvimento com hot-reload, backend e frontend também podem ser
+executados separadamente fora do Docker.
 
 ## Dependências
 
 - Docker e Docker Compose
-- Node.js 22 LTS (apenas para rodar o frontend fora do Docker)
-- Python 3.12 (apenas para rodar o backend fora do Docker)
+- GNU Make e um shell POSIX (no Windows, use o WSL2)
+- Node.js 22.12+ e Python 3.12, para o fluxo com hot-reload, as migrations, `make lint` e `make test`
 
 ## 1. Configurar variáveis de ambiente
 
@@ -30,9 +31,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 1. Acesse o [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Crie um "OAuth 2.0 Client ID" do tipo "Web application"
-3. Adicione como Redirect URI `<FRONTEND_URL>/api/auth/callback/google`. Em desenvolvimento com o Vite,
-   `http://localhost:5173/api/auth/callback/google`. Rodando só com Docker (`make up`), defina
-   `FRONTEND_URL=http://localhost:8000` no `.env` e use `http://localhost:8000/api/auth/callback/google`
+3. Adicione as Redirect URIs `http://localhost:5173/api/auth/callback/google` (Vite) e
+   `http://localhost:8000/api/auth/callback/google` (`make up`)
 4. Copie o Client ID e o Client Secret para `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`
 
 ## 3. Subir o projeto com Docker
@@ -41,15 +41,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 make up
 ```
 
-Isso builda a imagem do backend (que inclui o build do frontend) e sobe o Postgres.
-A aplicação fica disponível em `http://localhost:8000`.
-
-Na primeira vez, gere e aplique as migrations:
-
-```bash
-make makemigration m="create user table"
-make migrate
-```
+Isso builda a imagem do backend (que inclui o build do frontend), sobe o Postgres e aplica
+as migrations pendentes. A aplicação fica disponível em `http://localhost:8000`.
 
 ## 4. Fluxo de desenvolvimento (com hot-reload)
 
@@ -65,12 +58,9 @@ Em outro terminal, rode o backend localmente:
 cd server
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
+dotenv -f ../.env run -- alembic upgrade head
 uvicorn src.main:app --reload --env-file ../.env
 ```
-
-> Ao rodar o backend fora do Docker, ajuste `DATABASE_URL` no `.env` para usar
-> `localhost` no lugar de `db` como host do Postgres, `db` só é resolvido dentro
-> da rede do Docker Compose.
 
 Em outro terminal, rode o frontend:
 
@@ -87,11 +77,16 @@ quanto em produção.
 ## Comandos úteis (Makefile)
 
 ```bash
-make up                            # sobe tudo via Docker
+make up                            # builda a imagem e sobe tudo via Docker
 make down                          # derruba os containers
+make build                         # só builda a imagem, sem recriar os containers
 make logs                          # segue os logs
-make migrate                       # aplica as migrations pendentes
-make makemigration m="mensagem"    # gera uma nova migration
-make lint                          # roda ruff (backend) e eslint (frontend)
-make test                          # roda os testes do backend
+make migrate                       # aplica as migrations pendentes (venv ativa)
+make makemigration m="mensagem"    # gera uma nova migration (venv ativa)
+make server-shell                  # abre um shell no container do backend
+make db-shell                      # abre o psql no container do banco
+make dev-server                    # backend com hot-reload (venv ativa)
+make dev-web                       # frontend com hot-reload
+make lint                          # roda ruff (backend, venv ativa), eslint e tsc (frontend)
+make test                          # roda os testes do backend (venv ativa)
 ```

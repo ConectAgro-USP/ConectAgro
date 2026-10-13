@@ -16,10 +16,10 @@ roda via `docker compose up db`, confirme que `DATABASE_URL` no `.env` aponta pa
 
 ## Erro `redirect_uri_mismatch` no login com Google
 
-A Redirect URI cadastrada no Google Cloud Console precisa ser **exatamente igual** à
-usada pela aplicação: `http://localhost:8000/api/auth/callback/google` em
-desenvolvimento. Verifique também se `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` no
-`.env` correspondem ao client OAuth correto.
+A Redirect URI cadastrada no Google Cloud Console precisa ser **exatamente**
+`<FRONTEND_URL>/api/auth/callback/google` (veja o passo 2 do [SETUP](SETUP.MD)). Verifique
+também se `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` no `.env` correspondem ao client OAuth
+correto.
 
 ## `alembic` não encontra as tabelas / migration gerada vazia
 
@@ -27,8 +27,9 @@ Certifique-se de que o model novo está importado em `server/src/models/__init__
 
 O Alembic só detecta tabelas cujos models foram importados antes de gerar a migration.
 
-## Mudanças no frontend não aparecem em produção
+## Mudanças no frontend não aparecem no `make up`
 
-O build do frontend acontece durante a build da imagem Docker do backend. Depois de
-alterar código em `web/`, rode `docker compose up --build` (ou `make build`) para
-gerar uma nova imagem com o build atualizado.
+O `make up` serve o build do frontend embutido na imagem do backend. Depois de alterar
+código em `web/`, rode `make up` para gerar uma nova imagem e recriar o container (o
+`make build` só gera a imagem). Em produção, o frontend é publicado na Vercel pelo
+workflow Deploy a cada push na `main`.

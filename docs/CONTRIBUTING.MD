@@ -13,13 +13,13 @@ tipo de contribuição.
 ## Processo de Contribuição
 
 1. Abra uma issue descrevendo o que pretende fazer e aguarde feedback
-2. Crie uma branch descritiva:
+2. Crie uma branch descritiva a partir de `dev`:
    - `fix/nome-do-bug` para correções
-   - `feature/nome-da-funcionalidade` para novas features
+   - `feat/nome-da-funcionalidade` para novas features
    - `docs/descricao` para documentação
 3. Implemente suas mudanças com commits atômicos e bem descritos
 4. Rode as validações locais (`make lint` e `make test`)
-5. Abra um Pull Request referenciando a issue original
+5. Abra um Pull Request para `dev` referenciando a issue original
 
 ## Commits
 
@@ -38,6 +38,19 @@ Commits devem ser atômicos, cada commit deve representar uma mudança lógica �
 
 Escreva comentários que expliquem o "porquê", não o "o quê", o código já diz o que
 está fazendo. Evite comentários óbvios ou temporários deixados no código.
+
+## Arquitetura do backend
+
+Em `server/src`:
+
+- `api/routes`: só HTTP (entrada, status, cookies); traduz exceções de domínio em `HTTPException`
+  ou em redirect (callback do Google).
+- `services`: regras de negócio; lançam as exceções de `services/exceptions.py`.
+- `repository`: acesso ao banco (SQLModel), sem regra de negócio.
+- `models`: tabelas SQLModel e schemas de entrada e saída da API (importe models novos em
+  `models/__init__.py`).
+- `auth`: cliente OAuth do Google (Authlib).
+- `core`: configuração, segurança e engine do banco.
 
 ## Testes
 
