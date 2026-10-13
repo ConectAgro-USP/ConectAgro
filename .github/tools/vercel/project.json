@@ -4,9 +4,8 @@
   "settings": {
     "framework": "vite",
     "rootDirectory": "web",
-    "nodeVersion": "22.x",
     "installCommand": "npm ci --ignore-scripts",
-    "buildCommand": "npm run build:ci",
+    "buildCommand": "npm run build",
     "outputDirectory": null,
     "devCommand": null
   }

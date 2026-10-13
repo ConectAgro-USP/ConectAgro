@@ -24,13 +24,29 @@ jobs:
 
   backend:
     name: Backend on Render
-    needs: ci
+    # Evita publicar só o backend nas falhas previsíveis do frontend
+    needs: [ci, build_frontend]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: producao
 
     steps:
+      - name: Check Vercel secrets
+        env:
+          TOKEN_CONFIGURED: ${{ secrets.VERCEL_TOKEN != '' }}
+          ORG_CONFIGURED: ${{ secrets.VERCEL_ORG_ID != '' }}
+          PROJECT_CONFIGURED: ${{ secrets.VERCEL_PROJECT_ID != '' }}
+        run: |
+          missing=""
+          [ "$TOKEN_CONFIGURED" = "true" ] || missing="$missing VERCEL_TOKEN"
+          [ "$ORG_CONFIGURED" = "true" ] || missing="$missing VERCEL_ORG_ID"
+          [ "$PROJECT_CONFIGURED" = "true" ] || missing="$missing VERCEL_PROJECT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets in producao environment:$missing"
+            exit 1
+          fi
+
       - name: Trigger Render deploy hook
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
@@ -94,21 +110,6 @@ jobs:
     environment: producao
 
     steps:
-      - name: Check Vercel secrets
-        env:
-          TOKEN_CONFIGURED: ${{ secrets.VERCEL_TOKEN != '' }}
-          ORG_CONFIGURED: ${{ secrets.VERCEL_ORG_ID != '' }}
-          PROJECT_CONFIGURED: ${{ secrets.VERCEL_PROJECT_ID != '' }}
-        run: |
-          missing=""
-          [ "$TOKEN_CONFIGURED" = "true" ] || missing="$missing VERCEL_TOKEN"
-          [ "$ORG_CONFIGURED" = "true" ] || missing="$missing VERCEL_ORG_ID"
-          [ "$PROJECT_CONFIGURED" = "true" ] || missing="$missing VERCEL_PROJECT_ID"
-          if [ -n "$missing" ]; then
-            echo "::error::Missing secrets in producao environment:$missing (backend already deployed)"
-            exit 1
-          fi
-
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

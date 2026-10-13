@@ -1,7 +1,7 @@
 name: Qualidade de código
 description: Relate alguma parte do código que está confusa ou que poderia ser melhorada.
 title: "<Seu Título>"
-labels: ["Qualidade de código", "status: Aguardando revisão"]
+labels: ["Qualidade do código", "status: Aguardando revisão"]
 body:
   - type: markdown
     attributes:
