@@ -1,5 +1,3 @@
-// @ts-nocheck
-// TODO retirar no-check depois
 import { useEffect, useState } from 'react'
 
 export interface Product {
@@ -15,7 +13,7 @@ interface UseProductsState {
 }
 
 export function useProducts(): UseProductsState {
-	const [data, setData] = useState<Product[]>([])
+	const [data] = useState<Product[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<Error | null>(null)
 

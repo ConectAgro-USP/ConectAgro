@@ -9,11 +9,19 @@ export class ApiError extends Error {
   }
 }
 
+function jsonHeaders({ body, headers }: RequestInit): Headers {
+  const merged = new Headers(headers);
+  if (typeof body === "string" && !merged.has("Content-Type")) {
+    merged.set("Content-Type", "application/json");
+  }
+  return merged;
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
+    headers: jsonHeaders(options),
   });
 
   if (!response.ok) {

@@ -1,8 +1,9 @@
-import { Navigate } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 
 export function Login() {
   const { user, loading, login } = useAuth();
+  const [searchParams] = useSearchParams();
 
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
@@ -17,6 +18,11 @@ export function Login() {
         >
           Continuar com Google
         </button>
+        {searchParams.get("error") === "google" && (
+          <p role="alert" className="mt-4 text-sm text-red-600">
+            Não foi possível entrar com o Google.
+          </p>
+        )}
       </div>
     </main>
   );

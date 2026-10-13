@@ -1,25 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch, ApiError } from "../api/client";
-
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  picture_url: string | null;
-}
-
-interface AuthContextValue {
-  user: User | null;
-  loading: boolean;
-  login: () => void;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+import { AuthContext, type User } from "./AuthContext";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(false);
 
   useEffect(() => {
     apiFetch<User>("/auth/me")
@@ -27,6 +13,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch((error: unknown) => {
         if (!(error instanceof ApiError && error.status === 401)) {
           console.error(error);
+          setSessionError(true);
         }
       })
       .finally(() => setLoading(false));
@@ -42,16 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, sessionError, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
-  }
-  return context;
 }

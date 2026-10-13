@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:ci": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -32,6 +31,6 @@
     "vite": "^8.0.1"
   },
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=22.12"
   }
 }
