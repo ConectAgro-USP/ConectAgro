@@ -1,6 +1,12 @@
 from datetime import UTC, datetime
+from typing import Annotated
 
+from pydantic import AfterValidator, EmailStr, StringConstraints
+from sqlalchemy import DateTime
 from sqlmodel import Field, SQLModel
+
+NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
+PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
 
 
 class UserBase(SQLModel):
@@ -13,7 +19,9 @@ class User(UserBase, table=True):
     __tablename__ = "users"
 
     id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
+    )
     hashed_password: str | None = None
 
 
@@ -23,11 +31,11 @@ class UserRead(UserBase):
 
 
 class UserCreate(SQLModel):
-    name: str = Field(min_length=5)
-    email: str = Field(min_length=8)
-    password: str = Field(min_length=8)
+    name: PersonName
+    email: NormalizedEmail
+    password: str = Field(min_length=8, max_length=128)
 
 
 class UserLogin(SQLModel):
-    email: str
-    password: str
+    email: NormalizedEmail
+    password: str = Field(max_length=128)

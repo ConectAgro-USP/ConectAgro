@@ -1,6 +1,11 @@
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from src.models.user import User
+
+
+class DuplicateUserError(Exception):
+    pass
 
 
 class UserRepository:
@@ -14,6 +19,13 @@ class UserRepository:
         return self.session.exec(select(User).where(User.email == email)).first()
 
     def create(self, user: User) -> User:
+        try:
+            return self.save(user)
+        except IntegrityError:
+            self.session.rollback()
+            raise DuplicateUserError from None
+
+    def save(self, user: User) -> User:
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)

@@ -1,202 +1,176 @@
-from uuid import uuid4
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from datetime import UTC, date, datetime
-from pytest import raises
+from uuid import UUID, uuid4
 
-from pydantic_core._pydantic_core import *
+import pytest
+from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session
 
-from src.models.product import Product, ProductCreate, ProductUpdate, ProductRead
 from src.models.farmer import Farmer
+from src.models.product import BUSINESS_TZ, Product, ProductCreate, ProductRead, ProductUpdate
 
-def test_product_creation():
-    product = Product(
-        name="Sonic",
-        description="Bicho azul",
-        picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-        quantity=1,
-        price=2.03,
-        expiration_date="2030-01-30",
+TODAY = datetime.now(BUSINESS_TZ).date()
+FUTURE = TODAY + timedelta(days=30)
+PAST = TODAY - timedelta(days=1)
+
+
+def product_create(**overrides) -> ProductCreate:
+    data = {
+        "name": "Alface",
+        "description": "Alface crespa",
+        "picture_url": "https://example.com/alface.png",
+        "quantity": 1,
+        "price": "2.03",
+        "expiration_date": FUTURE,
+        "farmer_public_id": uuid4(),
+    }
+    return ProductCreate(**{**data, **overrides})
+
+
+def test_product_table_generates_public_id_and_created_at():
+    product = Product(name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE)
+
+    assert isinstance(product.public_id, UUID)
+    assert isinstance(product.created_at, datetime)
+
+
+def persisted_farmer(session: Session) -> Farmer:
+    farmer = Farmer(email="f@example.com", name="João", zip_code="01000-000")
+    session.add(farmer)
+    session.commit()
+    return farmer
+
+
+def test_product_table_rejects_negative_quantity(session: Session):
+    farmer = persisted_farmer(session)
+    session.add(
+        Product(
+            name="Alface",
+            quantity=-1,
+            price=Decimal("2.03"),
+            expiration_date=FUTURE,
+            farmer_id=farmer.id,
+        )
     )
 
-    assert product.name == "Sonic"
-    assert product.description == "Bicho azul"
-    assert product.picture_url =="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png"
-    assert product.quantity == 1
-    assert product.price == 2.03
-    assert product.expiration_date == "2030-01-30" 
-    assert type(product.public_id) == type(uuid4())
-    assert type(product.created_at) == type(datetime.now(UTC))
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_product_read_from_table_exposes_farmer_public_id(session: Session):
+    farmer = persisted_farmer(session)
+    product = Product(
+        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE, farmer=farmer
+    )
+    session.add(product)
+    session.commit()
+
+    assert ProductRead.model_validate(product).farmer_public_id == farmer.public_id
 
 
 def test_product_create():
-    product = ProductCreate(
-        name="Sonic",
-        description="Bicho azul",
-        picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-        quantity=1,
-        price=2.03,
-        expiration_date="2030-01-30",
-        farmer_public_id=uuid4()
-    )
+    product = product_create()
 
-    assert product.name == "Sonic"
-    assert product.description == "Bicho azul"
-    assert product.picture_url =="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png"
-    assert product.quantity == 1
-    assert product.price == Decimal('2.03')
-    assert product.expiration_date == date(2030, 1, 30)
-    assert type(product.farmer_public_id) == type(uuid4())
-
-    # nome como string vazia
-    with raises(ValidationError):
-        product = ProductCreate(
-            name="",
-            description="Bicho azul",
-            picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-            quantity=1,
-            price=2.03,
-            expiration_date="2030-01-30",
-            farmer_public_id=uuid4()
-        )
-
-    # tipo errado (description)
-    with raises(ValidationError):
-        product = ProductCreate(
-            name="S",
-            description=1,
-            picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-            quantity=1,
-            price=2.03,
-            expiration_date="2030-01-30",
-            farmer_public_id=uuid4()
-        )
+    assert product.price == Decimal("2.03")
+    assert product.expiration_date == FUTURE
+    assert isinstance(product.farmer_public_id, UUID)
 
 
-def test_product_create_with_expired_product():
-    with raises(ValidationError) as error_msg:
-        product = ProductCreate(
-            name="S",
-            description=None,
-            picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-            quantity=1,
-            price=2.03,
-            expiration_date="2000-01-30",
-            farmer_public_id=uuid4()
-        )
-
-    assert "Não é possível cadastrar produto vencido" in str(error_msg.value)
+def test_product_create_accepts_today():
+    assert product_create(expiration_date=TODAY).expiration_date == TODAY
 
 
-def test_product_create_with_invalid_quantity():
-    with raises(ValidationError):
-        product = ProductCreate(
-            name="S",
-            description=None,
-            picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-            quantity=-1,
-            price=2.03,
-            expiration_date="2030-01-30",
-            farmer_public_id=uuid4()
-        )
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("name", ""),
+        ("description", 1),
+        ("quantity", -1),
+        ("quantity", 2**31),
+        ("price", "-2.03"),
+        ("price", "1.234"),
+        ("expiration_date", PAST),
+    ],
+)
+def test_product_create_rejects_invalid_field(field: str, value: object):
+    with pytest.raises(ValidationError) as exc_info:
+        product_create(**{field: value})
+
+    assert exc_info.value.errors()[0]["loc"] == (field,)
 
 
-def test_product_create_with_invalid_price():
-    with raises(ValidationError):
-        product = ProductCreate(
-            name="S",
-            description=None,
-            picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-            quantity=1,
-            price=-2.03,
-            expiration_date="2030-01-30",
-            farmer_public_id=uuid4()
-        )
+def test_product_create_explains_expired_product():
+    with pytest.raises(ValidationError, match="Não é possível cadastrar produto vencido"):
+        product_create(expiration_date=PAST)
 
 
-def test_product_read():
+def test_product_read_hides_internal_id():
     product_read = ProductRead(
-        name="Sonic",
-        description="Bicho azul",
-        picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-        quantity=1,
-        price=Decimal('2.03'),
-        expiration_date=date(2030, 1, 30),
+        **product_create().model_dump(),
         public_id=uuid4(),
         created_at=datetime.now(UTC),
-        farmer_public_id=uuid4(),
-        id=1
+        id=1,
     )
 
-    assert product_read.name == "Sonic"
-    assert type(product_read.farmer_public_id) == type(uuid4()) 
-    
-    # checa se o ProductRead não devolve informações que não deveria
-    with raises(AttributeError):
-        product_read.id
+    assert "id" not in product_read.model_dump()
 
-    # checa criação de ProductRead com tipos errados (nome)
-    with raises(ValidationError):
-        product_read = ProductRead(
-            name=1,
-            description="Bicho azul",
-            picture_url="https://thumb.wikimedia.org/wikipedia/en/thumb/f/f4/Sonic_modern_and_classic_designs.png/250px-Sonic_modern_and_classic_designs.png",
-            quantity=1,
-            price=Decimal('2.03'),
-            expiration_date=date(2030, 1, 30),
-            public_id=uuid4(),
-            created_at=datetime.now(UTC),
-            farmer_public_id=uuid4(),
-            id=1
-        )
 
-def test_product_update():
-    # checa tentativa de atualizar campos de maneira indevida
-    with raises(ValidationError) as error_msg:
-        product_update = ProductUpdate(
-            name=None,
-            description=None,
-            picture_url=None,
-            quantity=None,
-            price=-1,
-            expiration_date=None,
-            public_id=None
-        )
+def test_product_read_rejects_wrong_type():
+    data = {
+        **product_create().model_dump(),
+        "name": 1,
+        "public_id": uuid4(),
+        "created_at": datetime.now(UTC),
+    }
 
-    with raises(ValidationError) as error_msg:
-        product_update = ProductUpdate(
-            name=None,
-            description=None,
-            picture_url=None,
-            quantity=-1,
-            price=1,
-            expiration_date=None,
-            public_id=None
-        )
-    
-    # checa tentativa de alterar campos indevidos do produto (created_at)
-    product_update = ProductUpdate(
-        name=None,
-        description=None,
-        picture_url=None,
-        quantity=None,
-        price=None,
-        expiration_date=date(2030,2,1),
-        created_at=datetime.now(UTC)
-    )
+    with pytest.raises(ValidationError):
+        ProductRead(**data)
 
-    with raises(AttributeError):
-        product_update.created_at
 
-    # checa update com produto fora da validade
-    with raises(ValidationError) as error_msg:
-        product_update = ProductUpdate(
-            name=None,
-            description=None,
-            picture_url=None,
-            quantity=None,
-            price=None,
-            expiration_date=date(2000, 1, 30),
-            public_id=None
-        )
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("price", -1),
+        ("quantity", -1),
+        ("quantity", 2**31),
+        ("expiration_date", PAST),
+        ("name", None),
+        ("quantity", None),
+        ("price", None),
+        ("expiration_date", None),
+    ],
+)
+def test_product_update_rejects_invalid_field(field: str, value: object):
+    with pytest.raises(ValidationError) as exc_info:
+        ProductUpdate(**{field: value})
 
-    assert "Atualização faz com que o produto esteja fora da validade" in str(error_msg.value)
+    assert exc_info.value.errors()[0]["loc"] == (field,)
+
+
+def test_product_update_accepts_null_for_nullable_fields():
+    product_update = ProductUpdate(description=None)
+
+    assert product_update.model_dump(exclude_unset=True) == {"description": None}
+
+
+def test_expiration_uses_brazilian_date(monkeypatch: pytest.MonkeyPatch):
+    class LateEveningInBrazil(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 13, 1, 30, tzinfo=UTC).astimezone(tz)
+
+    monkeypatch.setattr("src.models.product.datetime", LateEveningInBrazil)
+
+    assert product_create(expiration_date=date(2026, 10, 12)).expiration_date == date(2026, 10, 12)
+
+
+def test_product_update_ignores_unknown_fields():
+    product_update = ProductUpdate(expiration_date=FUTURE, created_at=datetime.now(UTC))
+
+    assert product_update.model_dump(exclude_unset=True) == {"expiration_date": FUTURE}
+
+
+def test_product_update_explains_expired_product():
+    with pytest.raises(ValidationError, match="Atualização faz com que o produto esteja fora"):
+        ProductUpdate(expiration_date=PAST)

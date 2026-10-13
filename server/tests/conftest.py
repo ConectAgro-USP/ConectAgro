@@ -1,9 +1,14 @@
 import os
 from collections.abc import Generator
 
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-os.environ.setdefault("SESSION_SECRET_KEY", "test-secret")
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
+os.environ.update(
+    APP_FLAVOR="dev",
+    DATABASE_URL="sqlite://",
+    SESSION_SECRET_KEY="test-session-secret-with-32-chars!",
+    JWT_SECRET_KEY="test-jwt-secret-with-at-least-32-chars",
+    ACCESS_TOKEN_EXPIRE_MINUTES="60",
+    FRONTEND_URL="http://localhost:5173",
+)
 
 import pytest
 from fastapi.testclient import TestClient
@@ -41,5 +46,6 @@ def session() -> Generator[Session, None, None]:
 
 
 @pytest.fixture()
-def client() -> TestClient:
-    return TestClient(app)
+def client() -> Generator[TestClient, None, None]:
+    with TestClient(app) as test_client:
+        yield test_client

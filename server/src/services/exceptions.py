@@ -4,3 +4,7 @@ class EmailAlreadyRegisteredError(Exception):
 
 class InvalidCredentialsError(Exception):
     pass
+
+
+class GoogleLoginRejectedError(Exception):
+    pass

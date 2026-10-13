@@ -1,4 +1,6 @@
+from authlib.integrations.starlette_client import OAuthError
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 
 from src.api.deps import AuthServiceDep, CurrentUser
@@ -6,7 +8,11 @@ from src.auth.oauth import oauth
 from src.core.config import settings
 from src.core.security import create_access_token
 from src.models.user import User, UserCreate, UserLogin, UserRead
-from src.services.exceptions import EmailAlreadyRegisteredError, InvalidCredentialsError
+from src.services.exceptions import (
+    EmailAlreadyRegisteredError,
+    GoogleLoginRejectedError,
+    InvalidCredentialsError,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -14,7 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _set_auth_cookie(response: Response, user: User) -> None:
     response.set_cookie(
         key="access_token",
-        value=create_access_token(subject=str(user.id)),
+        value=create_access_token(user.id),
         httponly=True,
         secure=settings.is_prod,
         samesite="lax",
@@ -26,20 +32,25 @@ def _set_auth_cookie(response: Response, user: User) -> None:
 async def login_google(request: Request):
     # O callback passa pelo /api do frontend (Vite/Vercel) para receber o cookie de estado do OAuth.
     callback_path = request.url_for("auth_google_callback").path
-    redirect_uri = settings.FRONTEND_URL.rstrip("/") + callback_path
+    redirect_uri = settings.FRONTEND_URL + callback_path
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/callback/google", name="auth_google_callback")
 async def auth_google_callback(request: Request, auth_service: AuthServiceDep):
-    token = await oauth.google.authorize_access_token(request)
-    userinfo = token["userinfo"]
-
-    user = auth_service.get_or_create_google_user(
-        email=userinfo["email"],
-        name=userinfo["name"],
-        picture_url=userinfo.get("picture"),
-    )
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        userinfo = token["userinfo"]
+        user = await run_in_threadpool(
+            auth_service.authenticate_with_google,
+            email=userinfo["email"].lower(),
+            name=userinfo.get("name", userinfo["email"]),
+            picture_url=userinfo.get("picture"),
+            email_verified=userinfo.get("email_verified") is True,
+            hosted_domain=userinfo.get("hd"),
+        )
+    except (OAuthError, GoogleLoginRejectedError):
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=google")
 
     response = RedirectResponse(url=settings.FRONTEND_URL)
     _set_auth_cookie(response, user)
@@ -53,31 +64,27 @@ async def read_current_user(current_user: CurrentUser):
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", httponly=True, secure=settings.is_prod)
     return {"ok": True}
 
 
+# def e não async, para o FastAPI rodar o banco e o argon2 síncronos no threadpool
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_farmer(user_in: UserCreate, auth_service: AuthServiceDep):
+def register(user_in: UserCreate, auth_service: AuthServiceDep) -> dict[str, str | int]:
     try:
         new_user = auth_service.register(user_in)
     except EmailAlreadyRegisteredError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="E-mail já cadastrado"
-        ) from None
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "E-mail já cadastrado") from None
 
-    return {"status_code": status.HTTP_201_CREATED, "message": "Conta criada com sucesso",
-            "user_id": new_user.id}
+    return {"message": "Conta criada com sucesso", "user_id": new_user.id}
 
 
 @router.post("/login")
-async def login_farmer(user_in: UserLogin, auth_service: AuthServiceDep, response: Response):
+def login(user_in: UserLogin, auth_service: AuthServiceDep, response: Response) -> dict[str, str]:
     try:
         user = auth_service.authenticate(user_in.email, user_in.password)
     except InvalidCredentialsError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos"
-        ) from None
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos") from None
 
     _set_auth_cookie(response, user)
-    return {"status_code": status.HTTP_200_OK, "message": "Login realizado com sucesso"}
+    return {"message": "Login realizado com sucesso"}

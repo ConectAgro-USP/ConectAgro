@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer
@@ -38,3 +38,9 @@ def test_buyer_can_belong_to_apartment():
     )
 
     assert buyer.apartment == apartment
+
+
+def test_buyer_generates_public_id():
+    buyer = Buyer(email="buyer@example.com", name="João")
+
+    assert isinstance(buyer.public_id, UUID)

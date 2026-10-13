@@ -1,19 +1,17 @@
+import pytest
 from sqlmodel import Session
 
 from src.models.user import User
-from src.repository.user_repository import UserRepository
+from src.repository.user_repository import DuplicateUserError, UserRepository
 
 
-def test_create_persists_user(session: Session):
+def test_create_commits_user(session: Session):
     users = UserRepository(session)
+    user_id = users.create(User(email="ana@example.com", name="Ana Souza")).id
 
-    created = users.create(User(email="ana@example.com", name="Ana Souza"))
+    session.rollback()  # um insert sem commit seria desfeito aqui
 
-    assert created.id is not None
-    with Session(session.get_bind()) as other_session:
-        persisted = other_session.get(User, created.id)
-    assert persisted is not None
-    assert persisted.email == "ana@example.com"
+    assert users.get_by_id(user_id) is not None
 
 
 def test_get_by_email_returns_matching_user(session: Session):
@@ -48,3 +46,14 @@ def test_get_by_id_returns_none_when_missing(session: Session):
     users = UserRepository(session)
 
     assert users.get_by_id(999) is None
+
+
+def test_create_duplicate_email_raises_and_keeps_session_usable(session: Session):
+    users = UserRepository(session)
+    users.create(User(email="ana@example.com", name="Ana Souza"))
+    duplicate = User(email="ana@example.com", name="Outra Ana")
+
+    with pytest.raises(DuplicateUserError):
+        users.create(duplicate)
+
+    assert users.get_by_email("ana@example.com").name == "Ana Souza"

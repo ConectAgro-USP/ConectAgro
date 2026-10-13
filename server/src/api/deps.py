@@ -40,11 +40,11 @@ def get_current_user(
     if access_token is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Não autenticado")
 
-    payload = decode_access_token(access_token)
-    if payload is None:
+    user_id = decode_access_token(access_token)
+    if user_id is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sessão inválida ou expirada")
 
-    user = users.get_by_id(int(payload["sub"]))
+    user = users.get_by_id(user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário não encontrado")
 

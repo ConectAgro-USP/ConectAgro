@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship
 
@@ -13,7 +13,7 @@ class Buyer(UserBase, table=True):
     __tablename__ = "buyers"
 
     id: int | None = Field(default=None, primary_key=True)
-    public_id: UUID = Field(unique=True, index=True)
+    public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
 
     apartment_id: int | None = Field(
         default=None,

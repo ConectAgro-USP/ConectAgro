@@ -8,7 +8,8 @@ from src import models  # noqa: F401  registers models on SQLModel.metadata
 from src.core.config import settings
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# o configparser do Alembic interpreta o sinal de porcentagem, comum em senhas codificadas na URL
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
