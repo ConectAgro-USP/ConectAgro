@@ -13,20 +13,20 @@ logs:
 	docker compose logs -f
 
 migrate:
-	docker compose exec server alembic upgrade head
+	cd server && dotenv -f ../.env run -- alembic upgrade head
 
 makemigration:
-	docker compose exec server alembic revision --autogenerate -m "$(m)"
+	cd server && dotenv -f ../.env run -- alembic revision --autogenerate -m "$(m)"
 
 server-shell:
 	docker compose exec server bash
 
 db-shell:
-	docker compose exec db psql -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 lint:
 	cd server && ruff check .
-	cd web && npm run lint
+	cd web && npm run lint && npx tsc -b
 
 test:
 	cd server && pytest
