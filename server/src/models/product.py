@@ -1,8 +1,9 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
+from enum import Enum
 
 from pydantic import field_validator
 from sqlalchemy import CheckConstraint, DateTime
@@ -10,6 +11,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .farmer import Farmer
+    from .apartment import Apartment
     from .interest import Interest
 
 INT4_MAX = 2_147_483_647
@@ -84,3 +86,38 @@ class ProductRead(ProductBase):
     public_id: UUID
     created_at: datetime
     farmer_public_id: UUID
+
+class PurchaseStatus(str, Enum):
+    EM_PROGRESSO = "EM PROGRESSO"
+    ENTREGUE = "ENTREGUE"
+    CANCELADA = "CANCELADA"
+
+class Purchase(SQLModel, table=True):
+    __tablename__ = "purchases"
+    
+    id: int | None = Field(default=None, primary_key=True)
+    apartment_id: int = Field(foreign_key="apartments.id", index=True)
+    farmer_id: int = Field(foreign_key="farmers.id", index=True)
+
+    status : PurchaseStatus = Field(default=PurchaseStatus.EM_PROGRESSO)
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expected_delivery_date: datetime
+    closed_at: Optional[datetime] = None
+
+    items: List["PurchaseProduct"] = Relationship(back_populates="purchase")
+
+    apartment: "Apartment" = Relationship(back_populates="purchases")
+    farmer: "Farmer" = Relationship(back_populates="purchases")
+
+class PurchaseProduct(SQLModel, table=True):
+    __tablename__ = "purchase_products"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    purchase_id: int = Field(foreign_key="purchases.id", index=True)
+    product_id: int = Field(foreign_key="products.id", index=True)
+    quantity: int = Field(gt=0)
+    unit_price: Decimal = Field(ge=0.0)
+
+    purchase: "Purchase" = Relationship(back_populates="items")
+    product: "Product" = Relationship()
