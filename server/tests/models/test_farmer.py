@@ -4,9 +4,9 @@ import pytest
 
 from src.models.farmer import Farmer
 
-
-def test_farmer_creation():
-    farmer = Farmer(
+@pytest.fixture
+def farmer_data():
+    return Farmer(
         public_id=uuid4(),
         email="farmer@example.com",
         name="João",
@@ -16,6 +16,9 @@ def test_farmer_creation():
         zip_code="01000-000",
     )
 
+def test_farmer_creation(farmer_data):
+    farmer = farmer_data
+
     assert farmer.name == "João"
     assert farmer.email == "farmer@example.com"
     assert farmer.picture_url == "https://example.com/photo.jpg"
@@ -24,17 +27,11 @@ def test_farmer_creation():
     assert farmer.zip_code == "01000-000"
 
 
-def test_farmer_public_id_is_uuid():
+def test_farmer_public_id_is_uuid(farmer_data):
+    farmer = farmer_data
     public_id = uuid4()
 
-    farmer = Farmer(
-        public_id=public_id,
-        email="farmer@example.com",
-        name="João",
-        picture_url="https://example.com/photo.jpg",
-        cellphone="(11) 95724-9062",
-        zip_code="01000-000",
-    )
+    farmer.public_id = public_id
 
     assert farmer.public_id == public_id
 
@@ -47,56 +44,34 @@ def test_farmer_generates_public_id():
     assert isinstance(farmer.public_id, UUID)
 
 
-def test_farmer_inherits_user_base_fields():
-    farmer = Farmer(
-        public_id=uuid4(),
-        email="farmer@example.com",
-        name="João",
-        picture_url=None,
-        cellphone="(11) 95724-9062",
-        zip_code="01000-000",
-    )
+def test_farmer_inherits_user_base_fields(farmer_data):
+    farmer = farmer_data
+    farmer.picture_url = None
 
     assert farmer.email == "farmer@example.com"
     assert farmer.name == "João"
     assert farmer.picture_url is None
 
 
-def test_farmer_invalid_cellphone():
+def test_farmer_invalid_cellphone(farmer_data):
+    farmer = farmer_data
     with pytest.raises(ValueError) as exc_info:
-        Farmer(
-            public_id=uuid4(),
-            email="farmer@example.com",
-            name="João",
-            cellphone="(11) 950-653",
-            zip_code="01000-000",
-        )
+        farmer.cellphone="(11) 950-653"
         
     assert "Não é um número de telefone celular válido" in str(exc_info.value)
 
 
-def test_farmer_invalid_homephone():
+def test_farmer_invalid_homephone(farmer_data):
+    farmer = farmer_data
     with pytest.raises(ValueError) as exc_info:
-        Farmer(
-            public_id=uuid4(),
-            email="farmer@example.com",
-            name="João",
-            cellphone="(11) 95724-9062",
-            homephone="(11) 94002-8922",
-            zip_code="01000-000",
-        )
+        farmer.homephone="(11) 94002-8922"
         
     assert "Não é um número de telefone fixo válido" in str(exc_info.value)
 
 
-def test_farmer_invalid_ddd():
+def test_farmer_invalid_ddd(farmer_data):
+    farmer = farmer_data
     with pytest.raises(ValueError) as exc_info:
-        Farmer(
-            public_id=uuid4(),
-            email="farmer@example.com",
-            name="João",
-            cellphone="(25) 94002 8922",
-            zip_code="01000-000",
-        )
+        farmer.cellphone="(25) 94002 8922"
         
     assert "O DDD 25 é inválido" in str(exc_info.value)
