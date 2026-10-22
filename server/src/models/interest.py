@@ -29,8 +29,8 @@ class Interest(InterestBase, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
     )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
+    updated_at: datetime | None = Field(
+        default=None,
         sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
         sa_type=DateTime(timezone=True),
     )
@@ -65,4 +65,4 @@ class InterestRead(InterestBase):
     buyer_public_id: UUID
     product_public_id: UUID
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None
