@@ -5,4 +5,4 @@ from src.models.interest import Interest
 from src.models.product import Product
 from src.models.user import User, UserRead
 
-__all__ = ["Apartment", "Buyer", "Farmer", "Product", "User", "UserRead", "Interest"]
+__all__ = ["Apartment", "Buyer", "Farmer", "Interest", "Product", "User", "UserRead"]
