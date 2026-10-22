@@ -10,6 +10,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .farmer import Farmer
+    from .interest import Interest
 
 INT4_MAX = 2_147_483_647
 BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
@@ -44,6 +45,7 @@ class Product(ProductBase, table=True):
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
 
     farmer: Optional["Farmer"] = Relationship(back_populates="products")
+    interests: list["Interest"] = Relationship(back_populates="product", cascade_delete=True)
 
     @property
     def farmer_public_id(self) -> UUID:
