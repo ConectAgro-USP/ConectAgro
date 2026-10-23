@@ -1,7 +1,4 @@
 import re
-from typing import Annotated
-
-from pydantic import BeforeValidator
 
 VALID_DDD = {
     # Sudeste
@@ -55,7 +52,3 @@ def validate_homephone(number: str) -> str:
         raise ValueError(f"O DDD {ddd} é inválido")
 
     return digits
-
-
-CellPhone = Annotated[str, BeforeValidator(validate_cellphone)]
-HomePhone = Annotated[str, BeforeValidator(validate_homephone)]

@@ -1,18 +1,24 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from pydantic import AfterValidator, EmailStr, StringConstraints
+from pydantic import AfterValidator, BeforeValidator, EmailStr, StringConstraints
 from sqlalchemy import DateTime
 from sqlmodel import Field, SQLModel
 
+from src.utils.validate_phone import validate_cellphone, validate_homephone
+
 NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
 PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
+CellPhone = Annotated[str, BeforeValidator(validate_cellphone)]
+HomePhone = Annotated[str, BeforeValidator(validate_homephone)]
 
 
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
     name: str
     picture_url: str | None = None
+    cellphone: CellPhone | None = None
+    homephone: HomePhone | None = None
 
 
 class User(UserBase, table=True):
