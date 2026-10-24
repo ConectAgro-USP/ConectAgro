@@ -6,7 +6,8 @@ from sqlmodel import Field, Relationship
 from .user import UserBase
 
 if TYPE_CHECKING:
-    from .product import Product, Purchase
+    from .product import Product
+    from .purchase import Purchase
 
 
 class Farmer(UserBase, table=True):

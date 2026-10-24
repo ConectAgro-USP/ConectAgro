@@ -7,7 +7,7 @@ from .user import UserBase
 
 if TYPE_CHECKING:
     from .buyer import Buyer
-    from .product import Purchase
+    from .purchase import Purchase
 
 
 class Apartment(UserBase, table=True):

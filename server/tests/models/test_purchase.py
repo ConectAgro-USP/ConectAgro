@@ -9,7 +9,8 @@ from sqlmodel import Session
 
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
-from src.models.product import Product, Purchase, PurchaseProduct, PurchaseRead, PurchaseStatus
+from src.models.product import Product
+from src.models.purchase import Purchase, PurchaseProduct, PurchaseRead, PurchaseStatus
 
 FUTURE = date(2030, 1, 1)
 
