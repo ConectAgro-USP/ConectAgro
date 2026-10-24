@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from src.models.apartment import Apartment
 from src.models.buyer import Buyer
 from src.models.farmer import Farmer
 from src.models.interest import Interest, InterestCreate, InterestRead, InterestUpdate
@@ -16,6 +15,25 @@ from src.models.product import BUSINESS_TZ, Product
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
+
+
+@pytest.fixture
+def buyer(session: Session) -> Buyer:
+    buyer = Buyer(email="buyer@example.com", name="João")
+    session.add(buyer)
+    session.commit()
+    return buyer
+
+
+@pytest.fixture
+def product(session: Session) -> Product:
+    farmer = Farmer(email="farmer@example.com", name="Maria", zip_code="01000-000")
+    product = Product(
+        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE, farmer=farmer
+    )
+    session.add(product)
+    session.commit()
+    return product
 
 
 def create_interest_create_dict(**overrides) -> dict:
@@ -61,53 +79,9 @@ def test_interest_table_generates_fields_correctly():
     assert interest.updated_at is None
 
 
-def persisted_apartment(session: Session) -> Apartment:
-    apartment = Apartment(
-        email="f@example.com",
-        name="João",
-        zip_code="01000-000",
-        building_manager_id="123",
-        building_tax_id="12.345.678/0001-90",
-    )
-
-    session.add(apartment)
-    session.commit()
-    return apartment
-
-
-def persisted_buyer(session: Session, apartment_id) -> Buyer:
-    buyer = Buyer(email="f@example.com", name="João", apartment_id=apartment_id)
-    session.add(buyer)
-    session.commit()
-    return buyer
-
-
-def persisted_farmer(session: Session) -> Farmer:
-    farmer = Farmer(email="f@example.com", name="João", zip_code="01000-000")
-    session.add(farmer)
-    session.commit()
-    return farmer
-
-
-def persisted_product(session: Session, farmer_id) -> Product:
-    product = Product(
-        name="Alface",
-        quantity=1,
-        price=Decimal("2.03"),
-        expiration_date=FUTURE,
-        farmer_id=farmer_id,
-    )
-    session.add(product)
-    session.commit()
-    return product
-
-
-def test_interest_table_adds_valid_row_without_error(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_interest_table_adds_valid_row_without_error(
+    session: Session, buyer: Buyer, product: Product
+):
     interest = Interest(
         quantity=1,
         buyer_id=buyer.id,
@@ -119,12 +93,9 @@ def test_interest_table_adds_valid_row_without_error(session: Session):
     assert interest.id is not None
 
 
-def test_interest_table_rejects_non_positive_quantity(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_interest_table_rejects_non_positive_quantity(
+    session: Session, buyer: Buyer, product: Product
+):
     session.add(
         Interest(
             quantity=0,
@@ -137,12 +108,9 @@ def test_interest_table_rejects_non_positive_quantity(session: Session):
         session.commit()
 
 
-def test_interest_table_rejects_duplicated_interest(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_interest_table_rejects_duplicated_interest(
+    session: Session, buyer: Buyer, product: Product
+):
     session.add(
         Interest(
             quantity=1,
@@ -163,13 +131,18 @@ def test_interest_table_rejects_duplicated_interest(session: Session):
         session.commit()
 
 
-def test_interest_table_accepts_same_buyer_with_different_products(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
-    other_product = persisted_product(session, farmer_id=farmer.id)
+def test_interest_table_accepts_same_buyer_with_different_products(
+    session: Session, buyer: Buyer, product: Product
+):
+    other_product = Product(
+        name="Tomate",
+        quantity=1,
+        price=Decimal("4.50"),
+        expiration_date=FUTURE,
+        farmer_id=product.farmer_id,
+    )
+    session.add(other_product)
+    session.commit()
 
     session.add(Interest(quantity=1, buyer_id=buyer.id, product_id=product.id))
     session.add(Interest(quantity=1, buyer_id=buyer.id, product_id=other_product.id))
@@ -178,12 +151,9 @@ def test_interest_table_accepts_same_buyer_with_different_products(session: Sess
     assert len(buyer.interests) == 2
 
 
-def test_interest_read_from_table_doesnt_expose_sensitive_information(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_interest_read_from_table_doesnt_expose_sensitive_information(
+    session: Session, buyer: Buyer, product: Product
+):
     interest = Interest(**create_interest_dict(**{"buyer_id": buyer.id, "product_id": product.id}))
     session.add(interest)
     session.commit()
@@ -251,12 +221,9 @@ def test_interest_update_rejects_invalid_field(field: str, value: object):
     assert exc_info.value.errors()[0]["loc"] == (field,)
 
 
-def test_interest_table_fills_updated_at_on_update(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_interest_table_fills_updated_at_on_update(
+    session: Session, buyer: Buyer, product: Product
+):
     interest = Interest(quantity=1, buyer_id=buyer.id, product_id=product.id)
 
     session.add(interest)
@@ -279,12 +246,9 @@ def test_interest_update_ignores_unknown_fields():
 
 
 @pytest.mark.parametrize("owner", ["buyer", "product"])
-def test_deleting_owner_deletes_its_interests(owner: str, session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_deleting_owner_deletes_its_interests(
+    owner: str, session: Session, buyer: Buyer, product: Product
+):
     interest = Interest(quantity=1, buyer_id=buyer.id, product_id=product.id)
 
     session.add(interest)
@@ -297,12 +261,9 @@ def test_deleting_owner_deletes_its_interests(owner: str, session: Session):
     assert session.get(Interest, interest_id) is None
 
 
-def test_deleting_interest_doesnt_delete_its_owners(session: Session):
-    apartment = persisted_apartment(session)
-    farmer = persisted_farmer(session)
-    buyer = persisted_buyer(session, apartment_id=apartment.id)
-    product = persisted_product(session, farmer_id=farmer.id)
-
+def test_deleting_interest_doesnt_delete_its_owners(
+    session: Session, buyer: Buyer, product: Product
+):
     interest = Interest(quantity=1, buyer_id=buyer.id, product_id=product.id)
 
     session.add(interest)
