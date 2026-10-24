@@ -5,11 +5,11 @@ from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
+from .product import INT4_MAX
+
 if TYPE_CHECKING:
     from .buyer import Buyer
     from .product import Product
-
-INT4_MAX = 2_147_483_647
 
 
 class InterestBase(SQLModel):
