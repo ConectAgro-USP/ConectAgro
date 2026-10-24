@@ -7,6 +7,7 @@ from .user import UserBase
 
 if TYPE_CHECKING:
     from .apartment import Apartment
+    from .interest import Interest
 
 
 class Buyer(UserBase, table=True):
@@ -21,3 +22,4 @@ class Buyer(UserBase, table=True):
     )
 
     apartment: Optional["Apartment"] = Relationship(back_populates="buyers")
+    interests: list["Interest"] = Relationship(back_populates="buyer", cascade_delete=True)
