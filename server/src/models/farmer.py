@@ -7,6 +7,7 @@ from .user import UserBase
 
 if TYPE_CHECKING:
     from .product import Product
+    from .purchase import Purchase
 
 
 class Farmer(UserBase, table=True):
@@ -17,3 +18,4 @@ class Farmer(UserBase, table=True):
     zip_code: str
 
     products: list["Product"] = Relationship(back_populates="farmer")
+    purchases: list["Purchase"] = Relationship(back_populates="farmer")

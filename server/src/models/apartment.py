@@ -7,6 +7,7 @@ from .user import UserBase
 
 if TYPE_CHECKING:
     from .buyer import Buyer
+    from .purchase import Purchase
 
 
 class Apartment(UserBase, table=True):
@@ -20,6 +21,7 @@ class Apartment(UserBase, table=True):
     building_tax_id: str
 
     buyers: list["Buyer"] = Relationship(back_populates="apartment")
+    purchases: list["Purchase"] = Relationship(back_populates="apartment")
 
     def change_manager(self, new_manager: str) -> None:
         self.building_manager_id = new_manager
