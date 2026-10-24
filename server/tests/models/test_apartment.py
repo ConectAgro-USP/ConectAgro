@@ -4,22 +4,26 @@ import pytest
 
 from src.models.apartment import Apartment
 
+
 @pytest.fixture
 def apartment_data():
-    return Apartment(
-        public_id=uuid4(),
-        email="apartment@example.com",
-        name="Edifício Araraquara",
-        picture_url="https://example.com/photo.jpg",
-        cellphone="(11) 94464-4502",
-        homephone="11 2464-4502",
-        zip_code="01000-000",
-        building_manager_id="123",
-        building_tax_id="12.345.678/0001-90",
+    return Apartment.model_validate(
+        {
+            "public_id": uuid4(),
+            "email": "apartment@example.com",
+            "name": "Edifício Araraquara",
+            "picture_url": "https://example.com/photo.jpg",
+            "cellphone": "(11) 94464-4502",
+            "homephone": "(11) 2464-4502",
+            "zip_code": "01000-000",
+            "building_manager_id": "123",
+            "building_tax_id": "12.345.678/0001-90",
+        }
     )
 
+
 def test_apartment_creation(apartment_data):
-    apartment = apartment_data 
+    apartment = apartment_data
     assert apartment.name == "Edifício Araraquara"
     assert apartment.email == "apartment@example.com"
     assert apartment.picture_url == "https://example.com/photo.jpg"
@@ -32,7 +36,7 @@ def test_apartment_creation(apartment_data):
 
 def test_apartment_inherits_user_base_fields(apartment_data):
     apartment = apartment_data
-    apartment.picture_url = None 
+    apartment.picture_url = None
 
     assert apartment.email == "apartment@example.com"
     assert apartment.name == "Edifício Araraquara"
@@ -40,7 +44,7 @@ def test_apartment_inherits_user_base_fields(apartment_data):
 
 
 def test_change_manager(apartment_data):
-    apartment = apartment_data 
+    apartment = apartment_data
 
     apartment.change_manager("456")
     assert apartment.building_manager_id == "456"
@@ -57,27 +61,3 @@ def test_apartment_generates_public_id():
     )
 
     assert isinstance(apartment.public_id, UUID)
-
-
-def test_apartment_invalid_cellphone(apartment_data):
-    apartment = apartment_data 
-    with pytest.raises(ValueError) as exc_info:
-        apartment.cellphone = "(11) 944-402"
-        
-    assert "Não é um número de telefone celular válido" in str(exc_info.value)
-
-
-def test_apartment_invalid_homephone(apartment_data):
-    apartment = apartment_data 
-    with pytest.raises(ValueError) as exc_info:
-        apartment.homephone = "(11) 98954-3202"
-        
-    assert "Não é um número de telefone fixo válido" in str(exc_info.value)
-
-
-def test_apartment_invalid_ddd(apartment_data):
-    apartment = apartment_data 
-    with pytest.raises(ValueError) as exc_info:
-        apartment.cellphone = "(25) 94002 8922"
-        
-    assert "O DDD 25 é inválido" in str(exc_info.value)

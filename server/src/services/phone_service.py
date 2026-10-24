@@ -1,5 +1,7 @@
 import re
 
+# para o ruff não formatar automaticamente a tabela de DDDs
+# fmt: off
 VALID_DDD = {
     # Sudeste
     11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -18,37 +20,28 @@ VALID_DDD = {
     63, 68, 69,
     91, 92, 93, 94, 95, 96, 97,
 }
+# fmt: on
 
-REGEX_CELLPHONE = re.compile(r"^([1-9]{2})(9\d{8}|[2-5]\d{7})$")
+# re.ASCII barra dígitos de outros alfabetos, como japoneses, que parecem certos mas não funcionam
+CELLPHONE_PATTERN = re.compile(r"^([1-9]{2})9\d{8}$", re.ASCII)
+HOMEPHONE_PATTERN = re.compile(r"^([1-9]{2})[2-5]\d{7}$", re.ASCII)
+NON_DIGITS = re.compile(r"\D", re.ASCII)
 
-REGEX_HOMEPHONE = re.compile(r"^([1-9]{2})([2-5]\d{7})$")
+
+def _validate_phone(number: str, pattern: re.Pattern[str], message: str) -> str:
+    digits = NON_DIGITS.sub("", number)
+    match = pattern.match(digits)
+    if not match:
+        raise ValueError(message)
+    ddd = match.group(1)
+    if int(ddd) not in VALID_DDD:
+        raise ValueError(f"O DDD {ddd} é inválido")
+    return digits
 
 
 def validate_cellphone(number: str) -> str:
-    digits = re.sub(r"\D", "", number)
-    match = REGEX_CELLPHONE.match(digits)
-    
-    if not match:
-        raise ValueError("Não é um número de telefone celular válido") 
-
-    ddd = int(match.group(1))
-	
-    if ddd not in VALID_DDD:
-        raise ValueError(f"O DDD {ddd} é inválido")
-
-    return digits
+    return _validate_phone(number, CELLPHONE_PATTERN, "Não é um número de telefone celular válido")
 
 
 def validate_homephone(number: str) -> str:
-    digits = re.sub(r"\D", "", number)
-    match = REGEX_HOMEPHONE.match(digits)
-    
-    if not match:
-        raise ValueError("Não é um número de telefone fixo válido") 
-
-    ddd = int(match.group(1))
-	
-    if ddd not in VALID_DDD:
-        raise ValueError(f"O DDD {ddd} é inválido")
-
-    return digits
+    return _validate_phone(number, HOMEPHONE_PATTERN, "Não é um número de telefone fixo válido")

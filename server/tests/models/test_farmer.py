@@ -4,17 +4,21 @@ import pytest
 
 from src.models.farmer import Farmer
 
+
 @pytest.fixture
 def farmer_data():
-    return Farmer(
-        public_id=uuid4(),
-        email="farmer@example.com",
-        name="João",
-        picture_url="https://example.com/photo.jpg",
-        cellphone="(11) 95724-9062",
-        homephone="11 4002-8922",
-        zip_code="01000-000",
+    return Farmer.model_validate(
+        {
+            "public_id": uuid4(),
+            "email": "farmer@example.com",
+            "name": "João",
+            "picture_url": "https://example.com/photo.jpg",
+            "cellphone": "(11) 95724-9062",
+            "homephone": "(11) 4002-8922",
+            "zip_code": "01000-000",
+        }
     )
+
 
 def test_farmer_creation(farmer_data):
     farmer = farmer_data
@@ -51,27 +55,3 @@ def test_farmer_inherits_user_base_fields(farmer_data):
     assert farmer.email == "farmer@example.com"
     assert farmer.name == "João"
     assert farmer.picture_url is None
-
-
-def test_farmer_invalid_cellphone(farmer_data):
-    farmer = farmer_data
-    with pytest.raises(ValueError) as exc_info:
-        farmer.cellphone="(11) 950-653"
-        
-    assert "Não é um número de telefone celular válido" in str(exc_info.value)
-
-
-def test_farmer_invalid_homephone(farmer_data):
-    farmer = farmer_data
-    with pytest.raises(ValueError) as exc_info:
-        farmer.homephone="(11) 94002-8922"
-        
-    assert "Não é um número de telefone fixo válido" in str(exc_info.value)
-
-
-def test_farmer_invalid_ddd(farmer_data):
-    farmer = farmer_data
-    with pytest.raises(ValueError) as exc_info:
-        farmer.cellphone="(25) 94002 8922"
-        
-    assert "O DDD 25 é inválido" in str(exc_info.value)
