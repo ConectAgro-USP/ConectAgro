@@ -9,7 +9,7 @@ executados separadamente fora do Docker.
 
 - Docker e Docker Compose
 - GNU Make e um shell POSIX (no Windows, use o WSL2)
-- Node.js 22.12+ e Python 3.12, para o fluxo com hot-reload, as migrations, `make lint` e `make test`
+- Node.js 22.12+ e Python 3.12, para o fluxo com hot-reload, `make lint` e `make test`
 
 ## 1. Configurar variáveis de ambiente
 
@@ -84,8 +84,8 @@ make up                            # builda a imagem e sobe tudo via Docker
 make down                          # derruba os containers
 make build                         # só builda a imagem, sem recriar os containers
 make logs                          # segue os logs
-make migrate                       # aplica as migrations pendentes (venv ativa)
-make makemigration m="mensagem"    # gera uma nova migration (venv ativa)
+make migrate                       # aplica as migrations pendentes, no container
+make makemigration m="mensagem"    # gera uma nova migration, no container
 make server-shell                  # abre um shell no container do backend
 make db-shell                      # abre o psql no container do banco
 make dev-server                    # backend com hot-reload (venv ativa)

@@ -12,11 +12,13 @@ build:
 logs:
 	docker compose logs -f
 
+ALEMBIC = docker compose run --rm -v ./server:/app server alembic
+
 migrate:
-	cd server && dotenv -f ../.env run -- alembic upgrade head
+	$(ALEMBIC) upgrade head
 
 makemigration:
-	cd server && dotenv -f ../.env run -- alembic revision --autogenerate -m "$(m)"
+	$(ALEMBIC) revision --autogenerate -m "$(m)"
 
 server-shell:
 	docker compose exec server bash
