@@ -74,6 +74,9 @@ O Vite roda em `http://localhost:5173` e faz proxy de `/api` para `http://localh
 então o frontend sempre chama caminhos relativos (`/api/...`) tanto em desenvolvimento
 quanto em produção.
 
+Os testes do frontend ficam ao lado de cada componente, em arquivos `*.test.tsx`, e rodam
+com `npm test` dentro de `web`.
+
 ## Comandos úteis (Makefile)
 
 ```bash
@@ -88,5 +91,5 @@ make db-shell                      # abre o psql no container do banco
 make dev-server                    # backend com hot-reload (venv ativa)
 make dev-web                       # frontend com hot-reload
 make lint                          # roda ruff (backend, venv ativa), eslint e tsc (frontend)
-make test                          # roda os testes do backend (venv ativa)
+make test                          # roda os testes do backend (venv ativa) e do frontend
 ```
