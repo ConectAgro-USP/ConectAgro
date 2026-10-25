@@ -5,6 +5,7 @@ from src.models.interest import Interest
 from src.models.product import Product
 from src.models.purchase import Purchase, PurchaseProduct
 from src.models.user import User, UserRead
+from src.models.review import Review
 
 __all__ = [
     "Apartment",
@@ -16,4 +17,5 @@ __all__ = [
     "PurchaseProduct",
     "User",
     "UserRead",
+    "Review",
 ]
