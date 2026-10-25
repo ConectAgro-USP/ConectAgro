@@ -18,3 +18,9 @@ class Address(BaseModel):
 class Route(BaseModel):
     distance_m: float = Field(ge=0, allow_inf_nan=False)
     duration_s: float = Field(ge=0, allow_inf_nan=False)
+
+
+class Company(BaseModel):
+    name: str
+    registration_status: str
+    cep: str | None = Field(default=None, pattern=r"^[0-9]{8}$")

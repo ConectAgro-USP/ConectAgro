@@ -47,7 +47,8 @@ Em `server/src`:
   ou em redirect (callback do Google).
 - `services`: regras de negócio; lançam as exceções de `services/exceptions.py`.
 - `repository`: acesso ao banco (SQLModel), sem regra de negócio.
-- `connectors`: clientes das APIs externas (BrasilAPI e OSRM); só os services os usam.
+- `connectors`: clientes das APIs externas (BrasilAPI para CEP, OSRM para rotas e CNPJá para
+  CNPJ); só os services os usam.
 - `models`: tabelas SQLModel e schemas de entrada e saída da API (importe models novos em
   `models/__init__.py`).
 - `auth`: cliente OAuth do Google (Authlib).
