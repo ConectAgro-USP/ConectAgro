@@ -30,6 +30,7 @@ lint:
 
 test:
 	cd server && pytest
+	cd web && npm test
 
 dev-server:
 	cd server && uvicorn src.main:app --reload --env-file ../.env
