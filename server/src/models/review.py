@@ -12,7 +12,20 @@ if TYPE_CHECKING:
     from .purchase import Purchase
 
 
-class Review(SQLModel, table=True):
+class ReviewBase(SQLModel):
+    rating: int = Field(
+        ge=1,
+        le=5,
+    )
+
+    comment: str = Field(
+        default="",
+        max_length=500,
+        description="Comentário deixado pelo autor da avaliação",
+    )
+
+
+class Review(ReviewBase, table=True):
     __tablename__ = "reviews"
 
     __table_args__ = (
@@ -49,18 +62,8 @@ class Review(SQLModel, table=True):
 
     updated_at: datetime | None = Field(
         default=None,
+        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
         sa_type=DateTime(timezone=True),
-    )
-
-    rating: int = Field(
-        ge=1,
-        le=5,
-    )
-
-    comment: str = Field(
-        default="",
-        max_length=500,
-        description="Comentário deixado pelo autor da avaliação",
     )
 
     purchase_id: int = Field(
@@ -105,3 +108,23 @@ class Review(SQLModel, table=True):
     @property
     def purchase_public_id(self) -> UUID:
         return self.purchase.public_id
+
+
+class ReviewCreate(ReviewBase):
+    pass
+
+
+class ReviewUpdate(SQLModel):
+    # o default None marca campo não enviado, e o tipo sem None recusa null explícito
+    rating: int = Field(default=None, ge=1, le=5)
+    comment: str = Field(default=None, max_length=500)
+
+
+class ReviewRead(ReviewBase):
+    public_id: UUID
+    purchase_public_id: UUID
+    farmer_public_id: UUID
+    apartment_public_id: UUID | None
+    buyer_public_id: UUID | None
+    created_at: datetime
+    updated_at: datetime | None

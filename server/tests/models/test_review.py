@@ -1,5 +1,6 @@
+from collections import Counter
 from datetime import UTC, date, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -10,7 +11,7 @@ from src.models.apartment import Apartment
 from src.models.buyer import Buyer
 from src.models.farmer import Farmer
 from src.models.purchase import Purchase
-from src.models.review import Review
+from src.models.review import Review, ReviewCreate, ReviewRead, ReviewUpdate
 
 FUTURE = date(2030, 1, 1)
 
@@ -345,11 +346,10 @@ def test_review_can_be_updated(
     )
     session.add(review)
     session.commit()
+    assert review.updated_at is None
 
-    now = datetime.now(UTC)
     review.rating = 4
     review.comment = "O produtor reenviou os itens com embalagem reforçada!"
-    review.updated_at = now
     session.add(review)
     session.commit()
 
@@ -357,3 +357,90 @@ def test_review_can_be_updated(
     assert review.rating == 4
     assert review.comment == "O produtor reenviou os itens com embalagem reforçada!"
     assert review.updated_at is not None
+
+
+# ==============================================================================
+# Schemas de criação, edição e leitura
+# ==============================================================================
+
+
+def test_review_create_works_for_valid_data():
+    review = ReviewCreate(rating=5, comment="Ótimas verduras")
+
+    assert Counter(review.__dict__.keys()) == Counter(["rating", "comment"])
+    assert review.rating == 5
+    assert review.comment == "Ótimas verduras"
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("rating", 0),
+        ("rating", 6),
+        ("rating", None),
+        ("comment", "a" * 501),
+        ("comment", None),
+    ],
+)
+def test_review_create_rejects_invalid_field(field: str, value: object):
+    with pytest.raises(ValidationError) as exc_info:
+        ReviewCreate(**{"rating": 5, field: value})
+
+    assert exc_info.value.errors()[0]["loc"] == (field,)
+
+
+def test_review_read_from_table_doesnt_expose_sensitive_information(
+    session: Session, buyer: Buyer, farmer: Farmer, purchase: Purchase
+):
+    review = Review(rating=4, buyer=buyer, farmer=farmer, purchase=purchase)
+    session.add(review)
+    session.commit()
+
+    review_read = ReviewRead.model_validate(review)
+
+    assert review_read.public_id == review.public_id
+    assert review_read.purchase_public_id == purchase.public_id
+    assert review_read.farmer_public_id == farmer.public_id
+    assert review_read.buyer_public_id == buyer.public_id
+    assert review_read.apartment_public_id is None
+    assert "id" not in review_read.model_dump()
+    assert "buyer_id" not in review_read.model_dump()
+
+
+def test_review_read_hides_internal_id():
+    review_read = ReviewRead(
+        rating=5,
+        public_id=uuid4(),
+        purchase_public_id=uuid4(),
+        farmer_public_id=uuid4(),
+        apartment_public_id=uuid4(),
+        buyer_public_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=None,
+        id=1,
+    )
+
+    assert "id" not in review_read.model_dump()
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("rating", 0),
+        ("rating", 6),
+        ("rating", None),
+        ("comment", "a" * 501),
+        ("comment", None),
+    ],
+)
+def test_review_update_rejects_invalid_field(field: str, value: object):
+    with pytest.raises(ValidationError) as exc_info:
+        ReviewUpdate(**{field: value})
+
+    assert exc_info.value.errors()[0]["loc"] == (field,)
+
+
+def test_review_update_ignores_unknown_fields():
+    review_update = ReviewUpdate(rating=4, farmer_id=1, created_at=datetime.now(UTC))
+
+    assert review_update.model_dump(exclude_unset=True) == {"rating": 4}
