@@ -1,10 +1,26 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 from sqlmodel import Session
 
 from src.models.apartment import Apartment
+from src.models.buyer import Buyer, LinkStatus
 from src.models.user import User
+
+
+@pytest.fixture
+def buyer(session: Session) -> Buyer:
+    user = User(email="buyer@example.com", name="João", picture_url="https://example.com/photo.jpg")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    buyer = Buyer(user_id= user.id, unit = "404")
+    session.add(buyer)
+    session.commit()
+    session.refresh(buyer)
+    return buyer
 
 
 @pytest.fixture
@@ -47,6 +63,18 @@ def test_apartment_inherits_user_base_fields(apartment : Apartment):
 def test_change_manager(apartment : Apartment):
     apartment.change_manager("456")
     assert apartment.building_manager_id == "456"
+
+
+def test_apartment_update_buyer_link_status(apartment : Apartment, buyer : Buyer):
+    now = datetime.now(UTC)
+    buyer.apartment = apartment
+    buyer.link_status = LinkStatus.APROVADO
+    buyer.link_reviewed_at = now
+
+    assert buyer.apartment == apartment
+    assert buyer.link_status == LinkStatus.APROVADO
+    assert buyer.link_reviewed_at == now
+    assert buyer in apartment.buyers
 
 
 def test_apartment_generates_public_id(apartment : Apartment):

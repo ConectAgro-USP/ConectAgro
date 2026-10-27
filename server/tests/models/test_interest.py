@@ -25,7 +25,7 @@ def buyer(session: Session) -> Buyer:
     session.commit()
     session.refresh(user)
 
-    buyer = Buyer(user_id= user.id)
+    buyer = Buyer(user_id= user.id, unit = "404")
     session.add(buyer)
     session.commit()
     session.refresh(buyer)
