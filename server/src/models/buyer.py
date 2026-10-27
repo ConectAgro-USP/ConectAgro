@@ -1,16 +1,15 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, Relationship
-
-from .user import UserBase
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .apartment import Apartment
     from .interest import Interest
+    from .user import User
 
 
-class Buyer(UserBase, table=True):
+class Buyer(SQLModel, table=True):
     __tablename__ = "buyers"
 
     id: int | None = Field(default=None, primary_key=True)
@@ -21,5 +20,8 @@ class Buyer(UserBase, table=True):
         foreign_key="apartments.id",
     )
 
+    user_id: int = Field(foreign_key="users.id", unique=True)
+
+    user: "User" = Relationship(back_populates="buyer")
     apartment: Optional["Apartment"] = Relationship(back_populates="buyers")
     interests: list["Interest"] = Relationship(back_populates="buyer", cascade_delete=True)

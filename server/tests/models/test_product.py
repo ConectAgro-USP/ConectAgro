@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, Product, ProductCreate, ProductRead, ProductUpdate
+from src.models.user import User
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -34,23 +35,30 @@ def test_product_table_generates_public_id_and_created_at():
     assert isinstance(product.public_id, UUID)
     assert isinstance(product.created_at, datetime)
 
+@pytest.fixture
+def farmer(session: Session) -> Farmer:
+    user = User(email="farmer@example.com", name="João",
+                picture_url="https://example.com/photo.jpg", cellphone = "11957249062",
+                homephone="1140028922")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
 
-def persisted_farmer(session: Session) -> Farmer:
-    farmer = Farmer(email="f@example.com", name="João", zip_code="01000-000")
+    farmer = Farmer(user_id = user.id, zip_code = "01000-000")
     session.add(farmer)
     session.commit()
+    session.refresh(farmer)
     return farmer
 
 
-def test_product_table_rejects_negative_quantity(session: Session):
-    farmer = persisted_farmer(session)
+def test_product_table_rejects_negative_quantity(session: Session, farmer : Farmer):
     session.add(
         Product(
             name="Alface",
             quantity=-1,
             price=Decimal("2.03"),
             expiration_date=FUTURE,
-            farmer_id=farmer.id,
+            farmer_id=farmer.user.id,
         )
     )
 
@@ -58,10 +66,10 @@ def test_product_table_rejects_negative_quantity(session: Session):
         session.commit()
 
 
-def test_product_read_from_table_exposes_farmer_public_id(session: Session):
-    farmer = persisted_farmer(session)
+def test_product_read_from_table_exposes_farmer_public_id(session: Session, farmer : Farmer):
     product = Product(
-        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE, farmer=farmer
+        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE,
+        farmer_id=farmer.user.id
     )
     session.add(product)
     session.commit()

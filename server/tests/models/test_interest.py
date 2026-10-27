@@ -12,6 +12,7 @@ from src.models.buyer import Buyer
 from src.models.farmer import Farmer
 from src.models.interest import Interest, InterestCreate, InterestRead, InterestUpdate
 from src.models.product import BUSINESS_TZ, Product
+from src.models.user import User
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -19,17 +20,36 @@ FUTURE = TODAY + timedelta(days=30)
 
 @pytest.fixture
 def buyer(session: Session) -> Buyer:
-    buyer = Buyer(email="buyer@example.com", name="João")
+    user = User(email="buyer@example.com", name="João")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    buyer = Buyer(user_id= user.id)
     session.add(buyer)
     session.commit()
+    session.refresh(buyer)
     return buyer
+
+@pytest.fixture
+def farmer(session: Session) -> Farmer:
+    user = User(email="farmer@example.com", name="Maria")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    farmer = Farmer(user_id= user.id, zip_code="01000-000")
+    session.add(farmer)
+    session.commit()
+    session.refresh(farmer)
+    return farmer
 
 
 @pytest.fixture
-def product(session: Session) -> Product:
-    farmer = Farmer(email="farmer@example.com", name="Maria", zip_code="01000-000")
+def product(session: Session, farmer : Farmer) -> Product:
     product = Product(
-        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE, farmer=farmer
+        name="Alface", quantity=1, price=Decimal("2.03"),
+        expiration_date=FUTURE, farmer_id=farmer.id
     )
     session.add(product)
     session.commit()
