@@ -22,18 +22,17 @@ def buyer(session: Session) -> Buyer:
     session.refresh(buyer)
     return buyer
 
-
 @pytest.fixture
 def apartment(session: Session) -> Apartment:
-    user = User(email="apartment@example.com", name="Edifício Araraquara",
-                picture_url="https://example.com/photo.jpg", 
-                cellphone = "11944644502", homephone = "1124644502")
+    user = User(email="manager@example.com", name="Matheus",
+                        picture_url="https://example.com/photo.jpg", 
+                        cellphone = "11944644502", homephone = "1124644502")
     session.add(user)
     session.commit()
     session.refresh(user)
-
-    apartment = Apartment(user_id = user.id, zip_code = "01000-000",
-                          building_manager_id = "123", building_tax_id = "12.345.678/0001-90")
+    apartment = Apartment(manager_id = user.id, zip_code = "01000-000",
+                          building_name="Edifício Araraquara",
+                          building_cnpj = "12.345.678/0001-90")
     session.add(apartment)
     session.commit()
     session.refresh(apartment)
@@ -42,27 +41,20 @@ def apartment(session: Session) -> Apartment:
 
 
 def test_apartment_creation(apartment : Apartment):
-    assert apartment.user.name == "Edifício Araraquara"
-    assert apartment.user.email == "apartment@example.com"
-    assert apartment.user.picture_url == "https://example.com/photo.jpg"
-    assert apartment.user.cellphone == "11944644502"
-    assert apartment.user.homephone == "1124644502"
+    assert apartment.manager.name == "Matheus"
+    assert apartment.manager.email == "manager@example.com"
+    assert apartment.manager.picture_url == "https://example.com/photo.jpg"
+    assert apartment.manager.cellphone == "11944644502"
+    assert apartment.manager.homephone == "1124644502"
     assert apartment.zip_code == "01000-000"
-    assert apartment.building_manager_id == "123"
-    assert apartment.building_tax_id == "12.345.678/0001-90"
-
-
-def test_apartment_inherits_user_base_fields(apartment : Apartment):
-    apartment.user.picture_url = None
-
-    assert apartment.user.email == "apartment@example.com"
-    assert apartment.user.name == "Edifício Araraquara"
-    assert apartment.user.picture_url is None
+    assert apartment.manager_id == apartment.manager.id 
+    assert apartment.building_name == "Edifício Araraquara"
+    assert apartment.building_cnpj == "12.345.678/0001-90"
 
 
 def test_change_manager(apartment : Apartment):
-    apartment.change_manager("456")
-    assert apartment.building_manager_id == "456"
+    apartment.change_manager(456)
+    assert apartment.manager_id == 456
 
 
 def test_apartment_update_buyer_link_status(apartment : Apartment, buyer : Buyer):

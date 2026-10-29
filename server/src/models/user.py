@@ -35,7 +35,7 @@ class User(UserBase, table=True):
     hashed_password: str | None = None
 
     farmer: Optional["Farmer"] = Relationship(back_populates="user")
-    apartment: Optional["Apartment"] = Relationship(back_populates="user")
+    apartment: Optional["Apartment"] = Relationship(back_populates="manager")
     buyer: Optional["Buyer"] = Relationship(back_populates="user")
 
 

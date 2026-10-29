@@ -16,14 +16,14 @@ class Apartment(SQLModel, table=True):
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
 
     zip_code: str
-    building_manager_id: str
-    building_tax_id: str
+    building_name: str
+    building_cnpj: str
 
-    user_id: int = Field(foreign_key="users.id", unique=True)
+    manager_id: int = Field(foreign_key="users.id", unique=True)
     
-    user: "User" = Relationship(back_populates="apartment")
+    manager: "User" = Relationship(back_populates="apartment")
     buyers: list["Buyer"] = Relationship(back_populates="apartment")
     purchases: list["Purchase"] = Relationship(back_populates="apartment")
 
-    def change_manager(self, new_manager: str) -> None:
-        self.building_manager_id = new_manager
+    def change_manager(self, new_manager: int) -> None:
+        self.manager_id = new_manager

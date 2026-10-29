@@ -18,19 +18,18 @@ FUTURE = date(2030, 1, 1)
 
 @pytest.fixture
 def apartment(session: Session) -> Apartment:
-    user = User(email="apartment@example.com", name="Edifício Araraquara")
+    user = User(email="manager@example.com", name="Matheus",
+                        picture_url="https://example.com/photo.jpg", 
+                        cellphone = "11944644502", homephone = "1124644502")
     session.add(user)
     session.commit()
     session.refresh(user)
-
-    apartment = Apartment(
-        user_id=user.id,
-        zip_code="01000-000",
-        building_manager_id="123",
-        building_tax_id="12.345.678/0001-90",
-    )
+    apartment = Apartment(manager_id = user.id, zip_code = "01000-000",
+                          building_name="Edifício Araraquara",
+                          building_cnpj = "12.345.678/0001-90")
     session.add(apartment)
     session.commit()
+    session.refresh(apartment)
     return apartment
 
 
@@ -63,7 +62,7 @@ def product(session: Session, farmer: Farmer) -> Product:
 @pytest.fixture
 def purchase(session: Session, apartment: Apartment, farmer: Farmer) -> Purchase:
     purchase = Purchase(apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE,
-                        farmer_id=farmer.user.id, apartment_id=apartment.user.id)
+                        farmer_id=farmer.user.id, apartment_id=apartment.manager.id)
     session.add(purchase)
     session.commit()
     return purchase
