@@ -16,6 +16,7 @@ class Apartment(UserBase, table=True):
     building_tax_id: str
 
     buyers: list["Buyer"] = Relationship(back_populates="apartment")
-
+    purchases: list["Purchase"] = Relationship(back_populates="apartment")
+    
     def change_manager(self, new_manager: str) -> None:
         self.building_manager_id = new_manager
