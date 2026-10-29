@@ -5,7 +5,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .product import Product
-    from .purchase import Purchase
+    from .purchase import Purchase, PurchasePart
     from .user import User
 
 
@@ -20,4 +20,4 @@ class Farmer(SQLModel, table=True):
     
     user: "User" = Relationship(back_populates="farmer")
     products: list["Product"] = Relationship(back_populates="farmer")
-    purchases: list["Purchase"] = Relationship(back_populates="farmer")
+    purchase_parts: list["PurchasePart"] = Relationship(back_populates="farmer")

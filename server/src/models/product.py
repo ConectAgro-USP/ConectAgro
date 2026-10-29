@@ -1,11 +1,12 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from pydantic import field_validator
-from sqlalchemy import CheckConstraint, DateTime
+from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
