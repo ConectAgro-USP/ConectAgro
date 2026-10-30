@@ -12,26 +12,39 @@ from src.models.buyer import Buyer
 from src.models.farmer import Farmer
 from src.models.purchase import Purchase
 from src.models.review import Review, ReviewCreate, ReviewRead, ReviewUpdate
+from src.models.user import User
 
 FUTURE = date(2030, 1, 1)
 
 
 @pytest.fixture
 def farmer(session: Session) -> Farmer:
-    farmer = Farmer(email="farmer@example.com", name="João", zip_code="01000-000")
+    user = User(
+        email="farmer@example.com",
+        name="João",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    farmer = Farmer(
+        zip_code="01000-000",
+        user_id=user.id,
+    )
     session.add(farmer)
     session.commit()
+    session.refresh(farmer)
+
     return farmer
 
 
 @pytest.fixture
 def apartment(session: Session) -> Apartment:
     apartment = Apartment(
-        email="apartment@example.com",
-        name="Edifício Araraquara",
+        building_name="Edifício Araraquara",
         zip_code="01000-000",
-        building_manager_id="123",
-        building_tax_id="12.345.678/0001-90",
+        manager_id="123",
+        building_cnpj="12.345.678/0001-90",
     )
     session.add(apartment)
     session.commit()
@@ -40,15 +53,31 @@ def apartment(session: Session) -> Apartment:
 
 @pytest.fixture
 def buyer(session: Session, apartment: Apartment) -> Buyer:
-    buyer = Buyer(email="buyer@example.com", name="Ana", apartment_id=apartment.id)
+    user = User(
+        email="buyer@example.com",
+        name="Ana",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    buyer = Buyer(
+        user_id=user.id,
+        apartment_id=apartment.id,
+        unit="101",
+    )
     session.add(buyer)
     session.commit()
+    session.refresh(buyer)
+
     return buyer
 
 
 @pytest.fixture
 def purchase(session: Session, apartment: Apartment, farmer: Farmer) -> Purchase:
-    purchase = Purchase(apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE)
+    purchase = Purchase(
+        apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE
+    )
     session.add(purchase)
     session.commit()
     return purchase
@@ -160,7 +189,9 @@ def test_review_buyer_public_id_properties(
 # ==============================================================================
 
 
-def test_review_rejects_missing_author(session: Session, farmer: Farmer, purchase: Purchase):
+def test_review_rejects_missing_author(
+    session: Session, farmer: Farmer, purchase: Purchase
+):
     review = Review(
         rating=3,
         farmer_id=farmer.id,
@@ -175,7 +206,11 @@ def test_review_rejects_missing_author(session: Session, farmer: Farmer, purchas
 
 
 def test_review_rejects_both_authors(
-    session: Session, apartment: Apartment, buyer: Buyer, farmer: Farmer, purchase: Purchase
+    session: Session,
+    apartment: Apartment,
+    buyer: Buyer,
+    farmer: Farmer,
+    purchase: Purchase,
 ):
     review = Review(
         rating=3,
@@ -224,7 +259,9 @@ def test_buyer_cannot_review_same_purchase_twice(
 def test_apartment_can_review_different_purchases(
     session: Session, apartment: Apartment, farmer: Farmer, purchase: Purchase
 ):
-    purchase2 = Purchase(apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE)
+    purchase2 = Purchase(
+        apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE
+    )
     session.add(purchase2)
     session.commit()
 
@@ -238,9 +275,15 @@ def test_apartment_can_review_different_purchases(
 
 
 def test_buyer_can_review_different_purchases(
-    session: Session, apartment: Apartment, buyer: Buyer, farmer: Farmer, purchase: Purchase
+    session: Session,
+    apartment: Apartment,
+    buyer: Buyer,
+    farmer: Farmer,
+    purchase: Purchase,
 ):
-    purchase2 = Purchase(apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE)
+    purchase2 = Purchase(
+        apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE
+    )
     session.add(purchase2)
     session.commit()
 
@@ -254,9 +297,19 @@ def test_buyer_can_review_different_purchases(
 
 
 def test_different_buyers_can_review_same_purchase(
-    session: Session, apartment: Apartment, buyer: Buyer, farmer: Farmer, purchase: Purchase
+    session: Session,
+    apartment: Apartment,
+    buyer: Buyer,
+    farmer: Farmer,
+    purchase: Purchase,
 ):
-    buyer2 = Buyer(email="carlos@example.com", name="Carlos", apartment_id=apartment.id)
+    buyer2 = Buyer(
+        email="carlos@example.com",
+        name="Carlos",
+        apartment_id=apartment.id,
+        user_id=10,
+        unit="arara",
+    )
     session.add(buyer2)
     session.commit()
 
@@ -270,7 +323,11 @@ def test_different_buyers_can_review_same_purchase(
 
 
 def test_apartment_and_buyer_can_both_review_same_purchase(
-    session: Session, apartment: Apartment, buyer: Buyer, farmer: Farmer, purchase: Purchase
+    session: Session,
+    apartment: Apartment,
+    buyer: Buyer,
+    farmer: Farmer,
+    purchase: Purchase,
 ):
     review_apt = Review(rating=5, apartment=apartment, farmer=farmer, purchase=purchase)
     review_buyer = Review(rating=4, buyer=buyer, farmer=farmer, purchase=purchase)
@@ -309,7 +366,9 @@ def test_review_rejects_rating_out_of_bounds(invalid_rating: int):
 
 def test_review_accepts_comment_up_to_max_length():
     max_comment = "a" * 500
-    review = Review(rating=5, comment=max_comment, purchase_id=1, farmer_id=1, apartment_id=1)
+    review = Review(
+        rating=5, comment=max_comment, purchase_id=1, farmer_id=1, apartment_id=1
+    )
     assert review.comment == max_comment
 
 
