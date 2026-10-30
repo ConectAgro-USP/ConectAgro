@@ -1,46 +1,57 @@
 from uuid import UUID, uuid4
 
+import pytest
+from sqlmodel import Session
+
 from src.models.apartment import Apartment
-from src.models.buyer import Buyer
+from src.models.buyer import Buyer, LinkStatus
+from src.models.user import User
 
 
-def test_buyer_creation():
-    buyer = Buyer(
-        public_id=uuid4(),
-        email="buyer@example.com",
-        name="João",
-        picture_url="https://example.com/photo.jpg",
-    )
+@pytest.fixture
+def buyer(session: Session) -> Buyer:
+    user = User(email="buyer@example.com", name="João", picture_url="https://example.com/photo.jpg")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
 
-    assert buyer.name == "João"
-    assert buyer.email == "buyer@example.com"
-    assert buyer.picture_url == "https://example.com/photo.jpg"
+    buyer = Buyer(user_id= user.id, unit = "404")
+    session.add(buyer)
+    session.commit()
+    session.refresh(buyer)
+    return buyer
+
+
+def test_buyer_creation(buyer : Buyer):
+    assert buyer.user.name == "João"
+    assert buyer.user.email == "buyer@example.com"
+    assert buyer.user.picture_url == "https://example.com/photo.jpg"
+    assert buyer is buyer
     assert buyer.apartment_id is None
+    assert buyer.unit == "404"
+    assert buyer.block is None
+    assert buyer.link_status == LinkStatus.PENDENTE
+    assert buyer.link_reviewed_at is None
 
 
-def test_buyer_can_belong_to_apartment():
+def test_buyer_creation_with_block(buyer: Buyer):
+    buyer.block="Bloco B"
+    assert buyer.block == "Bloco B"
+
+
+def test_buyer_can_belong_to_apartment(buyer : Buyer):
     apartment = Apartment(
         public_id=uuid4(),
-        email="apartment@example.com",
-        name="Edifício Araraquara",
-        picture_url="https://example.com/apartment.jpg",
+        user_id=10,
         zip_code="01000-000",
         building_manager_id="123",
         building_tax_id="12.345.678/0001-90",
     )
 
-    buyer = Buyer(
-        public_id=uuid4(),
-        email="buyer@example.com",
-        name="João",
-        picture_url="https://example.com/photo.jpg",
-        apartment=apartment,
-    )
+    buyer.apartment = apartment
 
     assert buyer.apartment == apartment
 
 
-def test_buyer_generates_public_id():
-    buyer = Buyer(email="buyer@example.com", name="João")
-
+def test_buyer_generates_public_id(buyer : Buyer):
     assert isinstance(buyer.public_id, UUID)

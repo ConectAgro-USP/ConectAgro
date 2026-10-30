@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, Optional
 
 from pydantic import AfterValidator, EmailStr, StringConstraints
 from sqlalchemy import DateTime
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 from src.services.phone_service import validate_cellphone, validate_homephone
 
@@ -12,6 +12,10 @@ PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=
 CellPhone = Annotated[str, AfterValidator(validate_cellphone)]
 HomePhone = Annotated[str, AfterValidator(validate_homephone)]
 
+if TYPE_CHECKING:
+    from .apartment import Apartment
+    from .buyer import Buyer
+    from .farmer import Farmer
 
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
@@ -29,6 +33,10 @@ class User(UserBase, table=True):
         default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
     )
     hashed_password: str | None = None
+
+    farmer: Optional["Farmer"] = Relationship(back_populates="user")
+    apartment: Optional["Apartment"] = Relationship(back_populates="manager")
+    buyer: Optional["Buyer"] = Relationship(back_populates="user")
 
 
 class UserRead(UserBase):

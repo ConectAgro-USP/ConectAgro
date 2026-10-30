@@ -11,36 +11,48 @@ from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import Product
 from src.models.purchase import Purchase, PurchaseProduct, PurchaseRead, PurchaseStatus
+from src.models.user import User
 
 FUTURE = date(2030, 1, 1)
 
 
 @pytest.fixture
 def apartment(session: Session) -> Apartment:
-    apartment = Apartment(
-        email="apartment@example.com",
-        name="Edifício Araraquara",
-        zip_code="01000-000",
-        building_manager_id="123",
-        building_tax_id="12.345.678/0001-90",
-    )
+    user = User(email="manager@example.com", name="Matheus",
+                        picture_url="https://example.com/photo.jpg", 
+                        cellphone = "11944644502", homephone = "1124644502")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    apartment = Apartment(manager_id = user.id, zip_code = "01000-000",
+                          building_name="Edifício Araraquara",
+                          building_cnpj = "12.345.678/0001-90")
     session.add(apartment)
     session.commit()
+    session.refresh(apartment)
     return apartment
 
 
 @pytest.fixture
 def farmer(session: Session) -> Farmer:
-    farmer = Farmer(email="farmer@example.com", name="Maria", zip_code="01000-000")
+    user = User(email="farmer@example.com", name="João", picture_url="https://example.com/photo.jpg",
+                cellphone = "11957249062", homephone="1140028922")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    farmer = Farmer(user_id = user.id, zip_code = "01000-000")
     session.add(farmer)
     session.commit()
+    session.refresh(farmer)
     return farmer
 
 
 @pytest.fixture
 def product(session: Session, farmer: Farmer) -> Product:
     product = Product(
-        name="Alface", quantity=10, price=Decimal("2.50"), expiration_date=FUTURE, farmer=farmer
+        name="Alface", quantity=10, price=Decimal("2.50"), expiration_date=FUTURE,
+        farmer_id=farmer.user.id
     )
     session.add(product)
     session.commit()
@@ -49,7 +61,8 @@ def product(session: Session, farmer: Farmer) -> Product:
 
 @pytest.fixture
 def purchase(session: Session, apartment: Apartment, farmer: Farmer) -> Purchase:
-    purchase = Purchase(apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE)
+    purchase = Purchase(apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE,
+                        farmer_id=farmer.user.id, apartment_id=apartment.manager.id)
     session.add(purchase)
     session.commit()
     return purchase
