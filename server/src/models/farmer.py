@@ -5,7 +5,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .product import Product
-    from .purchase import Purchase, PurchasePart
+    from .purchase import PurchasePart
     from .user import User
 
 

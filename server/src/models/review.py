@@ -103,11 +103,11 @@ class Review(ReviewBase, table=True):
 
     @property
     def farmer_public_id(self) -> UUID:
-        return self.farmer.public_id
+        return self.farmer.public_id if self.farmer else None
 
     @property
     def purchase_public_id(self) -> UUID:
-        return self.purchase.public_id
+        return self.purchase.public_id if self.purchase else None
 
 
 class ReviewCreate(ReviewBase):

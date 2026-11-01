@@ -1,12 +1,11 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from pydantic import field_validator
-from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -50,7 +49,7 @@ class Product(ProductBase, table=True):
 
     @property
     def farmer_public_id(self) -> UUID:
-        return self.farmer.public_id
+        return self.farmer.public_id if self.farmer else None
 
 
 class ProductCreate(ProductBase):

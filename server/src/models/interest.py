@@ -43,11 +43,11 @@ class Interest(InterestBase, table=True):
 
     @property
     def buyer_public_id(self) -> UUID:
-        return self.buyer.public_id
+        return self.buyer.public_id if self.buyer else None
 
     @property
     def product_public_id(self) -> UUID:
-        return self.product.public_id
+        return self.product.public_id if self.product else None
 
 
 class InterestCreate(InterestBase):

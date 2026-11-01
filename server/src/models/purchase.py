@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, UniqueConstraint
@@ -27,7 +27,7 @@ class PurchaseBase(SQLModel):
 class Purchase(PurchaseBase, table=True):
     __tablename__ = "purchases"
 
-    id: int | None = Field(default=None, primary_key=True)
+    id : int | None = Field(default=None, primary_key=True)
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
 
     created_at: datetime = Field(
@@ -58,8 +58,8 @@ class Purchase(PurchaseBase, table=True):
             return PurchaseStatus.EM_PROGRESSO
         
     @property
-    def apartment_public_id(self) -> UUID:
-        return self.apartment.public_id
+    def apartment_public_id(self) -> UUID | None:
+        return self.apartment.public_id if self.apartment else None
 
 class PurchasePart(SQLModel, table=True):
     __tablename__ = "purchase_parts"
@@ -76,7 +76,7 @@ class PurchasePart(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
     )
-    closed_at: Optional[datetime] = None
+    closed_at: datetime | None = None
 
     purchase: Optional["Purchase"] = Relationship(back_populates="purchase_parts")
     farmer: Optional["Farmer"] = Relationship(back_populates="purchase_parts")
@@ -86,7 +86,7 @@ class PurchasePart(SQLModel, table=True):
 
     @property
     def farmer_public_id(self) -> UUID:
-        return self.farmer.public_id
+        return self.farmer.public_id if self.farmer else None
 
 class PurchaseProductBase(SQLModel):
     quantity: int = Field(gt=0, le=INT4_MAX)
@@ -104,7 +104,7 @@ class PurchaseProduct(PurchaseProductBase, table=True):
 
     @property
     def product_public_id(self) -> UUID:
-        return self.product.public_id
+        return self.product.public_id if self.product else None
 
 class PurchaseProductRead(PurchaseProductBase):
     product_public_id: UUID
