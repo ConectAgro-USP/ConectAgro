@@ -91,7 +91,7 @@ class ProfileService:
 
         self._update_user(user, new_values)
         if isinstance(profile, Farmer):
-            self._update_farmer(profile, new_values)
+            self._update_zip_code(profile, new_values)
         if isinstance(profile, Apartment):
             self._update_apartment(profile, new_values)
         if isinstance(profile, Buyer):
@@ -114,11 +114,11 @@ class ProfileService:
         if "homephone" in new_values:
             user.homephone = new_values["homephone"]
 
-    def _update_farmer(self, farmer: Farmer, new_values: dict) -> None:
+    def _update_zip_code(self, profile: Farmer | Apartment, new_values: dict) -> None:
         if "zip_code" in new_values:
             zip_code = normalize_cep(new_values["zip_code"])
-            if zip_code != farmer.zip_code:
-                farmer.zip_code = self._check_zip_code(zip_code)
+            if zip_code != profile.zip_code:
+                profile.zip_code = self._check_zip_code(zip_code)
 
     def _update_apartment(self, apartment: Apartment, new_values: dict) -> None:
         new_cnpj = None
@@ -130,10 +130,7 @@ class ProfileService:
         if "building_name" in new_values:
             apartment.building_name = new_values["building_name"]
 
-        if "zip_code" in new_values:
-            zip_code = normalize_cep(new_values["zip_code"])
-            if zip_code != apartment.zip_code:
-                apartment.zip_code = self._check_zip_code(zip_code)
+        self._update_zip_code(apartment, new_values)
 
         if new_cnpj is not None:
             # a CNPJá fica por último porque aceita poucas consultas por minuto
@@ -158,12 +155,9 @@ class ProfileService:
         link_changed = (buyer.apartment_id, buyer.block, buyer.unit) != link_before
 
         if link_changed or buyer.link_status == LinkStatus.RECUSADO:
-            self._ask_for_approval_again(buyer)
-
-    def _ask_for_approval_again(self, buyer: Buyer) -> None:
-        buyer.link_status = LinkStatus.PENDENTE
-        buyer.link_requested_at = datetime.now(UTC)
-        buyer.link_reviewed_at = None
+            buyer.link_status = LinkStatus.PENDENTE
+            buyer.link_requested_at = datetime.now(UTC)
+            buyer.link_reviewed_at = None
 
     def _check_user_has_no_profile(self, user: User) -> None:
         if user.farmer or user.apartment or user.buyer:

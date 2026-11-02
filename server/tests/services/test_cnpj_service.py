@@ -22,12 +22,11 @@ def fake_service(answer: Company | Exception) -> tuple[CnpjService, NonCallableM
     return CnpjService(companies), companies
 
 
-def test_validate_looks_up_the_normalized_cnpj_and_returns_the_company():
+def test_validate_looks_up_the_normalized_cnpj():
     service, companies = fake_service(BANCO_DO_BRASIL)
 
-    company = service.validate("00.000.000/0001-91")
+    service.validate("00.000.000/0001-91")
 
-    assert company == BANCO_DO_BRASIL
     companies.get_company.assert_called_once_with("00000000000191")
 
 

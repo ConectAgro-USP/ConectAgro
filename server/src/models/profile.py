@@ -66,27 +66,27 @@ class FarmerRead(SQLModel):
     zip_code: str
 
 
-class ApartmentRead(SQLModel):
-    public_id: UUID
-    building_name: str
-    zip_code: str
-    building_cnpj: str
-
-
 class ApartmentSummary(SQLModel):
     public_id: UUID
     building_name: str
     zip_code: str
 
 
-class BuyerRead(SQLModel):
+class ApartmentRead(ApartmentSummary):
+    building_cnpj: str
+
+
+class BuyerSummary(SQLModel):
     public_id: UUID
-    apartment: ApartmentSummary | None
     block: str | None
     unit: str
     link_status: LinkStatus
     link_requested_at: datetime
     link_reviewed_at: datetime | None
+
+
+class BuyerRead(BuyerSummary):
+    apartment: ApartmentSummary | None
 
 
 class ProfileRead(SQLModel):
@@ -120,11 +120,5 @@ class ResidentUser(SQLModel):
     name: str
 
 
-class ResidentRead(SQLModel):
-    public_id: UUID
+class ResidentRead(BuyerSummary):
     user: ResidentUser
-    block: str | None
-    unit: str
-    link_status: LinkStatus
-    link_requested_at: datetime
-    link_reviewed_at: datetime | None

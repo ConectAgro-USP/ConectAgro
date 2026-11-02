@@ -24,32 +24,28 @@ from src.services.exceptions import (
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
-CONFLICT = status.HTTP_409_CONFLICT
-UNPROCESSABLE = status.HTTP_422_UNPROCESSABLE_CONTENT
-UNAVAILABLE = status.HTTP_503_SERVICE_UNAVAILABLE
-
 HTTP_ERRORS = {
-    ProfileAlreadyExistsError: (CONFLICT, "Você já tem um perfil"),
-    ApartmentNotFoundError: (UNPROCESSABLE, "Prédio não encontrado"),
-    InvalidCepError: (UNPROCESSABLE, "CEP inválido"),
-    CepNotFoundError: (UNPROCESSABLE, "CEP não encontrado"),
+    ProfileAlreadyExistsError: (status.HTTP_409_CONFLICT, "Você já tem um perfil"),
+    ApartmentNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "Prédio não encontrado"),
+    InvalidCepError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP inválido"),
+    CepNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP não encontrado"),
     CepWithoutCoordinatesError: (
-        UNPROCESSABLE,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
         "Não foi possível localizar este CEP. Informe um CEP próximo",
     ),
     ExternalServiceError: (
-        UNAVAILABLE,
+        status.HTTP_503_SERVICE_UNAVAILABLE,
         "Não foi possível consultar o CEP ou o CNPJ agora. Tente novamente mais tarde",
     ),
-    InvalidCnpjError: (UNPROCESSABLE, "CNPJ inválido"),
-    CnpjNotFoundError: (UNPROCESSABLE, "CNPJ não encontrado"),
-    CnpjNotActiveError: (UNPROCESSABLE, "CNPJ não está ativo"),
+    InvalidCnpjError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CNPJ inválido"),
+    CnpjNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CNPJ não encontrado"),
+    CnpjNotActiveError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CNPJ não está ativo"),
     RateLimitedError: (
-        UNAVAILABLE,
+        status.HTTP_503_SERVICE_UNAVAILABLE,
         "Não foi possível consultar o CNPJ agora. Tente novamente mais tarde",
     ),
 }
-PROFILE_ERRORS = tuple(HTTP_ERRORS)
+PROFILE_ERRORS = tuple(HTTP_ERRORS.keys())
 
 
 def http_error(error: Exception) -> HTTPException:
@@ -101,6 +97,6 @@ def update_my_profile(
         return profile_service.update_profile(current_user, changes)
     except FieldNotInProfileError as error:
         message = f"O campo {error} não faz parte do seu perfil"
-        raise HTTPException(UNPROCESSABLE, message) from None
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, message) from None
     except PROFILE_ERRORS as error:
         raise http_error(error) from None
