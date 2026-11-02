@@ -14,12 +14,11 @@ from src.models.profile import (
     ProfileUpdate,
 )
 from src.models.user import User
-from src.repository.profile_repository import DuplicateProfileDataError, ProfileRepository
+from src.repository.profile_repository import DuplicateProfileError, ProfileRepository
 from src.services.cnpj_service import CnpjService, normalize_cnpj
 from src.services.exceptions import (
     ApartmentNotFoundError,
     CepWithoutCoordinatesError,
-    CnpjAlreadyRegisteredError,
     FieldNotInProfileError,
     ProfileAlreadyExistsError,
 )
@@ -60,7 +59,6 @@ class ProfileService:
     def create_apartment(self, user: User, apartment_in: ApartmentCreate) -> ProfileRead:
         self._check_user_has_no_profile(user)
         cnpj = normalize_cnpj(apartment_in.building_cnpj)
-        self._check_cnpj_is_free(cnpj)
         zip_code = self._check_zip_code(apartment_in.zip_code)
         # a CNPJá fica por último porque aceita poucas consultas por minuto
         self.cnpjs.validate(cnpj)
@@ -99,10 +97,7 @@ class ProfileService:
         if isinstance(profile, Buyer):
             self._update_buyer(profile, new_values)
 
-        try:
-            self.profiles.commit()
-        except DuplicateProfileDataError:
-            raise CnpjAlreadyRegisteredError from None
+        self.profiles.commit()
         return self.get_profile(user)
 
     def _check_allowed_fields(self, new_values: dict, profile: Profile | None) -> None:
@@ -130,7 +125,6 @@ class ProfileService:
         if "building_cnpj" in new_values:
             cnpj = normalize_cnpj(new_values["building_cnpj"])
             if cnpj != apartment.building_cnpj:
-                self._check_cnpj_is_free(cnpj)
                 new_cnpj = cnpj
 
         if "building_name" in new_values:
@@ -147,11 +141,6 @@ class ProfileService:
             apartment.building_cnpj = new_cnpj
 
     def _update_buyer(self, buyer: Buyer, new_values: dict) -> None:
-        if not any(field in new_values for field in PROFILE_FIELDS[Buyer]):
-            return
-
-        # trava o morador para a troca não cruzar com a decisão do síndico
-        self.profiles.lock(buyer)
         link_before = (buyer.apartment_id, buyer.block, buyer.unit)
         if "apartment_public_id" in new_values:
             buyer.apartment_id = self._find_apartment(new_values["apartment_public_id"]).id
@@ -170,8 +159,6 @@ class ProfileService:
         buyer.link_reviewed_at = None
 
     def _check_user_has_no_profile(self, user: User) -> None:
-        # a trava impede que dois pedidos ao mesmo tempo criem dois perfis
-        self.profiles.lock(user)
         if user.farmer or user.apartment or user.buyer:
             raise ProfileAlreadyExistsError
 
@@ -179,15 +166,9 @@ class ProfileService:
         self.profiles.add(profile)
         try:
             self.profiles.commit()
-        except DuplicateProfileDataError:
-            if isinstance(profile, Apartment):
-                raise CnpjAlreadyRegisteredError from None
+        except DuplicateProfileError:
             raise ProfileAlreadyExistsError from None
         return self.get_profile(user)
-
-    def _check_cnpj_is_free(self, cnpj: str) -> None:
-        if self.profiles.get_apartment_by_cnpj(cnpj) is not None:
-            raise CnpjAlreadyRegisteredError
 
     def _check_zip_code(self, zip_code: str) -> str:
         address = self.ceps.get_address(zip_code)

@@ -12,7 +12,6 @@ from src.services.exceptions import (
     ApartmentNotFoundError,
     CepNotFoundError,
     CepWithoutCoordinatesError,
-    CnpjAlreadyRegisteredError,
     CnpjNotActiveError,
     CnpjNotFoundError,
     ExternalServiceError,
@@ -31,7 +30,6 @@ UNAVAILABLE = status.HTTP_503_SERVICE_UNAVAILABLE
 
 HTTP_ERRORS = {
     ProfileAlreadyExistsError: (CONFLICT, "Você já tem um perfil"),
-    CnpjAlreadyRegisteredError: (CONFLICT, "Este CNPJ já está cadastrado"),
     ApartmentNotFoundError: (UNPROCESSABLE, "Prédio não encontrado"),
     InvalidCepError: (UNPROCESSABLE, "CEP inválido"),
     CepNotFoundError: (UNPROCESSABLE, "CEP não encontrado"),
@@ -39,10 +37,9 @@ HTTP_ERRORS = {
         UNPROCESSABLE,
         "Não foi possível localizar este CEP. Informe um CEP próximo",
     ),
-    # só vem da BrasilAPI: a CNPJá fora do ar não barra o CNPJ
     ExternalServiceError: (
         UNAVAILABLE,
-        "Não foi possível consultar o CEP agora. Tente novamente mais tarde",
+        "Não foi possível consultar o CEP ou o CNPJ agora. Tente novamente mais tarde",
     ),
     InvalidCnpjError: (UNPROCESSABLE, "CNPJ inválido"),
     CnpjNotFoundError: (UNPROCESSABLE, "CNPJ não encontrado"),

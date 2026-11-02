@@ -17,7 +17,7 @@ class Apartment(SQLModel, table=True):
 
     zip_code: str
     building_name: str
-    building_cnpj: str = Field(unique=True)
+    building_cnpj: str
 
     manager_id: int = Field(foreign_key="users.id", unique=True)
     

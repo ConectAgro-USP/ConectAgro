@@ -28,10 +28,6 @@ class CnpjNotActiveError(Exception):
     pass
 
 
-class CnpjAlreadyRegisteredError(Exception):
-    pass
-
-
 class ProfileAlreadyExistsError(Exception):
     pass
 

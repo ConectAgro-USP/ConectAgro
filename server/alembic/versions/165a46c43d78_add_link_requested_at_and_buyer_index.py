@@ -1,4 +1,4 @@
-"""add link requested at, buyer apartment index and unique building cnpj
+"""add link requested at and buyer apartment index
 
 Revision ID: 165a46c43d78
 Revises: 3d12241f5496
@@ -30,14 +30,8 @@ def upgrade() -> None:
         )
         batch_op.create_index('ix_buyers_apartment_id', ['apartment_id'], unique=False)
 
-    with op.batch_alter_table('apartments') as batch_op:
-        batch_op.create_unique_constraint('uq_apartments_building_cnpj', ['building_cnpj'])
-
 
 def downgrade() -> None:
-    with op.batch_alter_table('apartments') as batch_op:
-        batch_op.drop_constraint('uq_apartments_building_cnpj', type_='unique')
-
     with op.batch_alter_table('buyers') as batch_op:
         batch_op.drop_index('ix_buyers_apartment_id')
         batch_op.drop_column('link_requested_at')

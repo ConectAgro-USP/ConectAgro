@@ -118,7 +118,6 @@ class ProfileUpdate(SQLModel):
 
 class ResidentUser(SQLModel):
     name: str
-    email: str
 
 
 class ResidentRead(SQLModel):

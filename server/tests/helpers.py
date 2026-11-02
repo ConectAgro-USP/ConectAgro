@@ -10,7 +10,6 @@ from src.models.user import User
 # CNPJs reais com dígitos verificadores válidos
 BANCO_DO_BRASIL_CNPJ = "00000000000191"
 ITAU_CNPJ = "60701190000104"
-CAIXA_CNPJ = "00360305000104"
 
 
 def add_user(session: Session, email: str, name: str = "Ana Souza") -> User:
@@ -33,17 +32,12 @@ def add_farmer(session: Session, user: User) -> Farmer:
     return farmer
 
 
-def add_building(
-    session: Session,
-    manager: User,
-    name: str = "Edifício Araraquara",
-    cnpj: str = BANCO_DO_BRASIL_CNPJ,
-) -> Apartment:
+def add_building(session: Session, manager: User, name: str = "Edifício Araraquara") -> Apartment:
     building = Apartment(
         manager_id=manager.id,
         building_name=name,
         zip_code="01310200",
-        building_cnpj=cnpj,
+        building_cnpj=BANCO_DO_BRASIL_CNPJ,
     )
     session.add(building)
     session.commit()

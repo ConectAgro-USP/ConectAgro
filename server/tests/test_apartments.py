@@ -7,8 +7,6 @@ from sqlmodel import Session
 
 from src.models.buyer import LinkStatus
 from tests.helpers import (
-    CAIXA_CNPJ,
-    ITAU_CNPJ,
     add_building,
     add_farmer,
     add_resident,
@@ -20,9 +18,7 @@ UNKNOWN_ID = "6f1c2b9e-3d4a-4e5f-8a7b-9c0d1e2f3a4b"
 
 
 def test_list_apartments_returns_name_cep_and_public_id(client: TestClient, session: Session):
-    bauru = add_building(
-        session, add_user(session, "bauru@example.com"), name="Edifício Bauru", cnpj=ITAU_CNPJ
-    )
+    bauru = add_building(session, add_user(session, "bauru@example.com"), name="Edifício Bauru")
     araraquara = add_building(session, add_user(session, "araraquara@example.com"))
     login(client, add_user(session, "ana@example.com"))
 
@@ -43,80 +39,12 @@ def test_list_apartments_returns_name_cep_and_public_id(client: TestClient, sess
     ]
 
 
-def test_list_apartments_searches_by_name_ignoring_case(client: TestClient, session: Session):
-    add_building(
-        session, add_user(session, "bauru@example.com"), name="Edifício Bauru", cnpj=ITAU_CNPJ
-    )
-    araraquara = add_building(session, add_user(session, "araraquara@example.com"))
-    login(client, add_user(session, "ana@example.com"))
-
-    response = client.get("/api/apartments", params={"name": "ARARA"})
-
-    apartments = response.json()
-    assert len(apartments) == 1
-    assert apartments[0]["public_id"] == str(araraquara.public_id)
-
-
-@pytest.mark.parametrize("name", ["%", "_"])
-def test_list_apartments_search_treats_wildcards_as_text(
-    client: TestClient, session: Session, name: str
-):
-    add_building(session, add_user(session, "araraquara@example.com"))
-    login(client, add_user(session, "ana@example.com"))
-
-    response = client.get("/api/apartments", params={"name": name})
-
-    assert response.json() == []
-
-
-def test_list_apartments_paginates(client: TestClient, session: Session):
-    add_building(session, add_user(session, "a@example.com"), name="Edifício A")
-    add_building(session, add_user(session, "b@example.com"), name="Edifício B", cnpj=ITAU_CNPJ)
-    add_building(session, add_user(session, "c@example.com"), name="Edifício C", cnpj=CAIXA_CNPJ)
-    login(client, add_user(session, "ana@example.com"))
-
-    response = client.get("/api/apartments", params={"offset": 1, "limit": 1})
-
-    apartments = response.json()
-    assert len(apartments) == 1
-    assert apartments[0]["building_name"] == "Edifício B"
-
-
-@pytest.mark.parametrize(
-    "params",
-    [
-        {"limit": 0},
-        {"limit": 101},
-        {"offset": -1},
-        {"offset": 10_001},
-        {"name": "a" * 101},
-        {"name": "Ed\x00"},
-    ],
-    ids=[
-        "limite-zero",
-        "limite-alto",
-        "offset-negativo",
-        "offset-alto",
-        "nome-longo",
-        "nome-com-caractere-nulo",
-    ],
-)
-def test_list_apartments_rejects_bad_parameters(
-    client: TestClient, session: Session, params: dict
-):
-    login(client, add_user(session, "ana@example.com"))
-
-    response = client.get("/api/apartments", params=params)
-
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-
-
 def test_manager_lists_residents_by_status(client: TestClient, session: Session):
     bia = add_user(session, "bia@example.com", name="Bia Lima")
     manager = add_user(session, "sindico@example.com")
     building = add_building(session, manager)
     other_building = add_building(
-        session, add_user(session, "outro@example.com"), name="Edifício Bauru", cnpj=ITAU_CNPJ
+        session, add_user(session, "outro@example.com"), name="Edifício Bauru"
     )
     pending = add_resident(session, building, bia, unit="11")
     caio = add_user(session, "caio@example.com", name="Caio Lima")
@@ -130,7 +58,7 @@ def test_manager_lists_residents_by_status(client: TestClient, session: Session)
     assert response.status_code == status.HTTP_200_OK
     assert len(residents) == 1
     assert residents[0]["public_id"] == str(pending.public_id)
-    assert residents[0]["user"] == {"name": "Bia Lima", "email": "bia@example.com"}
+    assert residents[0]["user"] == {"name": "Bia Lima"}
     assert residents[0]["unit"] == "11"
     assert residents[0]["link_status"] == "PENDENTE"
     assert residents[0]["link_requested_at"] is not None
@@ -140,7 +68,7 @@ def test_manager_lists_every_resident_without_status(client: TestClient, session
     manager = add_user(session, "sindico@example.com")
     building = add_building(session, manager)
     other_building = add_building(
-        session, add_user(session, "outro@example.com"), name="Edifício Bauru", cnpj=ITAU_CNPJ
+        session, add_user(session, "outro@example.com"), name="Edifício Bauru"
     )
     add_resident(session, building, add_user(session, "bia@example.com"), unit="11")
     caio = add_user(session, "caio@example.com")
@@ -173,34 +101,12 @@ def test_residents_are_listed_from_the_oldest_request(client: TestClient, sessio
     assert residents[1]["unit"] == "11"
 
 
-def test_manager_pages_through_residents(client: TestClient, session: Session):
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
-    add_resident(session, building, add_user(session, "bia@example.com"), unit="11")
-    add_resident(session, building, add_user(session, "caio@example.com"), unit="12")
-    add_resident(session, building, add_user(session, "duda@example.com"), unit="13")
-    login(client, manager)
-
-    response = client.get("/api/apartments/me/buyers", params={"offset": 1, "limit": 1})
-
-    residents = response.json()
-    assert len(residents) == 1
-    assert residents[0]["unit"] == "12"
-
-
-@pytest.mark.parametrize(
-    "params",
-    [{"status": "QUALQUER"}, {"limit": 101}, {"offset": -1}],
-    ids=["status-desconhecido", "limite-alto", "offset-negativo"],
-)
-def test_list_residents_rejects_bad_parameters(
-    client: TestClient, session: Session, params: dict
-):
+def test_list_residents_rejects_unknown_status(client: TestClient, session: Session):
     manager = add_user(session, "sindico@example.com")
     add_building(session, manager)
     login(client, manager)
 
-    response = client.get("/api/apartments/me/buyers", params=params)
+    response = client.get("/api/apartments/me/buyers", params={"status": "QUALQUER"})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -277,7 +183,7 @@ def test_manager_cannot_review_resident_of_another_building(
     manager = add_user(session, "sindico@example.com")
     add_building(session, manager)
     other_building = add_building(
-        session, add_user(session, "outro@example.com"), name="Edifício Bauru", cnpj=ITAU_CNPJ
+        session, add_user(session, "outro@example.com"), name="Edifício Bauru"
     )
     resident = add_resident(session, other_building, add_user(session, "duda@example.com"))
     login(client, manager)

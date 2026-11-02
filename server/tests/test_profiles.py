@@ -22,8 +22,6 @@ from tests.connectors.fakes import fake_client
 from tests.connectors.test_brasilapi import ACRELANDIA, PAULISTA
 from tests.connectors.test_cnpja import BANCO_DO_BRASIL, NOT_FOUND, RATE_LIMITED
 from tests.helpers import (
-    BANCO_DO_BRASIL_CNPJ,
-    CAIXA_CNPJ,
     ITAU_CNPJ,
     add_building,
     add_farmer,
@@ -143,12 +141,12 @@ def test_user_with_profile_cannot_create_another(
     cnpj_requests: list[httpx.Request],
     existing_profile: str,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"), cnpj=ITAU_CNPJ)
+    building = add_building(session, add_user(session, "sindico@example.com"))
     ana = add_user(session, "ana@example.com")
     if existing_profile == "farmer":
         add_farmer(session, ana)
     if existing_profile == "apartment":
-        add_building(session, ana, name="Edifício Bauru", cnpj=CAIXA_CNPJ)
+        add_building(session, ana, name="Edifício Bauru")
     if existing_profile == "buyer":
         add_resident(session, building, ana)
     buyer_payload = {"apartment_public_id": str(building.public_id), "unit": "42"}
@@ -265,12 +263,16 @@ def test_invalid_cnpj_is_rejected_without_calling_the_apis(
         (httpx.Response(404, json=NOT_FOUND), 422),
         (httpx.Response(200, json=CNPJ_CLOSED), 422),
         (httpx.Response(429, json=RATE_LIMITED), 503),
-        (httpx.Response(500, json={}), 201),
+        (httpx.Response(500, json={}), 503),
+        (httpx.ConnectError("sem rede"), 503),
     ],
-    ids=["inexistente", "baixado", "cota-esgotada", "api-fora-do-ar-aceita"],
+    ids=["inexistente", "baixado", "cota-esgotada", "api-fora-do-ar", "sem-rede"],
 )
 def test_cnpj_lookup_answers(
-    client: TestClient, session: Session, answer: httpx.Response, status_code: int
+    client: TestClient,
+    session: Session,
+    answer: httpx.Response | Exception,
+    status_code: int,
 ):
     login(client, add_user(session, "ana@example.com"))
     answer_cnpj(answer)
@@ -278,24 +280,6 @@ def test_cnpj_lookup_answers(
     response = client.post("/api/profiles/apartment", json=APARTMENT)
 
     assert response.status_code == status_code
-
-
-def test_cnpj_of_a_registered_building_returns_409(
-    client: TestClient,
-    session: Session,
-    cep_requests: list[httpx.Request],
-    cnpj_requests: list[httpx.Request],
-):
-    manager = add_user(session, "sindico@example.com")
-    add_building(session, manager, cnpj=BANCO_DO_BRASIL_CNPJ)
-    login(client, add_user(session, "ana@example.com"))
-
-    response = client.post("/api/profiles/apartment", json=APARTMENT)
-
-    assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json()["detail"] == "Este CNPJ já está cadastrado"
-    assert cep_requests == []
-    assert cnpj_requests == []
     assert client.get("/api/profiles/me").json()["profile_type"] is None
 
 
@@ -320,7 +304,7 @@ def test_create_profile_rejects_unknown_fields(
 
 
 def test_free_text_fields_reject_the_null_character(client: TestClient, session: Session):
-    building = add_building(session, add_user(session, "sindico@example.com"), cnpj=ITAU_CNPJ)
+    building = add_building(session, add_user(session, "sindico@example.com"))
     login(client, add_user(session, "ana@example.com"))
     apartment_payload = {**APARTMENT, "building_name": "Ed\x00"}
     buyer_payload = {"apartment_public_id": str(building.public_id), "block": "B\x00", "unit": "42"}
@@ -517,8 +501,16 @@ def test_failed_update_changes_nothing(
         (httpx.Response(200, json=ACRELANDIA), httpx.Response(404, json=NOT_FOUND), 422),
         (httpx.Response(200, json=ACRELANDIA), httpx.Response(200, json=CNPJ_CLOSED), 422),
         (httpx.Response(200, json=ACRELANDIA), httpx.Response(429, json=RATE_LIMITED), 503),
+        (httpx.Response(200, json=ACRELANDIA), httpx.Response(500, json={}), 503),
     ],
-    ids=["cep-inexistente", "cep-fora-do-ar", "cnpj-inexistente", "cnpj-baixado", "cota-esgotada"],
+    ids=[
+        "cep-inexistente",
+        "cep-fora-do-ar",
+        "cnpj-inexistente",
+        "cnpj-baixado",
+        "cota-esgotada",
+        "cnpj-fora-do-ar",
+    ],
 )
 def test_update_apartment_reports_lookup_errors(
     client: TestClient,
@@ -583,30 +575,22 @@ def test_update_apartment_with_the_same_cnpj_skips_the_api(
     assert cnpj_requests == []
 
 
-@pytest.mark.parametrize(
-    "cnpj, status_code",
-    [(ITAU_CNPJ, 409), ("00.000.000/0001-90", 422)],
-    ids=["de-outro-predio", "invalido"],
-)
-def test_update_apartment_rejects_bad_cnpj(
+def test_update_apartment_rejects_invalid_cnpj_without_calling_the_apis(
     client: TestClient,
     session: Session,
     cep_requests: list[httpx.Request],
     cnpj_requests: list[httpx.Request],
-    cnpj: str,
-    status_code: int,
 ):
-    add_building(session, add_user(session, "sindico@example.com"), cnpj=ITAU_CNPJ)
     login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/apartment", json=APARTMENT)
     cep_requests.clear()
     cnpj_requests.clear()
-    changes = {"building_cnpj": cnpj, "zip_code": "69945-000"}
+    changes = {"building_cnpj": "00.000.000/0001-90", "zip_code": "69945-000"}
 
     response = client.patch("/api/profiles/me", json=changes)
 
     apartment = client.get("/api/profiles/me").json()["apartment"]
-    assert response.status_code == status_code
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert apartment["building_cnpj"] == "00000000000191"
     assert apartment["zip_code"] == "01310200"
     assert cep_requests == []
@@ -676,7 +660,7 @@ def test_rejected_buyer_can_ask_again(client: TestClient, session: Session, same
     ana = add_user(session, "ana@example.com")
     old_building = add_building(session, add_user(session, "sindico@example.com"))
     other_manager = add_user(session, "outro.sindico@example.com")
-    other_building = add_building(session, other_manager, name="Edifício Bauru", cnpj=ITAU_CNPJ)
+    other_building = add_building(session, other_manager, name="Edifício Bauru")
     if same_building:
         target = old_building
     else:
