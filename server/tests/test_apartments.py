@@ -112,7 +112,6 @@ def test_list_apartments_rejects_bad_parameters(
 
 
 def test_manager_lists_residents_by_status(client: TestClient, session: Session):
-    # bia vem antes, para o id do síndico não coincidir com o do prédio
     bia = add_user(session, "bia@example.com", name="Bia Lima")
     manager = add_user(session, "sindico@example.com")
     building = add_building(session, manager)
@@ -212,7 +211,6 @@ def test_list_residents_rejects_bad_parameters(
 def test_manager_reviews_a_pending_resident(
     client: TestClient, session: Session, action: str, link_status: str
 ):
-    # bia vem antes, para o id do síndico não coincidir com o do prédio
     bia = add_user(session, "bia@example.com")
     manager = add_user(session, "sindico@example.com")
     building = add_building(session, manager)

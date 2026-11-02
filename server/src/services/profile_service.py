@@ -1,17 +1,14 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from src.connectors.brasilapi import BrasilApiConnector
+from src.connectors.brasilapi import BrasilApiConnector, normalize_cep
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.profile import (
     ApartmentCreate,
-    ApartmentRead,
     BuyerCreate,
-    BuyerRead,
     FarmerCreate,
-    FarmerRead,
     ProfileRead,
     ProfileType,
     ProfileUpdate,
@@ -27,10 +24,14 @@ from src.services.exceptions import (
     ProfileAlreadyExistsError,
 )
 
+Profile = Farmer | Apartment | Buyer
+
 USER_FIELDS = ["name", "cellphone", "homephone"]
-FARMER_FIELDS = ["zip_code"]
-APARTMENT_FIELDS = ["building_name", "zip_code", "building_cnpj"]
-BUYER_FIELDS = ["apartment_public_id", "block", "unit"]
+PROFILE_FIELDS = {
+    Farmer: ["zip_code"],
+    Apartment: ["building_name", "zip_code", "building_cnpj"],
+    Buyer: ["apartment_public_id", "block", "unit"],
+}
 
 
 class ProfileService:
@@ -40,45 +41,24 @@ class ProfileService:
         self.cnpjs = cnpjs
 
     def get_profile(self, user: User) -> ProfileRead:
-        profile = ProfileRead(
-            name=user.name,
-            email=user.email,
-            picture_url=user.picture_url,
-            cellphone=user.cellphone,
-            homephone=user.homephone,
-        )
-
-        farmer = self.profiles.get_farmer_of_user(user.id)
-        if farmer is not None:
+        profile = ProfileRead.model_validate(user)
+        if user.farmer is not None:
             profile.profile_type = ProfileType.FARMER
-            profile.farmer = FarmerRead.model_validate(farmer)
-
-        apartment = self.profiles.get_apartment_of_manager(user.id)
-        if apartment is not None:
+        elif user.apartment is not None:
             profile.profile_type = ProfileType.APARTMENT
-            profile.apartment = ApartmentRead.model_validate(apartment)
-
-        buyer = self.profiles.get_buyer_of_user(user.id)
-        if buyer is not None:
+        elif user.buyer is not None:
             profile.profile_type = ProfileType.BUYER
-            profile.buyer = BuyerRead.model_validate(buyer)
-
         return profile
 
     def create_farmer(self, user: User, farmer_in: FarmerCreate) -> ProfileRead:
-        self._lock_user_and_check_no_profile(user)
+        self._check_user_has_no_profile(user)
         zip_code = self._check_zip_code(farmer_in.zip_code)
 
         farmer = Farmer(user_id=user.id, zip_code=zip_code)
-        self.profiles.add(farmer)
-        try:
-            self.profiles.commit()
-        except DuplicateProfileDataError:
-            raise ProfileAlreadyExistsError from None
-        return self.get_profile(user)
+        return self._save_new_profile(user, farmer)
 
     def create_apartment(self, user: User, apartment_in: ApartmentCreate) -> ProfileRead:
-        self._lock_user_and_check_no_profile(user)
+        self._check_user_has_no_profile(user)
         cnpj = normalize_cnpj(apartment_in.building_cnpj)
         self._check_cnpj_is_free(cnpj)
         zip_code = self._check_zip_code(apartment_in.zip_code)
@@ -92,16 +72,10 @@ class ProfileService:
             zip_code=zip_code,
             building_cnpj=cnpj,
         )
-        self.profiles.add(apartment)
-        try:
-            self.profiles.commit()
-        except DuplicateProfileDataError:
-            # com o usuário travado, só o CNPJ pode repetir
-            raise CnpjAlreadyRegisteredError from None
-        return self.get_profile(user)
+        return self._save_new_profile(user, apartment)
 
     def create_buyer(self, user: User, buyer_in: BuyerCreate) -> ProfileRead:
-        self._lock_user_and_check_no_profile(user)
+        self._check_user_has_no_profile(user)
         apartment = self._find_apartment(buyer_in.apartment_public_id)
 
         buyer = Buyer(
@@ -110,52 +84,29 @@ class ProfileService:
             block=buyer_in.block,
             unit=buyer_in.unit,
         )
-        self.profiles.add(buyer)
-        try:
-            self.profiles.commit()
-        except DuplicateProfileDataError:
-            raise ProfileAlreadyExistsError from None
-        return self.get_profile(user)
+        return self._save_new_profile(user, buyer)
 
     def update_profile(self, user: User, changes: ProfileUpdate) -> ProfileRead:
         new_values = changes.model_dump(exclude_unset=True)
-        farmer = self.profiles.get_farmer_of_user(user.id)
-        apartment = self.profiles.get_apartment_of_manager(user.id)
-        buyer = self.profiles.get_buyer_of_user(user.id)
-        self._check_allowed_fields(new_values, farmer, apartment, buyer)
+        profile = user.farmer or user.apartment or user.buyer
+        self._check_allowed_fields(new_values, profile)
 
-        if farmer is not None:
-            self._update_farmer(farmer, new_values)
-        if apartment is not None:
-            self._update_apartment(apartment, new_values)
-        if buyer is not None:
-            self._update_buyer(buyer, new_values)
-        # usuário por último: buscas no banco o gravariam antes das APIs
         self._update_user(user, new_values)
+        if isinstance(profile, Farmer):
+            self._update_farmer(profile, new_values)
+        if isinstance(profile, Apartment):
+            self._update_apartment(profile, new_values)
+        if isinstance(profile, Buyer):
+            self._update_buyer(profile, new_values)
 
         try:
             self.profiles.commit()
         except DuplicateProfileDataError:
-            # o CNPJ do prédio é o único campo único que dá para editar
             raise CnpjAlreadyRegisteredError from None
         return self.get_profile(user)
 
-    def _check_allowed_fields(
-        self,
-        new_values: dict,
-        farmer: Farmer | None,
-        apartment: Apartment | None,
-        buyer: Buyer | None,
-    ) -> None:
-        allowed_fields = []
-        allowed_fields.extend(USER_FIELDS)
-        if farmer is not None:
-            allowed_fields.extend(FARMER_FIELDS)
-        if apartment is not None:
-            allowed_fields.extend(APARTMENT_FIELDS)
-        if buyer is not None:
-            allowed_fields.extend(BUYER_FIELDS)
-
+    def _check_allowed_fields(self, new_values: dict, profile: Profile | None) -> None:
+        allowed_fields = USER_FIELDS + PROFILE_FIELDS.get(type(profile), [])
         for field in new_values:
             if field not in allowed_fields:
                 raise FieldNotInProfileError(field)
@@ -170,11 +121,11 @@ class ProfileService:
 
     def _update_farmer(self, farmer: Farmer, new_values: dict) -> None:
         if "zip_code" in new_values:
-            if not _same_zip_code(new_values["zip_code"], farmer.zip_code):
-                farmer.zip_code = self._check_zip_code(new_values["zip_code"])
+            zip_code = normalize_cep(new_values["zip_code"])
+            if zip_code != farmer.zip_code:
+                farmer.zip_code = self._check_zip_code(zip_code)
 
     def _update_apartment(self, apartment: Apartment, new_values: dict) -> None:
-        # a busca do CNPJ no banco vem antes das mudanças, senão já as gravaria
         new_cnpj = None
         if "building_cnpj" in new_values:
             cnpj = normalize_cnpj(new_values["building_cnpj"])
@@ -182,12 +133,13 @@ class ProfileService:
                 self._check_cnpj_is_free(cnpj)
                 new_cnpj = cnpj
 
-        if "zip_code" in new_values:
-            if not _same_zip_code(new_values["zip_code"], apartment.zip_code):
-                apartment.zip_code = self._check_zip_code(new_values["zip_code"])
-
         if "building_name" in new_values:
             apartment.building_name = new_values["building_name"]
+
+        if "zip_code" in new_values:
+            zip_code = normalize_cep(new_values["zip_code"])
+            if zip_code != apartment.zip_code:
+                apartment.zip_code = self._check_zip_code(zip_code)
 
         if new_cnpj is not None:
             # a CNPJá fica por último porque aceita poucas consultas por minuto
@@ -195,36 +147,43 @@ class ProfileService:
             apartment.building_cnpj = new_cnpj
 
     def _update_buyer(self, buyer: Buyer, new_values: dict) -> None:
-        changes_link = (
-            "apartment_public_id" in new_values or "block" in new_values or "unit" in new_values
-        )
-        if not changes_link:
+        if not any(field in new_values for field in PROFILE_FIELDS[Buyer]):
             return
 
         # trava o morador para a troca não cruzar com a decisão do síndico
-        self.profiles.lock_buyer(buyer)
+        self.profiles.lock(buyer)
+        link_before = (buyer.apartment_id, buyer.block, buyer.unit)
         if "apartment_public_id" in new_values:
-            apartment = self._find_apartment(new_values["apartment_public_id"])
-            buyer.apartment_id = apartment.id
+            buyer.apartment_id = self._find_apartment(new_values["apartment_public_id"]).id
         if "block" in new_values:
             buyer.block = new_values["block"]
         if "unit" in new_values:
             buyer.unit = new_values["unit"]
+        link_changed = (buyer.apartment_id, buyer.block, buyer.unit) != link_before
 
-        # mudar prédio, bloco ou número pede uma nova aprovação do síndico
+        if link_changed or buyer.link_status == LinkStatus.RECUSADO:
+            self._ask_for_approval_again(buyer)
+
+    def _ask_for_approval_again(self, buyer: Buyer) -> None:
         buyer.link_status = LinkStatus.PENDENTE
         buyer.link_requested_at = datetime.now(UTC)
         buyer.link_reviewed_at = None
 
-    def _lock_user_and_check_no_profile(self, user: User) -> None:
+    def _check_user_has_no_profile(self, user: User) -> None:
         # a trava impede que dois pedidos ao mesmo tempo criem dois perfis
-        self.profiles.lock_user(user)
-        if self.profiles.get_farmer_of_user(user.id) is not None:
+        self.profiles.lock(user)
+        if user.farmer or user.apartment or user.buyer:
             raise ProfileAlreadyExistsError
-        if self.profiles.get_apartment_of_manager(user.id) is not None:
-            raise ProfileAlreadyExistsError
-        if self.profiles.get_buyer_of_user(user.id) is not None:
-            raise ProfileAlreadyExistsError
+
+    def _save_new_profile(self, user: User, profile: Profile) -> ProfileRead:
+        self.profiles.add(profile)
+        try:
+            self.profiles.commit()
+        except DuplicateProfileDataError:
+            if isinstance(profile, Apartment):
+                raise CnpjAlreadyRegisteredError from None
+            raise ProfileAlreadyExistsError from None
+        return self.get_profile(user)
 
     def _check_cnpj_is_free(self, cnpj: str) -> None:
         if self.profiles.get_apartment_by_cnpj(cnpj) is not None:
@@ -241,8 +200,3 @@ class ProfileService:
         if apartment is None:
             raise ApartmentNotFoundError
         return apartment
-
-
-def _same_zip_code(new_zip_code: str, saved_zip_code: str) -> bool:
-    saved_with_dash = saved_zip_code[:5] + "-" + saved_zip_code[5:]
-    return new_zip_code == saved_zip_code or new_zip_code == saved_with_dash

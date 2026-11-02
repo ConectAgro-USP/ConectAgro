@@ -6,11 +6,10 @@ from uuid import UUID
 from pydantic import AfterValidator, ConfigDict, StringConstraints
 from sqlmodel import Field, SQLModel
 
-from src.services.phone_service import validate_cellphone, validate_homephone
 from src.services.text_service import reject_null_character
 
 from .buyer import LinkStatus
-from .user import PersonName
+from .user import CellPhone, HomePhone, PersonName
 
 # só limitam o tamanho; o formato do CEP e do CNPJ é conferido depois
 ZipCode = Annotated[str, StringConstraints(strip_whitespace=True, max_length=9)]
@@ -29,13 +28,6 @@ Unit = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=10),
     AfterValidator(reject_null_character),
-]
-# o limite vem antes da validação, para um texto enorme não custar caro
-CellPhoneInput = Annotated[
-    str, StringConstraints(max_length=20), AfterValidator(validate_cellphone)
-]
-HomePhoneInput = Annotated[
-    str, StringConstraints(max_length=20), AfterValidator(validate_homephone)
 ]
 FORBID_UNKNOWN_FIELDS = ConfigDict(extra="forbid")
 
@@ -114,8 +106,8 @@ class ProfileUpdate(SQLModel):
 
     # default None = campo não enviado; o tipo sem None recusa null explícito
     name: PersonName = Field(default=None)
-    cellphone: CellPhoneInput | None = None
-    homephone: HomePhoneInput | None = None
+    cellphone: CellPhone | None = None
+    homephone: HomePhone | None = None
     zip_code: ZipCode = Field(default=None)
     building_name: BuildingName = Field(default=None)
     building_cnpj: Cnpj = Field(default=None)

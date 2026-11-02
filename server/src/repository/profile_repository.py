@@ -6,8 +6,6 @@ from sqlmodel import Session, SQLModel, select
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
-from src.models.farmer import Farmer
-from src.models.user import User
 
 
 class DuplicateProfileDataError(Exception):
@@ -17,18 +15,6 @@ class DuplicateProfileDataError(Exception):
 class ProfileRepository:
     def __init__(self, session: Session):
         self.session = session
-
-    def get_farmer_of_user(self, user_id: int) -> Farmer | None:
-        statement = select(Farmer).where(Farmer.user_id == user_id)
-        return self.session.exec(statement).first()
-
-    def get_apartment_of_manager(self, user_id: int) -> Apartment | None:
-        statement = select(Apartment).where(Apartment.manager_id == user_id)
-        return self.session.exec(statement).first()
-
-    def get_buyer_of_user(self, user_id: int) -> Buyer | None:
-        statement = select(Buyer).where(Buyer.user_id == user_id)
-        return self.session.exec(statement).first()
 
     def get_apartment_by_public_id(self, public_id: UUID) -> Apartment | None:
         statement = select(Apartment).where(Apartment.public_id == public_id)
@@ -54,7 +40,6 @@ class ProfileRepository:
         statement = select(Buyer).where(Buyer.apartment_id == apartment_id)
         if link_status is not None:
             statement = statement.where(Buyer.link_status == link_status)
-        # busca os usuários de todos os moradores numa única consulta extra
         statement = statement.options(selectinload(Buyer.user))
         statement = statement.order_by(Buyer.link_requested_at, Buyer.id)
         statement = statement.offset(offset).limit(limit)
@@ -64,15 +49,11 @@ class ProfileRepository:
         statement = select(Buyer).where(
             Buyer.public_id == public_id, Buyer.apartment_id == apartment_id
         )
-        # trava a linha: a decisão do síndico não cruza com uma troca de prédio
         statement = statement.with_for_update()
         return self.session.exec(statement).first()
 
-    def lock_user(self, user: User) -> None:
-        self.session.refresh(user, with_for_update=True)
-
-    def lock_buyer(self, buyer: Buyer) -> None:
-        self.session.refresh(buyer, with_for_update=True)
+    def lock(self, row: SQLModel) -> None:
+        self.session.refresh(row, with_for_update=True)
 
     def add(self, item: SQLModel) -> None:
         self.session.add(item)

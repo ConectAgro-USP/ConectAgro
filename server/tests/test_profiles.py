@@ -106,7 +106,6 @@ def test_create_apartment_profile(
 
 
 def test_create_buyer_profile_starts_pending(client: TestClient, session: Session):
-    # ana vem antes, para o id do síndico não coincidir com o do prédio
     ana = add_user(session, "ana@example.com")
     building = add_building(session, add_user(session, "sindico@example.com"))
     login(client, ana)
@@ -592,6 +591,7 @@ def test_update_apartment_with_the_same_cnpj_skips_the_api(
 def test_update_apartment_rejects_bad_cnpj(
     client: TestClient,
     session: Session,
+    cep_requests: list[httpx.Request],
     cnpj_requests: list[httpx.Request],
     cnpj: str,
     status_code: int,
@@ -599,13 +599,17 @@ def test_update_apartment_rejects_bad_cnpj(
     add_building(session, add_user(session, "sindico@example.com"), cnpj=ITAU_CNPJ)
     login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/apartment", json=APARTMENT)
+    cep_requests.clear()
     cnpj_requests.clear()
+    changes = {"building_cnpj": cnpj, "zip_code": "69945-000"}
 
-    response = client.patch("/api/profiles/me", json={"building_cnpj": cnpj})
+    response = client.patch("/api/profiles/me", json=changes)
 
     apartment = client.get("/api/profiles/me").json()["apartment"]
     assert response.status_code == status_code
     assert apartment["building_cnpj"] == "00000000000191"
+    assert apartment["zip_code"] == "01310200"
+    assert cep_requests == []
     assert cnpj_requests == []
 
 
@@ -636,6 +640,21 @@ def test_update_buyer_unit_asks_for_approval_again(
     assert buyer["link_reviewed_at"] is None
 
 
+def test_buyer_keeps_the_approval_when_resending_the_same_link(
+    client: TestClient, session: Session
+):
+    building = add_building(session, add_user(session, "sindico@example.com"))
+    ana = add_user(session, "ana@example.com")
+    add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
+    login(client, ana)
+    same_link = {"apartment_public_id": str(building.public_id), "block": None, "unit": "42"}
+
+    response = client.patch("/api/profiles/me", json=same_link)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["buyer"]["link_status"] == "APROVADO"
+
+
 def test_buyer_keeps_the_approval_when_editing_contact_data(
     client: TestClient, session: Session
 ):
@@ -654,7 +673,6 @@ def test_buyer_keeps_the_approval_when_editing_contact_data(
 
 @pytest.mark.parametrize("same_building", [True, False], ids=["mesmo-predio", "outro-predio"])
 def test_rejected_buyer_can_ask_again(client: TestClient, session: Session, same_building: bool):
-    # ana vem antes, para o id do síndico não coincidir com o do prédio
     ana = add_user(session, "ana@example.com")
     old_building = add_building(session, add_user(session, "sindico@example.com"))
     other_manager = add_user(session, "outro.sindico@example.com")
