@@ -17,7 +17,9 @@ from src.api.deps import (
 from src.connectors.brasilapi import BrasilApiConnector
 from src.connectors.cnpja import CnpjaConnector
 from src.main import app
+from src.models.apartment import Apartment
 from src.models.buyer import LinkStatus
+from src.models.user import User
 from tests.connectors.fakes import fake_client
 from tests.connectors.test_brasilapi import ACRELANDIA, PAULISTA
 from tests.connectors.test_cnpja import BANCO_DO_BRASIL, NOT_FOUND, RATE_LIMITED
@@ -27,7 +29,6 @@ from tests.helpers import (
     add_farmer,
     add_resident,
     add_user,
-    login,
 )
 
 FARMER = {"zip_code": "01310-200"}
@@ -73,11 +74,7 @@ def cnpj_requests() -> list[httpx.Request]:
     return answer_cnpj(httpx.Response(200, json=BANCO_DO_BRASIL))
 
 
-def test_create_farmer_profile(
-    client: TestClient, session: Session, cep_requests: list[httpx.Request]
-):
-    login(client, add_user(session, "ana@example.com"))
-
+def test_create_farmer_profile(client: TestClient, ana: User, cep_requests: list[httpx.Request]):
     response = client.post("/api/profiles/farmer", json=FARMER)
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -87,10 +84,10 @@ def test_create_farmer_profile(
 
 
 def test_create_apartment_profile(
-    client: TestClient, session: Session, cnpj_requests: list[httpx.Request]
+    client: TestClient,
+    ana: User,
+    cnpj_requests: list[httpx.Request],
 ):
-    login(client, add_user(session, "ana@example.com"))
-
     response = client.post("/api/profiles/apartment", json=APARTMENT)
 
     apartment = response.json()["apartment"]
@@ -103,10 +100,7 @@ def test_create_apartment_profile(
     assert cnpj_requests[0].url.path == "/office/00000000000191"
 
 
-def test_create_buyer_profile_starts_pending(client: TestClient, session: Session):
-    ana = add_user(session, "ana@example.com")
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    login(client, ana)
+def test_create_buyer_profile_starts_pending(client: TestClient, ana: User, building: Apartment):
     payload = {"apartment_public_id": str(building.public_id), "block": "B", "unit": "42"}
 
     response = client.post("/api/profiles/buyer", json=payload)
@@ -122,9 +116,7 @@ def test_create_buyer_profile_starts_pending(client: TestClient, session: Sessio
     assert buyer["link_reviewed_at"] is None
 
 
-def test_create_buyer_profile_for_unknown_building(client: TestClient, session: Session):
-    login(client, add_user(session, "ana@example.com"))
-
+def test_create_buyer_profile_for_unknown_building(client: TestClient, ana: User):
     response = client.post(
         "/api/profiles/buyer", json={"apartment_public_id": str(uuid4()), "unit": "42"}
     )
@@ -137,12 +129,12 @@ def test_create_buyer_profile_for_unknown_building(client: TestClient, session: 
 def test_user_with_profile_cannot_create_another(
     client: TestClient,
     session: Session,
+    ana: User,
+    building: Apartment,
     cep_requests: list[httpx.Request],
     cnpj_requests: list[httpx.Request],
     existing_profile: str,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     if existing_profile == "farmer":
         add_farmer(session, ana)
     if existing_profile == "apartment":
@@ -150,7 +142,6 @@ def test_user_with_profile_cannot_create_another(
     if existing_profile == "buyer":
         add_resident(session, building, ana)
     buyer_payload = {"apartment_public_id": str(building.public_id), "unit": "42"}
-    login(client, ana)
 
     farmer_response = client.post("/api/profiles/farmer", json=FARMER)
     apartment_response = client.post("/api/profiles/apartment", json=APARTMENT)
@@ -174,12 +165,11 @@ def test_user_with_profile_cannot_create_another(
 )
 def test_cep_without_coordinates_asks_for_a_nearby_cep(
     client: TestClient,
-    session: Session,
+    ana: User,
     cnpj_requests: list[httpx.Request],
     path: str,
     payload: dict,
 ):
-    login(client, add_user(session, "ana@example.com"))
     answer_cep(httpx.Response(200, json=WITHOUT_COORDINATES))
 
     response = client.post(path, json=payload)
@@ -213,13 +203,12 @@ def test_cep_without_coordinates_asks_for_a_nearby_cep(
 )
 def test_cep_lookup_errors(
     client: TestClient,
-    session: Session,
+    ana: User,
     path: str,
     payload: dict,
     answer: httpx.Response | Exception,
     status_code: int,
 ):
-    login(client, add_user(session, "ana@example.com"))
     answer_cep(answer)
 
     response = client.post(path, json=payload)
@@ -230,10 +219,11 @@ def test_cep_lookup_errors(
 
 @pytest.mark.parametrize("zip_code", ["0131-0200", "abcde-fgh", "0" * 50])
 def test_malformed_cep_is_rejected_without_calling_the_api(
-    client: TestClient, session: Session, cep_requests: list[httpx.Request], zip_code: str
+    client: TestClient,
+    ana: User,
+    cep_requests: list[httpx.Request],
+    zip_code: str,
 ):
-    login(client, add_user(session, "ana@example.com"))
-
     response = client.post("/api/profiles/farmer", json={"zip_code": zip_code})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
@@ -242,12 +232,10 @@ def test_malformed_cep_is_rejected_without_calling_the_api(
 
 def test_invalid_cnpj_is_rejected_without_calling_the_apis(
     client: TestClient,
-    session: Session,
+    ana: User,
     cep_requests: list[httpx.Request],
     cnpj_requests: list[httpx.Request],
 ):
-    login(client, add_user(session, "ana@example.com"))
-
     response = client.post(
         "/api/profiles/apartment", json={**APARTMENT, "building_cnpj": "00.000.000/0001-90"}
     )
@@ -270,11 +258,10 @@ def test_invalid_cnpj_is_rejected_without_calling_the_apis(
 )
 def test_cnpj_lookup_answers(
     client: TestClient,
-    session: Session,
+    ana: User,
     answer: httpx.Response | Exception,
     status_code: int,
 ):
-    login(client, add_user(session, "ana@example.com"))
     answer_cnpj(answer)
 
     response = client.post("/api/profiles/apartment", json=APARTMENT)
@@ -293,19 +280,22 @@ def test_cnpj_lookup_answers(
     ids=["agricultor", "sindico", "morador"],
 )
 def test_create_profile_rejects_unknown_fields(
-    client: TestClient, session: Session, path: str, payload: dict
+    client: TestClient,
+    ana: User,
+    path: str,
+    payload: dict,
 ):
-    login(client, add_user(session, "ana@example.com"))
-
     response = client.post(path, json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert client.get("/api/profiles/me").json()["profile_type"] is None
 
 
-def test_free_text_fields_reject_the_null_character(client: TestClient, session: Session):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    login(client, add_user(session, "ana@example.com"))
+def test_free_text_fields_reject_the_null_character(
+    client: TestClient,
+    ana: User,
+    building: Apartment,
+):
     apartment_payload = {**APARTMENT, "building_name": "Ed\x00"}
     buyer_payload = {"apartment_public_id": str(building.public_id), "block": "B\x00", "unit": "42"}
 
@@ -316,9 +306,7 @@ def test_free_text_fields_reject_the_null_character(client: TestClient, session:
     assert buyer_response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
-def test_read_profile_without_profile(client: TestClient, session: Session):
-    login(client, add_user(session, "ana@example.com"))
-
+def test_read_profile_without_profile(client: TestClient, ana: User):
     response = client.get("/api/profiles/me")
 
     assert response.status_code == status.HTTP_200_OK
@@ -336,12 +324,12 @@ def test_read_profile_without_profile(client: TestClient, session: Session):
 
 
 def test_read_profile_of_buyer_shows_building_and_link_status(
-    client: TestClient, session: Session
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
-    login(client, ana)
 
     buyer = client.get("/api/profiles/me").json()["buyer"]
 
@@ -353,8 +341,7 @@ def test_read_profile_of_buyer_shows_building_and_link_status(
     }
 
 
-def test_update_name_and_phones(client: TestClient, session: Session):
-    login(client, add_user(session, "ana@example.com"))
+def test_update_name_and_phones(client: TestClient, ana: User):
     changes = {"name": "Ana Lima", "cellphone": "(11) 94464-4502", "homephone": "11 2464-4502"}
 
     response = client.patch("/api/profiles/me", json=changes)
@@ -386,17 +373,14 @@ def test_update_name_and_phones(client: TestClient, session: Session):
         "campo-desconhecido",
     ],
 )
-def test_update_rejects_invalid_user_fields(client: TestClient, session: Session, changes: dict):
-    login(client, add_user(session, "ana@example.com"))
-
+def test_update_rejects_invalid_user_fields(client: TestClient, ana: User, changes: dict):
     response = client.patch("/api/profiles/me", json=changes)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert client.get("/api/profiles/me").json()["name"] == "Ana Souza"
 
 
-def test_update_clears_homephone_with_null(client: TestClient, session: Session):
-    login(client, add_user(session, "ana@example.com"))
+def test_update_clears_homephone_with_null(client: TestClient, ana: User):
     client.patch("/api/profiles/me", json={"homephone": "1124644502"})
 
     response = client.patch("/api/profiles/me", json={"homephone": None})
@@ -412,10 +396,7 @@ def test_update_clears_homephone_with_null(client: TestClient, session: Session)
     ],
     ids=["agricultor", "sindico"],
 )
-def test_update_cep(
-    client: TestClient, session: Session, path: str, payload: dict, profile: str
-):
-    login(client, add_user(session, "ana@example.com"))
+def test_update_cep(client: TestClient, ana: User, path: str, payload: dict, profile: str):
     client.post(path, json=payload)
     cep_requests = answer_cep(httpx.Response(200, json=ACRELANDIA))
 
@@ -436,13 +417,12 @@ def test_update_cep(
 )
 def test_update_with_the_same_cep_skips_the_api(
     client: TestClient,
-    session: Session,
+    ana: User,
     cep_requests: list[httpx.Request],
     path: str,
     payload: dict,
     zip_code: str,
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post(path, json=payload)
     cep_requests.clear()
 
@@ -453,9 +433,10 @@ def test_update_with_the_same_cep_skips_the_api(
 
 
 def test_update_rejects_malformed_cep_with_the_same_digits(
-    client: TestClient, session: Session, cep_requests: list[httpx.Request]
+    client: TestClient,
+    ana: User,
+    cep_requests: list[httpx.Request],
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/farmer", json=FARMER)
     cep_requests.clear()
 
@@ -475,13 +456,12 @@ def test_update_rejects_malformed_cep_with_the_same_digits(
 )
 def test_failed_update_changes_nothing(
     client: TestClient,
-    session: Session,
+    ana: User,
     path: str,
     payload: dict,
     profile: str,
     original_name: str,
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post(path, json=payload)
     answer_cep(httpx.Response(200, json={**ACRELANDIA, "location": None}))
 
@@ -514,12 +494,11 @@ def test_failed_update_changes_nothing(
 )
 def test_update_apartment_reports_lookup_errors(
     client: TestClient,
-    session: Session,
+    ana: User,
     cep_answer: httpx.Response,
     cnpj_answer: httpx.Response,
     status_code: int,
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/apartment", json=APARTMENT)
     answer_cep(cep_answer)
     answer_cnpj(cnpj_answer)
@@ -533,8 +512,7 @@ def test_update_apartment_reports_lookup_errors(
     assert apartment["building_cnpj"] == "00000000000191"
 
 
-def test_update_apartment_checks_the_new_cnpj(client: TestClient, session: Session):
-    login(client, add_user(session, "ana@example.com"))
+def test_update_apartment_checks_the_new_cnpj(client: TestClient, ana: User):
     client.post("/api/profiles/apartment", json=APARTMENT)
     cnpj_requests = answer_cnpj(httpx.Response(200, json=BANCO_DO_BRASIL))
     changes = {"building_name": "Edifício Bauru", "building_cnpj": "60.701.190/0001-04"}
@@ -548,9 +526,10 @@ def test_update_apartment_checks_the_new_cnpj(client: TestClient, session: Sessi
 
 
 def test_update_apartment_checks_the_cep_before_the_cnpj_api(
-    client: TestClient, session: Session, cnpj_requests: list[httpx.Request]
+    client: TestClient,
+    ana: User,
+    cnpj_requests: list[httpx.Request],
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/apartment", json=APARTMENT)
     cnpj_requests.clear()
     answer_cep(httpx.Response(200, json=WITHOUT_COORDINATES))
@@ -563,9 +542,10 @@ def test_update_apartment_checks_the_cep_before_the_cnpj_api(
 
 
 def test_update_apartment_with_the_same_cnpj_skips_the_api(
-    client: TestClient, session: Session, cnpj_requests: list[httpx.Request]
+    client: TestClient,
+    ana: User,
+    cnpj_requests: list[httpx.Request],
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/apartment", json=APARTMENT)
     cnpj_requests.clear()
 
@@ -577,11 +557,10 @@ def test_update_apartment_with_the_same_cnpj_skips_the_api(
 
 def test_update_apartment_rejects_invalid_cnpj_without_calling_the_apis(
     client: TestClient,
-    session: Session,
+    ana: User,
     cep_requests: list[httpx.Request],
     cnpj_requests: list[httpx.Request],
 ):
-    login(client, add_user(session, "ana@example.com"))
     client.post("/api/profiles/apartment", json=APARTMENT)
     cep_requests.clear()
     cnpj_requests.clear()
@@ -603,16 +582,17 @@ def test_update_apartment_rejects_invalid_cnpj_without_calling_the_apis(
     ids=["bloco-e-numero", "so-bloco", "so-numero", "sem-bloco"],
 )
 def test_update_buyer_unit_asks_for_approval_again(
-    client: TestClient, session: Session, changes: dict
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
+    changes: dict,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     resident = add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
     resident.block = "B"
     resident.link_requested_at = datetime(2026, 1, 1, tzinfo=UTC)
     resident.link_reviewed_at = datetime(2026, 1, 2, tzinfo=UTC)
     session.commit()
-    login(client, ana)
 
     response = client.patch("/api/profiles/me", json=changes)
 
@@ -625,12 +605,12 @@ def test_update_buyer_unit_asks_for_approval_again(
 
 
 def test_buyer_keeps_the_approval_when_resending_the_same_link(
-    client: TestClient, session: Session
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
-    login(client, ana)
     same_link = {"apartment_public_id": str(building.public_id), "block": None, "unit": "42"}
 
     response = client.patch("/api/profiles/me", json=same_link)
@@ -640,12 +620,12 @@ def test_buyer_keeps_the_approval_when_resending_the_same_link(
 
 
 def test_buyer_keeps_the_approval_when_editing_contact_data(
-    client: TestClient, session: Session
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
-    login(client, ana)
 
     response = client.patch(
         "/api/profiles/me", json={"name": "Ana Lima", "cellphone": "11944644502"}
@@ -656,32 +636,35 @@ def test_buyer_keeps_the_approval_when_editing_contact_data(
 
 
 @pytest.mark.parametrize("same_building", [True, False], ids=["mesmo-predio", "outro-predio"])
-def test_rejected_buyer_can_ask_again(client: TestClient, session: Session, same_building: bool):
-    ana = add_user(session, "ana@example.com")
-    old_building = add_building(session, add_user(session, "sindico@example.com"))
+def test_rejected_buyer_can_ask_again(
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
+    same_building: bool,
+):
     other_manager = add_user(session, "outro.sindico@example.com")
     other_building = add_building(session, other_manager, name="Edifício Bauru")
     if same_building:
-        target = old_building
+        target = building
     else:
         target = other_building
-    add_resident(session, old_building, ana, link_status=LinkStatus.RECUSADO)
-    login(client, ana)
+    add_resident(session, building, ana, link_status=LinkStatus.RECUSADO)
 
-    response = client.patch(
-        "/api/profiles/me", json={"apartment_public_id": str(target.public_id)}
-    )
+    response = client.patch("/api/profiles/me", json={"apartment_public_id": str(target.public_id)})
 
     buyer = response.json()["buyer"]
     assert buyer["apartment"]["public_id"] == str(target.public_id)
     assert buyer["link_status"] == "PENDENTE"
 
 
-def test_update_buyer_to_unknown_building(client: TestClient, session: Session):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
+def test_update_buyer_to_unknown_building(
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
+):
     add_resident(session, building, ana)
-    login(client, ana)
 
     response = client.patch("/api/profiles/me", json={"apartment_public_id": str(uuid4())})
 
@@ -691,9 +674,7 @@ def test_update_buyer_to_unknown_building(client: TestClient, session: Session):
 
 
 @pytest.mark.parametrize("unit", ["", "12345678901", "42\x00"], ids=["vazia", "longa", "nulo"])
-def test_buyer_unit_is_validated(client: TestClient, session: Session, unit: str):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    login(client, add_user(session, "ana@example.com"))
+def test_buyer_unit_is_validated(client: TestClient, ana: User, building: Apartment, unit: str):
     payload = {"apartment_public_id": str(building.public_id), "unit": unit}
 
     response = client.post("/api/profiles/buyer", json=payload)
@@ -711,9 +692,11 @@ def test_buyer_unit_is_validated(client: TestClient, session: Session, unit: str
     ids=["agricultor-com-cnpj", "agricultor-com-unidade", "sem-perfil-com-cep"],
 )
 def test_update_rejects_fields_of_another_profile(
-    client: TestClient, session: Session, has_farmer_profile: bool, changes: dict
+    client: TestClient,
+    ana: User,
+    has_farmer_profile: bool,
+    changes: dict,
 ):
-    login(client, add_user(session, "ana@example.com"))
     if has_farmer_profile:
         client.post("/api/profiles/farmer", json=FARMER)
 
@@ -739,9 +722,7 @@ def test_profile_routes_require_login(client: TestClient, method: str, path: str
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_profile_dependencies_reject_user_without_the_profile(session: Session):
-    ana = add_user(session, "ana@example.com")
-
+def test_profile_dependencies_reject_user_without_the_profile(ana: User):
     with pytest.raises(HTTPException) as farmer_error:
         get_current_farmer(ana)
     with pytest.raises(HTTPException) as apartment_error:
@@ -754,8 +735,7 @@ def test_profile_dependencies_reject_user_without_the_profile(session: Session):
     assert buyer_error.value.status_code == status.HTTP_403_FORBIDDEN
 
 
-def test_current_farmer_returns_the_farmer(session: Session):
-    ana = add_user(session, "ana@example.com")
+def test_current_farmer_returns_the_farmer(session: Session, ana: User):
     add_farmer(session, ana)
 
     farmer = get_current_farmer(ana)
@@ -779,10 +759,12 @@ def test_current_apartment_returns_the_managers_building(session: Session):
     [(LinkStatus.PENDENTE, "aguardando aprovação"), (LinkStatus.RECUSADO, "recusado")],
 )
 def test_current_buyer_requires_an_approved_link(
-    session: Session, link_status: LinkStatus, message: str
+    session: Session,
+    ana: User,
+    building: Apartment,
+    link_status: LinkStatus,
+    message: str,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     add_resident(session, building, ana, link_status=link_status)
 
     with pytest.raises(HTTPException) as caught:
@@ -792,9 +774,7 @@ def test_current_buyer_requires_an_approved_link(
     assert message in caught.value.detail
 
 
-def test_current_buyer_returns_an_approved_buyer(session: Session):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
+def test_current_buyer_returns_an_approved_buyer(session: Session, ana: User, building: Apartment):
     resident = add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
 
     buyer = get_current_buyer(ana)

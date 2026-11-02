@@ -17,6 +17,9 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from src.api.deps import get_session
 from src.main import app
+from src.models.apartment import Apartment
+from src.models.user import User
+from tests.helpers import add_building, add_user, login
 
 engine_test = create_engine(
     "sqlite://",
@@ -49,3 +52,20 @@ def session() -> Generator[Session, None, None]:
 def client() -> Generator[TestClient, None, None]:
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture()
+def ana(client: TestClient, session: Session) -> User:
+    user = add_user(session, "ana@example.com")
+    login(client, user)
+    return user
+
+
+@pytest.fixture()
+def manager(session: Session) -> User:
+    return add_user(session, "sindico@example.com")
+
+
+@pytest.fixture()
+def building(session: Session, manager: User) -> Apartment:
+    return add_building(session, manager)

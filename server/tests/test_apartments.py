@@ -5,7 +5,9 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from src.models.apartment import Apartment
 from src.models.buyer import LinkStatus
+from src.models.user import User
 from tests.helpers import (
     add_building,
     add_farmer,
@@ -17,10 +19,13 @@ from tests.helpers import (
 UNKNOWN_ID = "6f1c2b9e-3d4a-4e5f-8a7b-9c0d1e2f3a4b"
 
 
-def test_list_apartments_returns_name_cep_and_public_id(client: TestClient, session: Session):
+def test_list_apartments_returns_name_cep_and_public_id(
+    client: TestClient,
+    session: Session,
+    ana: User,
+):
     bauru = add_building(session, add_user(session, "bauru@example.com"), name="Edifício Bauru")
     araraquara = add_building(session, add_user(session, "araraquara@example.com"))
-    login(client, add_user(session, "ana@example.com"))
 
     response = client.get("/api/apartments")
 
@@ -39,10 +44,13 @@ def test_list_apartments_returns_name_cep_and_public_id(client: TestClient, sess
     ]
 
 
-def test_manager_lists_residents_by_status(client: TestClient, session: Session):
+def test_manager_lists_residents_by_status(
+    client: TestClient,
+    session: Session,
+    manager: User,
+    building: Apartment,
+):
     bia = add_user(session, "bia@example.com", name="Bia Lima")
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
     other_building = add_building(
         session, add_user(session, "outro@example.com"), name="Edifício Bauru"
     )
@@ -64,9 +72,12 @@ def test_manager_lists_residents_by_status(client: TestClient, session: Session)
     assert residents[0]["link_requested_at"] is not None
 
 
-def test_manager_lists_every_resident_without_status(client: TestClient, session: Session):
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
+def test_manager_lists_every_resident_without_status(
+    client: TestClient,
+    session: Session,
+    manager: User,
+    building: Apartment,
+):
     other_building = add_building(
         session, add_user(session, "outro@example.com"), name="Edifício Bauru"
     )
@@ -84,9 +95,12 @@ def test_manager_lists_every_resident_without_status(client: TestClient, session
     assert residents[1]["unit"] == "12"
 
 
-def test_residents_are_listed_from_the_oldest_request(client: TestClient, session: Session):
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
+def test_residents_are_listed_from_the_oldest_request(
+    client: TestClient,
+    session: Session,
+    manager: User,
+    building: Apartment,
+):
     newer = add_resident(session, building, add_user(session, "bia@example.com"), unit="11")
     older = add_resident(session, building, add_user(session, "caio@example.com"), unit="12")
     newer.link_requested_at = datetime(2026, 10, 2, tzinfo=UTC)
@@ -101,9 +115,8 @@ def test_residents_are_listed_from_the_oldest_request(client: TestClient, sessio
     assert residents[1]["unit"] == "11"
 
 
-def test_list_residents_rejects_unknown_status(client: TestClient, session: Session):
-    manager = add_user(session, "sindico@example.com")
-    add_building(session, manager)
+@pytest.mark.usefixtures("building")
+def test_list_residents_rejects_unknown_status(client: TestClient, manager: User):
     login(client, manager)
 
     response = client.get("/api/apartments/me/buyers", params={"status": "QUALQUER"})
@@ -111,15 +124,16 @@ def test_list_residents_rejects_unknown_status(client: TestClient, session: Sess
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
-@pytest.mark.parametrize(
-    "action, link_status", [("approve", "APROVADO"), ("reject", "RECUSADO")]
-)
+@pytest.mark.parametrize("action, link_status", [("approve", "APROVADO"), ("reject", "RECUSADO")])
 def test_manager_reviews_a_pending_resident(
-    client: TestClient, session: Session, action: str, link_status: str
+    client: TestClient,
+    session: Session,
+    manager: User,
+    building: Apartment,
+    action: str,
+    link_status: str,
 ):
     bia = add_user(session, "bia@example.com")
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
     caio = add_user(session, "caio@example.com")
     neighbor = add_resident(session, building, caio, unit="12")
     resident = add_resident(session, building, bia)
@@ -135,9 +149,12 @@ def test_manager_reviews_a_pending_resident(
     assert neighbor.link_status == LinkStatus.PENDENTE
 
 
-def test_approved_resident_sees_the_approval(client: TestClient, session: Session):
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
+def test_approved_resident_sees_the_approval(
+    client: TestClient,
+    session: Session,
+    manager: User,
+    building: Apartment,
+):
     bia = add_user(session, "bia@example.com")
     resident = add_resident(session, building, bia)
     login(client, manager)
@@ -160,12 +177,12 @@ def test_approved_resident_sees_the_approval(client: TestClient, session: Sessio
 def test_manager_can_change_a_previous_decision(
     client: TestClient,
     session: Session,
+    manager: User,
+    building: Apartment,
     current_status: LinkStatus,
     action: str,
     new_status: str,
 ):
-    manager = add_user(session, "sindico@example.com")
-    building = add_building(session, manager)
     bia = add_user(session, "bia@example.com")
     resident = add_resident(session, building, bia, link_status=current_status)
     login(client, manager)
@@ -177,11 +194,13 @@ def test_manager_can_change_a_previous_decision(
 
 
 @pytest.mark.parametrize("action", ["approve", "reject"])
+@pytest.mark.usefixtures("building")
 def test_manager_cannot_review_resident_of_another_building(
-    client: TestClient, session: Session, action: str
+    client: TestClient,
+    session: Session,
+    manager: User,
+    action: str,
 ):
-    manager = add_user(session, "sindico@example.com")
-    add_building(session, manager)
     other_building = add_building(
         session, add_user(session, "outro@example.com"), name="Edifício Bauru"
     )
@@ -196,9 +215,8 @@ def test_manager_cannot_review_resident_of_another_building(
     assert resident.link_status == LinkStatus.PENDENTE
 
 
-def test_review_of_unknown_resident_returns_404(client: TestClient, session: Session):
-    manager = add_user(session, "sindico@example.com")
-    add_building(session, manager)
+@pytest.mark.usefixtures("building")
+def test_review_of_unknown_resident_returns_404(client: TestClient, manager: User):
     login(client, manager)
 
     response = client.post(f"/api/apartments/me/buyers/{UNKNOWN_ID}/approve")
@@ -209,15 +227,16 @@ def test_review_of_unknown_resident_returns_404(client: TestClient, session: Ses
 
 @pytest.mark.parametrize("profile", ["farmer", "buyer", None])
 def test_resident_routes_require_a_manager(
-    client: TestClient, session: Session, profile: str | None
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
+    profile: str | None,
 ):
-    building = add_building(session, add_user(session, "sindico@example.com"))
-    ana = add_user(session, "ana@example.com")
     if profile == "farmer":
         add_farmer(session, ana)
     if profile == "buyer":
         add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
-    login(client, ana)
 
     list_response = client.get("/api/apartments/me/buyers")
     approve_response = client.post(f"/api/apartments/me/buyers/{UNKNOWN_ID}/approve")
