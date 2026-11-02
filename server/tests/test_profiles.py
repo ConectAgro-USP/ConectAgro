@@ -13,14 +13,11 @@ from src.api.deps import (
     get_current_apartment,
     get_current_buyer,
     get_current_farmer,
-    get_profile_service,
 )
 from src.connectors.brasilapi import BrasilApiConnector
 from src.connectors.cnpja import CnpjaConnector
 from src.main import app
 from src.models.buyer import LinkStatus
-from src.repository.profile_repository import ProfileRepository
-from src.services.profile_service import ProfileService
 from tests.connectors.fakes import fake_client
 from tests.connectors.test_brasilapi import ACRELANDIA, PAULISTA
 from tests.connectors.test_cnpja import BANCO_DO_BRASIL, NOT_FOUND, RATE_LIMITED
@@ -740,21 +737,15 @@ def test_profile_routes_require_login(client: TestClient, method: str, path: str
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def profile_service_for(session: Session) -> ProfileService:
-    profiles = ProfileRepository(session)
-    return get_profile_service(profiles, get_brasilapi_connector(), get_cnpja_connector())
-
-
 def test_profile_dependencies_reject_user_without_the_profile(session: Session):
     ana = add_user(session, "ana@example.com")
-    profile_service = profile_service_for(session)
 
     with pytest.raises(HTTPException) as farmer_error:
-        get_current_farmer(ana, profile_service)
+        get_current_farmer(ana)
     with pytest.raises(HTTPException) as apartment_error:
-        get_current_apartment(ana, profile_service)
+        get_current_apartment(ana)
     with pytest.raises(HTTPException) as buyer_error:
-        get_current_buyer(ana, profile_service)
+        get_current_buyer(ana)
 
     assert farmer_error.value.status_code == status.HTTP_403_FORBIDDEN
     assert apartment_error.value.status_code == status.HTTP_403_FORBIDDEN
@@ -765,7 +756,7 @@ def test_current_farmer_returns_the_farmer(session: Session):
     ana = add_user(session, "ana@example.com")
     add_farmer(session, ana)
 
-    farmer = get_current_farmer(ana, profile_service_for(session))
+    farmer = get_current_farmer(ana)
 
     assert farmer.user_id == ana.id
 
@@ -776,7 +767,7 @@ def test_current_apartment_returns_the_managers_building(session: Session):
     manager = add_user(session, "sindico@example.com")
     building = add_building(session, manager)
 
-    apartment = get_current_apartment(manager, profile_service_for(session))
+    apartment = get_current_apartment(manager)
 
     assert apartment.id == building.id
 
@@ -791,10 +782,9 @@ def test_current_buyer_requires_an_approved_link(
     building = add_building(session, add_user(session, "sindico@example.com"))
     ana = add_user(session, "ana@example.com")
     add_resident(session, building, ana, link_status=link_status)
-    profile_service = profile_service_for(session)
 
     with pytest.raises(HTTPException) as caught:
-        get_current_buyer(ana, profile_service)
+        get_current_buyer(ana)
 
     assert caught.value.status_code == status.HTTP_403_FORBIDDEN
     assert message in caught.value.detail
@@ -805,6 +795,6 @@ def test_current_buyer_returns_an_approved_buyer(session: Session):
     ana = add_user(session, "ana@example.com")
     resident = add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
 
-    buyer = get_current_buyer(ana, profile_service_for(session))
+    buyer = get_current_buyer(ana)
 
     assert buyer.id == resident.id

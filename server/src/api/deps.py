@@ -10,7 +10,7 @@ from src.connectors.cnpja import CnpjaConnector
 from src.core.db import engine
 from src.core.security import decode_access_token
 from src.models.apartment import Apartment
-from src.models.buyer import Buyer
+from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.user import User
 from src.repository.profile_repository import ProfileRepository
@@ -18,7 +18,6 @@ from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
 from src.services.cnpj_service import CnpjService
-from src.services.exceptions import LinkPendingError, LinkRejectedError, ProfileNotFoundError
 from src.services.profile_service import ProfileService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
@@ -105,42 +104,35 @@ def get_apartment_service(profiles: ProfileRepositoryDep) -> ApartmentService:
 ApartmentServiceDep = Annotated[ApartmentService, Depends(get_apartment_service)]
 
 
-def get_current_farmer(current_user: CurrentUser, profile_service: ProfileServiceDep) -> Farmer:
-    try:
-        return profile_service.get_farmer(current_user)
-    except ProfileNotFoundError:
-        message = "Acesso permitido apenas para agricultores"
-        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
+def get_current_farmer(current_user: CurrentUser) -> Farmer:
+    if current_user.farmer is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso permitido apenas para agricultores")
+    return current_user.farmer
 
 
 CurrentFarmer = Annotated[Farmer, Depends(get_current_farmer)]
 
 
-def get_current_apartment(
-    current_user: CurrentUser, profile_service: ProfileServiceDep
-) -> Apartment:
-    try:
-        return profile_service.get_apartment(current_user)
-    except ProfileNotFoundError:
-        message = "Acesso permitido apenas para síndicos"
-        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
+def get_current_apartment(current_user: CurrentUser) -> Apartment:
+    if current_user.apartment is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso permitido apenas para síndicos")
+    return current_user.apartment
 
 
 CurrentApartment = Annotated[Apartment, Depends(get_current_apartment)]
 
 
-def get_current_buyer(current_user: CurrentUser, profile_service: ProfileServiceDep) -> Buyer:
-    try:
-        return profile_service.get_approved_buyer(current_user)
-    except ProfileNotFoundError:
-        message = "Acesso permitido apenas para moradores"
-        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
-    except LinkPendingError:
+def get_current_buyer(current_user: CurrentUser) -> Buyer:
+    buyer = current_user.buyer
+    if buyer is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso permitido apenas para moradores")
+    if buyer.link_status == LinkStatus.PENDENTE:
         message = "Seu vínculo com o prédio está aguardando aprovação do síndico"
-        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
-    except LinkRejectedError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+    if buyer.link_status == LinkStatus.RECUSADO:
         message = "Seu vínculo com o prédio foi recusado pelo síndico"
-        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+    return buyer
 
 
 CurrentBuyer = Annotated[Buyer, Depends(get_current_buyer)]

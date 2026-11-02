@@ -36,18 +36,6 @@ class ProfileAlreadyExistsError(Exception):
     pass
 
 
-class ProfileNotFoundError(Exception):
-    pass
-
-
-class LinkPendingError(Exception):
-    pass
-
-
-class LinkRejectedError(Exception):
-    pass
-
-
 class ApartmentNotFoundError(Exception):
     pass
 

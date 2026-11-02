@@ -24,10 +24,7 @@ from src.services.exceptions import (
     CepWithoutCoordinatesError,
     CnpjAlreadyRegisteredError,
     FieldNotInProfileError,
-    LinkPendingError,
-    LinkRejectedError,
     ProfileAlreadyExistsError,
-    ProfileNotFoundError,
 )
 
 USER_FIELDS = ["name", "cellphone", "homephone"]
@@ -67,28 +64,6 @@ class ProfileService:
             profile.buyer = BuyerRead.model_validate(buyer)
 
         return profile
-
-    def get_farmer(self, user: User) -> Farmer:
-        farmer = self.profiles.get_farmer_of_user(user.id)
-        if farmer is None:
-            raise ProfileNotFoundError
-        return farmer
-
-    def get_apartment(self, user: User) -> Apartment:
-        apartment = self.profiles.get_apartment_of_manager(user.id)
-        if apartment is None:
-            raise ProfileNotFoundError
-        return apartment
-
-    def get_approved_buyer(self, user: User) -> Buyer:
-        buyer = self.profiles.get_buyer_of_user(user.id)
-        if buyer is None:
-            raise ProfileNotFoundError
-        if buyer.link_status == LinkStatus.PENDENTE:
-            raise LinkPendingError
-        if buyer.link_status != LinkStatus.APROVADO:
-            raise LinkRejectedError
-        return buyer
 
     def create_farmer(self, user: User, farmer_in: FarmerCreate) -> ProfileRead:
         self._lock_user_and_check_no_profile(user)
