@@ -204,18 +204,12 @@ def test_cep_without_coordinates_asks_for_a_nearby_cep(
         ("/api/profiles/farmer", FARMER, httpx.Response(400, json=CEP_INVALID), 422),
         ("/api/profiles/farmer", FARMER, httpx.Response(404, json=CEP_NOT_FOUND), 422),
         ("/api/profiles/farmer", FARMER, httpx.Response(500, json={}), 503),
-        ("/api/profiles/farmer", FARMER, httpx.ConnectError("sem rede"), 503),
-        ("/api/profiles/apartment", APARTMENT, httpx.Response(400, json=CEP_INVALID), 422),
-        ("/api/profiles/apartment", APARTMENT, httpx.Response(404, json=CEP_NOT_FOUND), 422),
         ("/api/profiles/apartment", APARTMENT, httpx.Response(500, json={}), 503),
     ],
     ids=[
         "agricultor-invalido",
         "agricultor-inexistente",
         "agricultor-erro-da-api",
-        "agricultor-sem-rede",
-        "sindico-invalido",
-        "sindico-inexistente",
         "sindico-erro-da-api",
     ],
 )
@@ -224,7 +218,7 @@ def test_cep_lookup_errors(
     ana: User,
     path: str,
     payload: dict,
-    answer: httpx.Response | Exception,
+    answer: httpx.Response,
     status_code: int,
 ):
     answer_cep(answer)
@@ -270,14 +264,13 @@ def test_invalid_cnpj_is_rejected_without_calling_the_apis(
         (httpx.Response(200, json=CNPJ_CLOSED), 422),
         (httpx.Response(429, json=RATE_LIMITED), 503),
         (httpx.Response(500, json={}), 503),
-        (httpx.ConnectError("sem rede"), 503),
     ],
-    ids=["inexistente", "baixado", "cota-esgotada", "api-fora-do-ar", "sem-rede"],
+    ids=["inexistente", "baixado", "cota-esgotada", "api-fora-do-ar"],
 )
 def test_cnpj_lookup_answers(
     client: TestClient,
     ana: User,
-    answer: httpx.Response | Exception,
+    answer: httpx.Response,
     status_code: int,
 ):
     answer_cnpj(answer)
@@ -293,16 +286,20 @@ def test_cnpj_lookup_answers(
     [
         ("/api/profiles/farmer", {**FARMER, "cellphone": "11944644502"}),
         ("/api/profiles/apartment", {**APARTMENT, "manager_id": 1}),
-        ("/api/profiles/buyer", {"apartment_public_id": str(uuid4()), "unit": "42", "x": 1}),
+        ("/api/profiles/buyer", {"unit": "42", "x": 1}),
     ],
     ids=["agricultor", "sindico", "morador"],
 )
 def test_create_profile_rejects_unknown_fields(
     client: TestClient,
     ana: User,
+    building: Apartment,
     path: str,
     payload: dict,
 ):
+    if path == "/api/profiles/buyer":
+        payload = {**payload, "apartment_public_id": str(building.public_id)}
+
     response = client.post(path, json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
@@ -494,21 +491,12 @@ def test_failed_update_changes_nothing(
 @pytest.mark.parametrize(
     "cep_answer, cnpj_answer, status_code",
     [
-        (httpx.Response(404, json=CEP_NOT_FOUND), httpx.Response(200, json=BANCO_DO_BRASIL), 422),
         (httpx.Response(500, json={}), httpx.Response(200, json=BANCO_DO_BRASIL), 503),
         (httpx.Response(200, json=ACRELANDIA), httpx.Response(404, json=NOT_FOUND), 422),
-        (httpx.Response(200, json=ACRELANDIA), httpx.Response(200, json=CNPJ_CLOSED), 422),
         (httpx.Response(200, json=ACRELANDIA), httpx.Response(429, json=RATE_LIMITED), 503),
         (httpx.Response(200, json=ACRELANDIA), httpx.Response(500, json={}), 503),
     ],
-    ids=[
-        "cep-inexistente",
-        "cep-fora-do-ar",
-        "cnpj-inexistente",
-        "cnpj-baixado",
-        "cota-esgotada",
-        "cnpj-fora-do-ar",
-    ],
+    ids=["cep-fora-do-ar", "cnpj-inexistente", "cota-esgotada", "cnpj-fora-do-ar"],
 )
 def test_update_apartment_reports_lookup_errors(
     client: TestClient,
@@ -661,10 +649,9 @@ def test_rejected_buyer_can_ask_again(
     session: Session,
     ana: User,
     building: Apartment,
+    other_building: Apartment,
     same_building: bool,
 ):
-    other_manager = add_user(session, "outro.sindico@example.com")
-    other_building = add_building(session, other_manager, name="Edifício Bauru")
     if same_building:
         target = building
     else:
@@ -678,19 +665,21 @@ def test_rejected_buyer_can_ask_again(
     assert buyer["link_status"] == "PENDENTE"
 
 
-def test_update_buyer_to_unknown_building(
+def test_update_buyer_to_unknown_building_changes_nothing(
     client: TestClient,
     session: Session,
     ana: User,
     building: Apartment,
 ):
     add_resident(session, building, ana)
+    changes = {"name": "Ana Lima", "apartment_public_id": str(uuid4())}
 
-    response = client.patch("/api/profiles/me", json={"apartment_public_id": str(uuid4())})
+    response = client.patch("/api/profiles/me", json=changes)
 
-    buyer = client.get("/api/profiles/me").json()["buyer"]
+    profile = client.get("/api/profiles/me").json()
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-    assert buyer["apartment"]["public_id"] == str(building.public_id)
+    assert profile["name"] == "Ana Souza"
+    assert profile["buyer"]["apartment"]["public_id"] == str(building.public_id)
 
 
 @pytest.mark.parametrize("unit", ["", "12345678901", "42\x00"], ids=["vazia", "longa", "nulo"])

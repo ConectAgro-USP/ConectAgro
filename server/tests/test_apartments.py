@@ -49,11 +49,9 @@ def test_manager_lists_residents_by_status(
     session: Session,
     manager: User,
     building: Apartment,
+    other_building: Apartment,
 ):
     bia = add_user(session, "bia@example.com", name="Bia Lima")
-    other_building = add_building(
-        session, add_user(session, "outro@example.com"), name="Edifício Bauru"
-    )
     pending = add_resident(session, building, bia, unit="11")
     caio = add_user(session, "caio@example.com", name="Caio Lima")
     add_resident(session, building, caio, unit="12", link_status=LinkStatus.APROVADO)
@@ -77,10 +75,8 @@ def test_manager_lists_every_resident_without_status(
     session: Session,
     manager: User,
     building: Apartment,
+    other_building: Apartment,
 ):
-    other_building = add_building(
-        session, add_user(session, "outro@example.com"), name="Edifício Bauru"
-    )
     add_resident(session, building, add_user(session, "bia@example.com"), unit="11")
     caio = add_user(session, "caio@example.com")
     add_resident(session, building, caio, unit="12", link_status=LinkStatus.APROVADO)
@@ -199,11 +195,9 @@ def test_manager_cannot_review_resident_of_another_building(
     client: TestClient,
     session: Session,
     manager: User,
+    other_building: Apartment,
     action: str,
 ):
-    other_building = add_building(
-        session, add_user(session, "outro@example.com"), name="Edifício Bauru"
-    )
     resident = add_resident(session, other_building, add_user(session, "duda@example.com"))
     login(client, manager)
 
