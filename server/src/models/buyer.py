@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
@@ -25,6 +25,7 @@ class Buyer(SQLModel, table=True):
     apartment_id: int | None = Field(
         default=None,
         foreign_key="apartments.id",
+        index=True,
     )
 
     user_id: int = Field(foreign_key="users.id", unique=True)
@@ -32,6 +33,9 @@ class Buyer(SQLModel, table=True):
     block: str | None = None
     unit: str = Field(min_length=1, max_length=10)
     link_status: LinkStatus = Field(default=LinkStatus.PENDENTE)
+    link_requested_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
+    )
     link_reviewed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
     user: "User" = Relationship(back_populates="buyer")

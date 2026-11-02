@@ -21,7 +21,7 @@ class BrasilApiConnector:
         self.timeout = timeout
 
     def get_address(self, cep: str) -> Address:
-        digits = _normalize_cep(cep)
+        digits = normalize_cep(cep)
         status, body = get_json(self.client, f"{self.base_url}/cep/v2/{digits}", self.timeout)
         if status != 200:
             error_type = _STATUS_ERRORS.get(status, ExternalServiceError)
@@ -32,7 +32,7 @@ class BrasilApiConnector:
             raise ExternalServiceError("resposta inesperada da BrasilAPI") from exc
 
 
-def _normalize_cep(cep: str) -> str:
+def normalize_cep(cep: str) -> str:
     match = _CEP.fullmatch(cep.strip())
     if match is None:
         raise InvalidCepError(cep)

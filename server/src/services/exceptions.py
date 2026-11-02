@@ -26,3 +26,19 @@ class CepWithoutCoordinatesError(Exception):
 
 class CnpjNotActiveError(Exception):
     pass
+
+
+class ProfileAlreadyExistsError(Exception):
+    pass
+
+
+class ApartmentNotFoundError(Exception):
+    pass
+
+
+class ResidentNotFoundError(Exception):
+    pass
+
+
+class FieldNotInProfileError(Exception):
+    pass

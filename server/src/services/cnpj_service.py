@@ -1,35 +1,20 @@
 import re
 
-from pydantic import BaseModel
-
 from src.connectors.cnpja import TAX_ID_PATTERN, CnpjaConnector
-from src.connectors.models import Company
-from src.services.exceptions import CnpjNotActiveError, ExternalServiceError, InvalidCnpjError
+from src.services.exceptions import CnpjNotActiveError, InvalidCnpjError
 
 NON_ALPHANUMERIC = re.compile(r"[^A-Za-z0-9]")
 WEIGHTS = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-
-
-class CnpjValidation(BaseModel):
-    tax_id: str
-    # None quando a consulta à CNPJá falhou, e o cadastro segue com aviso
-    company: Company | None = None
 
 
 class CnpjService:
     def __init__(self, companies: CnpjaConnector):
         self.companies = companies
 
-    def validate(self, cnpj: str) -> CnpjValidation:
-        tax_id = normalize_cnpj(cnpj)
-        # RateLimitedError propaga, pois quem esgota a cota de propósito pularia a conferência
-        try:
-            company = self.companies.get_company(tax_id)
-        except ExternalServiceError:
-            return CnpjValidation(tax_id=tax_id)
+    def validate(self, cnpj: str) -> None:
+        company = self.companies.get_company(normalize_cnpj(cnpj))
         if company.registration_status != "Ativa":
             raise CnpjNotActiveError(company.registration_status)
-        return CnpjValidation(tax_id=tax_id, company=company)
 
 
 def normalize_cnpj(cnpj: str) -> str:

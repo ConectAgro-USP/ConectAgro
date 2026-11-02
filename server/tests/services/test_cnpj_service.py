@@ -4,7 +4,7 @@ import pytest
 
 from src.connectors.cnpja import CnpjaConnector
 from src.connectors.models import Company
-from src.services.cnpj_service import CnpjService, CnpjValidation, normalize_cnpj
+from src.services.cnpj_service import CnpjService, normalize_cnpj
 from src.services.exceptions import (
     CnpjNotActiveError,
     CnpjNotFoundError,
@@ -22,19 +22,12 @@ def fake_service(answer: Company | Exception) -> tuple[CnpjService, NonCallableM
     return CnpjService(companies), companies
 
 
-def test_validate_returns_the_normalized_cnpj_and_the_company():
+def test_validate_looks_up_the_normalized_cnpj():
     service, companies = fake_service(BANCO_DO_BRASIL)
 
-    validation = service.validate("00.000.000/0001-91")
+    service.validate("00.000.000/0001-91")
 
-    assert validation == CnpjValidation(tax_id="00000000000191", company=BANCO_DO_BRASIL)
     companies.get_company.assert_called_once_with("00000000000191")
-
-
-def test_validate_accepts_the_cnpj_without_company_when_the_api_fails():
-    service, _ = fake_service(ExternalServiceError("prazo"))
-
-    assert service.validate("00.000.000/0001-91") == CnpjValidation(tax_id="00000000000191")
 
 
 def test_validate_rejects_company_that_is_not_active():
@@ -44,8 +37,10 @@ def test_validate_rejects_company_that_is_not_active():
         service.validate("00000000000191")
 
 
-@pytest.mark.parametrize("error", [InvalidCnpjError, CnpjNotFoundError, RateLimitedError])
-def test_validate_propagates_invalid_not_found_and_rate_limit_errors(error: type[Exception]):
+@pytest.mark.parametrize(
+    "error", [InvalidCnpjError, CnpjNotFoundError, RateLimitedError, ExternalServiceError]
+)
+def test_validate_propagates_the_connector_errors(error: type[Exception]):
     service, _ = fake_service(error("00000000000191"))
 
     with pytest.raises(error):

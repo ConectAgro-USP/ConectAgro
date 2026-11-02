@@ -6,11 +6,17 @@ from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 from src.services.phone_service import validate_cellphone, validate_homephone
+from src.services.text_service import reject_null_character
 
 NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
-PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
-CellPhone = Annotated[str, AfterValidator(validate_cellphone)]
-HomePhone = Annotated[str, AfterValidator(validate_homephone)]
+PersonName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=2, max_length=100),
+    AfterValidator(reject_null_character),
+]
+# o limite vem antes da validação, para um texto enorme não custar caro
+CellPhone = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_cellphone)]
+HomePhone = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_homephone)]
 
 if TYPE_CHECKING:
     from .apartment import Apartment
