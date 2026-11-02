@@ -637,20 +637,22 @@ def test_buyer_keeps_the_approval_when_resending_the_same_link(
     assert response.json()["buyer"]["link_status"] == "APROVADO"
 
 
-def test_buyer_keeps_the_approval_when_editing_contact_data(
+@pytest.mark.parametrize("link_status", [LinkStatus.APROVADO, LinkStatus.RECUSADO])
+def test_buyer_keeps_the_link_status_when_editing_contact_data(
     client: TestClient,
     session: Session,
     ana: User,
     building: Apartment,
+    link_status: LinkStatus,
 ):
-    add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
+    add_resident(session, building, ana, link_status=link_status)
 
     response = client.patch(
         "/api/profiles/me", json={"name": "Ana Lima", "cellphone": "11944644502"}
     )
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["buyer"]["link_status"] == "APROVADO"
+    assert response.json()["buyer"]["link_status"] == link_status
 
 
 @pytest.mark.parametrize("same_building", [True, False], ids=["mesmo-predio", "outro-predio"])
