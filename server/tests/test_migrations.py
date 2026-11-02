@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
@@ -67,6 +68,34 @@ def test_upgrade_lowercases_emails_except_case_collisions(db_url: str) -> None:
     engine.dispose()
 
     assert stored == ["Cintia@Gmail.com", "CINTIA@Gmail.com", "bia@gmail.com"]
+
+
+def test_upgrade_fills_link_requested_at_of_existing_buyers(db_url: str) -> None:
+    command.upgrade(alembic_config(), "3d12241f5496")
+    engine = create_engine(db_url)
+    with engine.begin() as connection:
+        # SQL cru: o model Buyer já tem as colunas do head
+        connection.execute(
+            text(
+                "INSERT INTO users (email, name, created_at) "
+                "VALUES ('ana@example.com', 'Ana', CURRENT_TIMESTAMP)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO buyers (public_id, user_id, unit, link_status) "
+                "VALUES (:public_id, 1, '42', 'PENDENTE')"
+            ),
+            {"public_id": uuid4().hex},
+        )
+
+    command.upgrade(alembic_config(), "head")
+
+    with engine.connect() as connection:
+        requested_at = connection.execute(text("SELECT link_requested_at FROM buyers")).scalar()
+    engine.dispose()
+
+    assert requested_at is not None
 
 
 @pytest.mark.parametrize("table", ["users", "products"])
