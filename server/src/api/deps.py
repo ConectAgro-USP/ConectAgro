@@ -129,7 +129,7 @@ def get_current_buyer(current_user: CurrentUser) -> Buyer:
     if buyer.link_status == LinkStatus.PENDENTE:
         message = "Seu vínculo com o prédio está aguardando aprovação do síndico"
         raise HTTPException(status.HTTP_403_FORBIDDEN, message)
-    if buyer.link_status == LinkStatus.RECUSADO:
+    if buyer.link_status != LinkStatus.APROVADO:
         message = "Seu vínculo com o prédio foi recusado pelo síndico"
         raise HTTPException(status.HTTP_403_FORBIDDEN, message)
     return buyer
