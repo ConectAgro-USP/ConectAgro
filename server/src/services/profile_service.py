@@ -141,6 +141,7 @@ class ProfileService:
             apartment.building_cnpj = new_cnpj
 
     def _update_buyer(self, buyer: Buyer, new_values: dict) -> None:
+        self.profiles.lock_and_reload(buyer)
         link_before = (buyer.apartment_id, buyer.block, buyer.unit)
         if "apartment_public_id" in new_values:
             buyer.apartment_id = self._find_apartment(new_values["apartment_public_id"]).id

@@ -26,7 +26,7 @@ class ApartmentService:
     def _review_resident(
         self, apartment: Apartment, resident_public_id: UUID, new_status: LinkStatus
     ) -> Buyer:
-        resident = self.profiles.get_buyer_of_apartment(resident_public_id, apartment.id)
+        resident = self.profiles.lock_buyer_of_apartment(resident_public_id, apartment.id)
         if resident is None:
             raise ResidentNotFoundError
 

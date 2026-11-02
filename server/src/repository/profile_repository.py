@@ -29,10 +29,11 @@ class ProfileRepository:
         statement = statement.order_by(Buyer.link_requested_at, Buyer.id)
         return list(self.session.exec(statement).all())
 
-    def get_buyer_of_apartment(self, public_id: UUID, apartment_id: int) -> Buyer | None:
+    def lock_buyer_of_apartment(self, public_id: UUID, apartment_id: int) -> Buyer | None:
         statement = select(Buyer).where(
             Buyer.public_id == public_id, Buyer.apartment_id == apartment_id
         )
+        statement = statement.with_for_update()
         return self.session.exec(statement).first()
 
     def lock_and_reload(self, item: SQLModel) -> None:

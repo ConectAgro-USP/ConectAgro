@@ -69,3 +69,9 @@ def manager(session: Session) -> User:
 @pytest.fixture()
 def building(session: Session, manager: User) -> Apartment:
     return add_building(session, manager)
+
+
+@pytest.fixture()
+def other_building(session: Session) -> Apartment:
+    other_manager = add_user(session, "outro@example.com")
+    return add_building(session, other_manager, name="Edifício Bauru")
