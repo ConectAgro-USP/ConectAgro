@@ -6,9 +6,14 @@ from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 from src.services.phone_service import validate_cellphone, validate_homephone
+from src.services.text_service import reject_null_character
 
 NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
-PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
+PersonName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=2, max_length=100),
+    AfterValidator(reject_null_character),
+]
 CellPhone = Annotated[str, AfterValidator(validate_cellphone)]
 HomePhone = Annotated[str, AfterValidator(validate_homephone)]
 
