@@ -158,6 +158,24 @@ def test_user_with_profile_cannot_create_another(
     assert cnpj_requests == []
 
 
+def test_profile_created_meanwhile_by_another_request_returns_409(
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
+):
+    def create_buyer_during_the_cep_lookup(request: httpx.Request) -> httpx.Response:
+        add_resident(session, building, ana)
+        return httpx.Response(200, json=PAULISTA)
+
+    answer_cep(create_buyer_during_the_cep_lookup)
+
+    response = client.post("/api/profiles/farmer", json=FARMER)
+
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert client.get("/api/profiles/me").json()["profile_type"] == "buyer"
+
+
 @pytest.mark.parametrize(
     "path, payload",
     [("/api/profiles/farmer", FARMER), ("/api/profiles/apartment", APARTMENT)],

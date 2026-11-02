@@ -14,7 +14,7 @@ from src.models.profile import (
     ProfileUpdate,
 )
 from src.models.user import User
-from src.repository.profile_repository import DuplicateProfileError, ProfileRepository
+from src.repository.profile_repository import ProfileRepository
 from src.services.cnpj_service import CnpjService, normalize_cnpj
 from src.services.exceptions import (
     ApartmentNotFoundError,
@@ -163,11 +163,10 @@ class ProfileService:
             raise ProfileAlreadyExistsError
 
     def _save_new_profile(self, user: User, profile: Profile) -> ProfileRead:
+        self.profiles.lock_and_reload(user)
+        self._check_user_has_no_profile(user)
         self.profiles.add(profile)
-        try:
-            self.profiles.commit()
-        except DuplicateProfileError:
-            raise ProfileAlreadyExistsError from None
+        self.profiles.commit()
         return self.get_profile(user)
 
     def _check_zip_code(self, zip_code: str) -> str:

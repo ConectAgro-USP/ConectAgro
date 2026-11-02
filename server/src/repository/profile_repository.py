@@ -1,15 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, SQLModel, select
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
-
-
-class DuplicateProfileError(Exception):
-    pass
 
 
 class ProfileRepository:
@@ -40,12 +35,13 @@ class ProfileRepository:
         )
         return self.session.exec(statement).first()
 
+    def lock_and_reload(self, item: SQLModel) -> None:
+        # o refresh descarta mudanças pendentes, por isso elas são gravadas antes
+        self.session.flush()
+        self.session.refresh(item, with_for_update=True)
+
     def add(self, item: SQLModel) -> None:
         self.session.add(item)
 
     def commit(self) -> None:
-        try:
-            self.session.commit()
-        except IntegrityError:
-            self.session.rollback()
-            raise DuplicateProfileError from None
+        self.session.commit()

@@ -8,6 +8,8 @@ def fake_client(response, **client_options) -> tuple[httpx.Client, list[httpx.Re
         requests.append(request)
         if isinstance(response, Exception):
             raise response
+        if callable(response):
+            return response(request)
         return response
 
     # sem timeout no client, as asserções de timeout só passam se o connector definir o seu
