@@ -17,7 +17,10 @@ class Apartment(SQLModel, table=True):
 
     zip_code: str
     building_name: str
-    building_cnpj: str
+    # sem unique: quem cadastrasse o CNPJ antes trancaria o síndico de verdade
+    building_cnpj: str = Field(index=True)
+    # None nos prédios antigos e quando a CNPJá não traz o endereço
+    address: str | None = None
 
     manager_id: int = Field(foreign_key="users.id", unique=True)
     
