@@ -1,17 +1,15 @@
 import { createContext, useContext } from "react";
+import type { LinkStatus, ProfileRead, ProfileType } from "../api/profiles";
 
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  picture_url: string | null;
-}
-
-interface AuthContextValue {
-  user: User | null;
+export interface AuthContextValue {
+  user: ProfileRead | null;
+  profileType: ProfileType | null;
+  linkStatus: LinkStatus | null;
   loading: boolean;
   sessionError: boolean;
-  login: () => void;
+  loginWithGoogle: () => void;
+  refreshUser: () => Promise<void>;
+  saveProfile: (request: Promise<ProfileRead>) => Promise<void>;
   logout: () => Promise<void>;
 }
 
