@@ -74,10 +74,8 @@ def buyer(session: Session, apartment: Apartment) -> Buyer:
 
 
 @pytest.fixture
-def purchase(session: Session, apartment: Apartment, farmer: Farmer) -> Purchase:
-    purchase = Purchase(
-        apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE
-    )
+def purchase(session: Session, apartment: Apartment) -> Purchase:
+    purchase = Purchase(apartment=apartment, expected_delivery_date=FUTURE)
     session.add(purchase)
     session.commit()
     return purchase
@@ -259,9 +257,7 @@ def test_buyer_cannot_review_same_purchase_twice(
 def test_apartment_can_review_different_purchases(
     session: Session, apartment: Apartment, farmer: Farmer, purchase: Purchase
 ):
-    purchase2 = Purchase(
-        apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE
-    )
+    purchase2 = Purchase(apartment=apartment, expected_delivery_date=FUTURE)
     session.add(purchase2)
     session.commit()
 
@@ -281,9 +277,7 @@ def test_buyer_can_review_different_purchases(
     farmer: Farmer,
     purchase: Purchase,
 ):
-    purchase2 = Purchase(
-        apartment=apartment, farmer=farmer, expected_delivery_date=FUTURE
-    )
+    purchase2 = Purchase(apartment=apartment, expected_delivery_date=FUTURE)
     session.add(purchase2)
     session.commit()
 

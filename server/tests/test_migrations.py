@@ -121,3 +121,17 @@ def test_migrations_accept_percent_encoded_password(
     command.upgrade(alembic_config(), "head", sql=True)
 
     assert "CREATE TABLE users" in capsys.readouterr().out
+
+
+def test_purchase_parts_migration_on_postgres(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://u:p@localhost/db")
+
+    command.upgrade(alembic_config(), "165a46c43d78:e0ed8ac0498c", sql=True)
+
+    sql = capsys.readouterr().out
+    assert "CREATE TYPE purchasestatus" not in sql
+    assert "status purchasestatus NOT NULL" in sql
+    assert "PRIMARY KEY (purchase_part_id, product_id)" in sql
+    assert "closed_at TIMESTAMP WITH TIME ZONE" in sql

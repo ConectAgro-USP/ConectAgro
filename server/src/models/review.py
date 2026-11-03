@@ -102,12 +102,12 @@ class Review(ReviewBase, table=True):
         return self.buyer.public_id if self.buyer else None
 
     @property
-    def farmer_public_id(self) -> UUID:
-        return self.farmer.public_id
+    def farmer_public_id(self) -> UUID | None:
+        return self.farmer.public_id if self.farmer else None
 
     @property
-    def purchase_public_id(self) -> UUID:
-        return self.purchase.public_id
+    def purchase_public_id(self) -> UUID | None:
+        return self.purchase.public_id if self.purchase else None
 
 
 class ReviewCreate(ReviewBase):
