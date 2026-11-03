@@ -73,7 +73,7 @@ def product(session: Session, farmer: Farmer) -> Product:
         quantity=10,
         price=Decimal("2.50"),
         expiration_date=FUTURE,
-        farmer_id=farmer.user_id,
+        farmer_id=farmer.id,
     )
     session.add(product)
     session.commit()
@@ -104,64 +104,44 @@ def test_purchase_starts_in_progress_with_generated_fields(purchase: Purchase):
     assert purchase.closed_at is None
 
 
-def test_purchase_links_apartment_and_farmer(
-    session: Session, purchase: Purchase, apartment: Apartment, farmer: Farmer
+def test_purchase_links_apartment_and_part_links_farmer(
+    purchase: Purchase, purchase_part: PurchasePart, apartment: Apartment, farmer: Farmer
 ):
-    part = PurchasePart(purchase_id=purchase.id, farmer_id=farmer.id)
-    session.add(part)
-    session.commit()
-    session.refresh(apartment)
-    session.refresh(farmer)
-
     assert apartment.purchases == [purchase]
-    assert farmer.purchase_parts == [part]
+    assert farmer.purchase_parts == [purchase_part]
 
 
-def test_purchase_part_uniqueness_constraint(
+@pytest.mark.usefixtures("purchase_part")
+def test_purchase_part_table_rejects_duplicated_farmer(
     session: Session, purchase: Purchase, farmer: Farmer
 ):
-    part1 = PurchasePart(purchase_id=purchase.id, farmer_id=farmer.id)
-    session.add(part1)
-    session.commit()
-
-    part2 = PurchasePart(purchase_id=purchase.id, farmer_id=farmer.id)
-    session.add(part2)
+    session.add(PurchasePart(purchase_id=purchase.id, farmer_id=farmer.id))
 
     with pytest.raises(IntegrityError):
         session.commit()
 
 
-def test_purchase_accepts_multiple_products(
+def test_purchase_part_accepts_multiple_products(
     session: Session, purchase_part: PurchasePart, product: Product, farmer: Farmer
 ):
     other_product = Product(
-        name="Tomate",
-        quantity=5,
-        price=Decimal("4.00"),
-        expiration_date=FUTURE,
-        farmer_id=farmer.user_id,
+        name="Tomate", quantity=5, price=Decimal("4.00"), expiration_date=FUTURE, farmer=farmer
     )
     session.add(other_product)
-    session.commit()
-
     session.add_all(
         [
             PurchaseProduct(
-                purchase_part_id=purchase_part.id,
-                product_id=product.id,
-                quantity=2,
-                unit_price=product.price,
+                purchase_part=purchase_part, product=product, quantity=2, unit_price=product.price
             ),
             PurchaseProduct(
-                purchase_part_id=purchase_part.id,
-                product_id=other_product.id,
+                purchase_part=purchase_part,
+                product=other_product,
                 quantity=1,
                 unit_price=other_product.price,
             ),
         ]
     )
     session.commit()
-    session.refresh(purchase_part)
 
     assert len(purchase_part.purchase_products) == 2
 
@@ -169,19 +149,17 @@ def test_purchase_accepts_multiple_products(
 def test_purchase_product_keeps_unit_price_when_product_price_changes(
     session: Session, purchase_part: PurchasePart, product: Product
 ):
-    item = PurchaseProduct(
-        purchase_part_id=purchase_part.id,
-        product_id=product.id,
-        quantity=2,
-        unit_price=product.price,
+    session.add(
+        PurchaseProduct(
+            purchase_part=purchase_part, product=product, quantity=2, unit_price=product.price
+        )
     )
-    session.add(item)
     session.commit()
 
     product.price = Decimal("9.99")
     session.commit()
 
-    session.refresh(item)
+    item = purchase_part.purchase_products[0]
     assert item.unit_price == Decimal("2.50")
     assert item.product.price == Decimal("9.99")
 
@@ -192,19 +170,14 @@ def test_purchase_product_table_rejects_duplicated_product(
     session.add_all(
         [
             PurchaseProduct(
-                purchase_part_id=purchase_part.id,
-                product_id=product.id,
-                quantity=1,
-                unit_price=product.price,
+                purchase_part=purchase_part, product=product, quantity=1, unit_price=product.price
             ),
             PurchaseProduct(
-                purchase_part_id=purchase_part.id,
-                product_id=product.id,
-                quantity=2,
-                unit_price=product.price,
+                purchase_part=purchase_part, product=product, quantity=2, unit_price=product.price
             ),
         ]
     )
+
     with pytest.raises(IntegrityError):
         session.commit()
 
@@ -212,13 +185,11 @@ def test_purchase_product_table_rejects_duplicated_product(
 def test_deleting_purchase_deletes_its_parts_and_products(
     session: Session, purchase: Purchase, purchase_part: PurchasePart, product: Product
 ):
-    item = PurchaseProduct(
-        purchase_part_id=purchase_part.id,
-        product_id=product.id,
-        quantity=1,
-        unit_price=product.price,
+    session.add(
+        PurchaseProduct(
+            purchase_part=purchase_part, product=product, quantity=1, unit_price=product.price
+        )
     )
-    session.add(item)
     session.commit()
 
     session.delete(purchase)
@@ -229,15 +200,20 @@ def test_deleting_purchase_deletes_its_parts_and_products(
     assert session.get(Product, product.id) is not None
 
 
-def test_purchase_part_status_validation():
-    with pytest.raises(ValidationError):
-        PurchasePart.model_validate(
-            {
-                "purchase_id": 1,
-                "farmer_id": 2,
-                "status": "PENDENTE",
-            }
-        )
+def test_purchase_part_status_round_trips_as_enum(
+    session: Session, purchase_part: PurchasePart
+):
+    purchase_part.status = PurchaseStatus.ENTREGUE
+    session.commit()
+
+    assert purchase_part.status is PurchaseStatus.ENTREGUE
+
+
+def test_purchase_part_model_validate_rejects_unknown_status():
+    with pytest.raises(ValidationError) as exc_info:
+        PurchasePart.model_validate({"purchase_id": 1, "farmer_id": 1, "status": "PENDENTE"})
+
+    assert exc_info.value.errors()[0]["loc"] == ("status",)
 
 
 @pytest.mark.parametrize("field, value", [("quantity", 0), ("unit_price", "-5.00")])
@@ -251,7 +227,7 @@ def test_purchase_product_model_validate_rejects_invalid_field(field: str, value
 
 
 @pytest.mark.parametrize(
-    "part_statuses, expected_status",
+    "part_statuses, expected",
     [
         ([PurchaseStatus.ENTREGUE, PurchaseStatus.ENTREGUE], PurchaseStatus.ENTREGUE),
         ([PurchaseStatus.CANCELADA, PurchaseStatus.CANCELADA], PurchaseStatus.CANCELADA),
@@ -259,54 +235,44 @@ def test_purchase_product_model_validate_rejects_invalid_field(field: str, value
         ([PurchaseStatus.EM_PROGRESSO, PurchaseStatus.ENTREGUE], PurchaseStatus.EM_PROGRESSO),
     ],
 )
-def test_purchase_status_derivation(
+def test_purchase_status_comes_from_its_parts(
+    part_statuses: list[PurchaseStatus], expected: PurchaseStatus
+):
+    parts = [PurchasePart(status=status) for status in part_statuses]
+    purchase = Purchase(expected_delivery_date=FUTURE, purchase_parts=parts)
+
+    assert purchase.status is expected
+
+
+def test_purchase_read_exposes_public_ids_and_purchase_parts(
     session: Session,
+    purchase: Purchase,
+    purchase_part: PurchasePart,
     apartment: Apartment,
     farmer: Farmer,
-    part_statuses: list[PurchaseStatus],
-    expected_status: PurchaseStatus,
+    product: Product,
 ):
-    purchase = Purchase(apartment_id=apartment.id, expected_delivery_date=FUTURE)
-    session.add(purchase)
-    session.commit()
-
-    for i, status in enumerate(part_statuses, start=1):
-        u = User(email=f"farmer{i}@example.com", name=f"Farmer {i}", cellphone="11900000000")
-        session.add(u)
-        session.commit()
-        f = Farmer(user_id=u.id, zip_code="01000-000")
-        session.add(f)
-        session.commit()
-
-        part = PurchasePart(purchase_id=purchase.id, farmer_id=f.id, status=status)
-        session.add(part)
-
-    session.commit()
-    session.refresh(purchase)
-
-    assert purchase.status == expected_status
-
-
-def test_purchase_read_exposes_public_ids_and_purchase_products(
-    session: Session, purchase: Purchase, apartment: Apartment, farmer: Farmer, product: Product
-):
-    part = PurchasePart(purchase_id=purchase.id, farmer_id=farmer.id)
-    session.add(part)
-    session.commit()
-
-    item = PurchaseProduct(
-        purchase_part_id=part.id, product_id=product.id, quantity=3, unit_price=product.price
+    session.add(
+        PurchaseProduct(
+            purchase_part=purchase_part, product=product, quantity=3, unit_price=product.price
+        )
     )
-    session.add(item)
     session.commit()
 
-    session.refresh(purchase)
     read = PurchaseRead.model_validate(purchase)
 
     assert read.public_id == purchase.public_id
     assert read.apartment_public_id == apartment.public_id
     assert len(read.purchase_parts) == 1
-    assert read.purchase_parts[0].farmer_public_id == farmer.public_id
-    assert [item.product_public_id for item in read.purchase_parts[0].purchase_products] == [
-        product.public_id
-    ]
+    part = read.purchase_parts[0]
+    assert part.farmer_public_id == farmer.public_id
+    assert part.status is PurchaseStatus.EM_PROGRESSO
+    assert [item.product_public_id for item in part.purchase_products] == [product.public_id]
+
+
+def test_purchase_read_hides_internal_ids(purchase: Purchase, purchase_part: PurchasePart):
+    data = PurchaseRead.model_validate(purchase).model_dump()
+
+    assert "id" not in data
+    assert "id" not in data["purchase_parts"][0]
+    assert "farmer_id" not in data["purchase_parts"][0]
