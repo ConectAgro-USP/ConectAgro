@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .farmer import Farmer
     from .product import Product
 
+
 class PurchaseStatus(StrEnum):
     EM_PROGRESSO = "EM PROGRESSO"
     ENTREGUE = "ENTREGUE"
@@ -27,7 +28,7 @@ class PurchaseBase(SQLModel):
 class Purchase(PurchaseBase, table=True):
     __tablename__ = "purchases"
 
-    id : int | None = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
 
     created_at: datetime = Field(
@@ -38,45 +39,38 @@ class Purchase(PurchaseBase, table=True):
     apartment_id: int = Field(foreign_key="apartments.id", index=True)
 
     apartment: Optional["Apartment"] = Relationship(back_populates="purchases")
-
     purchase_parts: list["PurchasePart"] = Relationship(
         back_populates="purchase", cascade_delete=True
     )
 
     @property
     def status(self) -> PurchaseStatus:
-        if not self.purchase_parts:
-            return PurchaseStatus.EM_PROGRESSO
-
         statuses = {part.status for part in self.purchase_parts}
-
         if statuses == {PurchaseStatus.ENTREGUE}:
             return PurchaseStatus.ENTREGUE
-        elif statuses == {PurchaseStatus.CANCELADA}:
+        if statuses == {PurchaseStatus.CANCELADA}:
             return PurchaseStatus.CANCELADA
-        else:
-            return PurchaseStatus.EM_PROGRESSO
-        
+        return PurchaseStatus.EM_PROGRESSO
+
     @property
     def apartment_public_id(self) -> UUID | None:
         return self.apartment.public_id if self.apartment else None
+
 
 class PurchasePart(SQLModel, table=True):
     __tablename__ = "purchase_parts"
     __table_args__ = (
         UniqueConstraint("purchase_id", "farmer_id", name="uq_purchase_parts_purchase_farmer"),
     )
-    id : int | None = Field(default=None, primary_key=True)
+
+    id: int | None = Field(default=None, primary_key=True)
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
 
-    purchase_id: int = Field(foreign_key="purchases.id", index=True)
+    purchase_id: int = Field(foreign_key="purchases.id")
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
-    
-    status : PurchaseStatus = Field(default=PurchaseStatus.EM_PROGRESSO)
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
-    )
-    closed_at: datetime | None = None
+
+    status: PurchaseStatus = PurchaseStatus.EM_PROGRESSO
+    closed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
     purchase: Optional["Purchase"] = Relationship(back_populates="purchase_parts")
     farmer: Optional["Farmer"] = Relationship(back_populates="purchase_parts")
@@ -85,8 +79,9 @@ class PurchasePart(SQLModel, table=True):
     )
 
     @property
-    def farmer_public_id(self) -> UUID:
+    def farmer_public_id(self) -> UUID | None:
         return self.farmer.public_id if self.farmer else None
+
 
 class PurchaseProductBase(SQLModel):
     quantity: int = Field(gt=0, le=INT4_MAX)
@@ -96,26 +91,27 @@ class PurchaseProductBase(SQLModel):
 class PurchaseProduct(PurchaseProductBase, table=True):
     __tablename__ = "purchase_products"
 
-    purchase_part_id: int = Field(foreign_key="purchase_parts.id", primary_key=True, index=True)
+    purchase_part_id: int = Field(foreign_key="purchase_parts.id", primary_key=True)
     product_id: int = Field(foreign_key="products.id", primary_key=True, index=True)
 
     purchase_part: Optional["PurchasePart"] = Relationship(back_populates="purchase_products")
     product: Optional["Product"] = Relationship()
 
     @property
-    def product_public_id(self) -> UUID:
+    def product_public_id(self) -> UUID | None:
         return self.product.public_id if self.product else None
+
 
 class PurchaseProductRead(PurchaseProductBase):
     product_public_id: UUID
+
 
 class PurchasePartRead(SQLModel):
     public_id: UUID
     farmer_public_id: UUID
     status: PurchaseStatus
-    created_at: datetime
     closed_at: datetime | None
-    purchase_products: list[PurchaseProductRead] = []
+    purchase_products: list[PurchaseProductRead]
 
 
 class PurchaseRead(PurchaseBase):
@@ -124,4 +120,4 @@ class PurchaseRead(PurchaseBase):
     status: PurchaseStatus
     created_at: datetime
     closed_at: datetime | None
-    purchase_parts: list[PurchasePartRead] = []
+    purchase_parts: list[PurchasePartRead]

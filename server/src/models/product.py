@@ -48,7 +48,7 @@ class Product(ProductBase, table=True):
     interests: list["Interest"] = Relationship(back_populates="product", cascade_delete=True)
 
     @property
-    def farmer_public_id(self) -> UUID:
+    def farmer_public_id(self) -> UUID | None:
         return self.farmer.public_id if self.farmer else None
 
 
