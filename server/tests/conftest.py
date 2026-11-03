@@ -19,7 +19,7 @@ from src.api.deps import get_session
 from src.main import app
 from src.models.apartment import Apartment
 from src.models.user import User
-from tests.helpers import add_building, add_user, login
+from tests.helpers import ITAU_CNPJ, add_building, add_user, login
 
 engine_test = create_engine(
     "sqlite://",
@@ -74,4 +74,4 @@ def building(session: Session, manager: User) -> Apartment:
 @pytest.fixture
 def other_building(session: Session) -> Apartment:
     other_manager = add_user(session, "outro@example.com")
-    return add_building(session, other_manager, name="Edifício Bauru")
+    return add_building(session, other_manager, name="Edifício Bauru", cnpj=ITAU_CNPJ)

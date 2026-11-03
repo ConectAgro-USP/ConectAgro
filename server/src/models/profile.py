@@ -9,14 +9,14 @@ from sqlmodel import Field, SQLModel
 from src.services.text_service import reject_null_character
 
 from .buyer import LinkStatus
-from .user import CellPhone, HomePhone, PersonName
+from .user import CellPhone, Cpf, HomePhone, PersonName
 
 # só limitam o tamanho; o formato do CEP e do CNPJ é conferido depois
 ZipCode = Annotated[str, StringConstraints(strip_whitespace=True, max_length=9)]
 Cnpj = Annotated[str, StringConstraints(strip_whitespace=True, max_length=20)]
-BuildingName = Annotated[
+FarmName = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=2, max_length=100),
+    StringConstraints(strip_whitespace=True, min_length=2, max_length=150),
     AfterValidator(reject_null_character),
 ]
 Block = Annotated[
@@ -38,24 +38,25 @@ class ProfileType(StrEnum):
     BUYER = "buyer"
 
 
-class FarmerCreate(SQLModel):
+class ProfileCreate(SQLModel):
     model_config = FORBID_UNKNOWN_FIELDS
 
+    cpf: Cpf
+    cellphone: CellPhone
+    homephone: HomePhone | None = None
+
+
+class FarmerCreate(ProfileCreate):
+    farm_name: FarmName
     zip_code: ZipCode
 
 
-class ApartmentCreate(SQLModel):
-    model_config = FORBID_UNKNOWN_FIELDS
-
-    building_name: BuildingName
-    zip_code: ZipCode
-    manager_name: PersonName
+class ApartmentCreate(ProfileCreate):
     building_cnpj: Cnpj
+    zip_code: ZipCode
 
 
-class BuyerCreate(SQLModel):
-    model_config = FORBID_UNKNOWN_FIELDS
-
+class BuyerCreate(ProfileCreate):
     apartment_public_id: UUID
     block: Block | None = None
     unit: Unit
@@ -63,17 +64,22 @@ class BuyerCreate(SQLModel):
 
 class FarmerRead(SQLModel):
     public_id: UUID
+    farm_name: str | None
     zip_code: str
+
+
+class ApartmentPreview(SQLModel):
+    building_name: str
+    zip_code: str | None
+    address: str | None
 
 
 class ApartmentSummary(SQLModel):
     public_id: UUID
     building_name: str
-    zip_code: str
-
-
-class ApartmentRead(ApartmentSummary):
     building_cnpj: str
+    zip_code: str
+    address: str | None
 
 
 class BuyerSummary(SQLModel):
@@ -97,7 +103,7 @@ class ProfileRead(SQLModel):
     cellphone: str | None
     homephone: str | None
     farmer: FarmerRead | None = None
-    apartment: ApartmentRead | None = None
+    apartment: ApartmentSummary | None = None
     buyer: BuyerRead | None = None
 
 
@@ -108,8 +114,8 @@ class ProfileUpdate(SQLModel):
     name: PersonName = Field(default=None)
     cellphone: CellPhone | None = None
     homephone: HomePhone | None = None
+    farm_name: FarmName = Field(default=None)
     zip_code: ZipCode = Field(default=None)
-    building_name: BuildingName = Field(default=None)
     building_cnpj: Cnpj = Field(default=None)
     apartment_public_id: UUID = Field(default=None)
     block: Block | None = None

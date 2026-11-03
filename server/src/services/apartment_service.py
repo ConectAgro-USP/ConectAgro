@@ -4,6 +4,7 @@ from uuid import UUID
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.repository.profile_repository import ProfileRepository
+from src.services.cnpj_service import normalize_cnpj
 from src.services.exceptions import ResidentNotFoundError
 
 
@@ -11,8 +12,8 @@ class ApartmentService:
     def __init__(self, profiles: ProfileRepository):
         self.profiles = profiles
 
-    def list_apartments(self) -> list[Apartment]:
-        return self.profiles.list_apartments()
+    def list_by_cnpj(self, cnpj: str) -> list[Apartment]:
+        return self.profiles.list_apartments_by_cnpj(normalize_cnpj(cnpj))
 
     def list_residents(self, apartment: Apartment, link_status: LinkStatus | None) -> list[Buyer]:
         return self.profiles.list_buyers_of_apartment(apartment.id, link_status)

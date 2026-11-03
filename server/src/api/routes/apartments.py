@@ -5,15 +5,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.deps import ApartmentServiceDep, CurrentApartment, get_current_user
 from src.models.buyer import LinkStatus
-from src.models.profile import ApartmentSummary, ResidentRead
-from src.services.exceptions import ResidentNotFoundError
+from src.models.profile import ApartmentSummary, Cnpj, ResidentRead
+from src.services.exceptions import InvalidCnpjError, ResidentNotFoundError
 
 router = APIRouter(prefix="/apartments", tags=["apartments"])
 
 
 @router.get("", response_model=list[ApartmentSummary], dependencies=[Depends(get_current_user)])
-def list_apartments(apartment_service: ApartmentServiceDep):
-    return apartment_service.list_apartments()
+def list_apartments(cnpj: Cnpj, apartment_service: ApartmentServiceDep):
+    try:
+        return apartment_service.list_by_cnpj(cnpj)
+    except InvalidCnpjError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "CNPJ inválido") from None
 
 
 @router.get("/me/buyers", response_model=list[ResidentRead])

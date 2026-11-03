@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.deps import CurrentUser, ProfileServiceDep
+from src.api.deps import CurrentUser, ProfileServiceDep, get_current_user
 from src.models.profile import (
     ApartmentCreate,
+    ApartmentPreview,
     BuyerCreate,
+    Cnpj,
     FarmerCreate,
     ProfileRead,
     ProfileUpdate,
@@ -14,6 +16,7 @@ from src.services.exceptions import (
     CepWithoutCoordinatesError,
     CnpjNotActiveError,
     CnpjNotFoundError,
+    CpfAlreadyRegisteredError,
     ExternalServiceError,
     FieldNotInProfileError,
     InvalidCepError,
@@ -26,6 +29,7 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 
 HTTP_ERRORS = {
     ProfileAlreadyExistsError: (status.HTTP_409_CONFLICT, "Você já tem um perfil"),
+    CpfAlreadyRegisteredError: (status.HTTP_409_CONFLICT, "CPF já cadastrado"),
     ApartmentNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "Prédio não encontrado"),
     InvalidCepError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP inválido"),
     CepNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP não encontrado"),
@@ -60,6 +64,18 @@ def create_farmer_profile(
 ):
     try:
         return profile_service.create_farmer(current_user, farmer_in)
+    except PROFILE_ERRORS as error:
+        raise http_error(error) from None
+
+
+@router.get(
+    "/apartment/preview",
+    response_model=ApartmentPreview,
+    dependencies=[Depends(get_current_user)],
+)
+def preview_apartment_profile(cnpj: Cnpj, profile_service: ProfileServiceDep):
+    try:
+        return profile_service.preview_apartment(cnpj)
     except PROFILE_ERRORS as error:
         raise http_error(error) from None
 

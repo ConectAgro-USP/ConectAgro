@@ -32,6 +32,10 @@ class ProfileAlreadyExistsError(Exception):
     pass
 
 
+class CpfAlreadyRegisteredError(Exception):
+    pass
+
+
 class ApartmentNotFoundError(Exception):
     pass
 

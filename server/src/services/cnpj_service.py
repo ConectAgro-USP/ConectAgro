@@ -1,6 +1,7 @@
 import re
 
 from src.connectors.cnpja import TAX_ID_PATTERN, CnpjaConnector
+from src.connectors.models import Company
 from src.services.exceptions import CnpjNotActiveError, InvalidCnpjError
 
 NON_ALPHANUMERIC = re.compile(r"[^A-Za-z0-9]")
@@ -11,10 +12,11 @@ class CnpjService:
     def __init__(self, companies: CnpjaConnector):
         self.companies = companies
 
-    def validate(self, cnpj: str) -> None:
+    def get_active_company(self, cnpj: str) -> Company:
         company = self.companies.get_company(normalize_cnpj(cnpj))
         if company.registration_status != "Ativa":
             raise CnpjNotActiveError(company.registration_status)
+        return company
 
 
 def normalize_cnpj(cnpj: str) -> str:

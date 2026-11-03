@@ -22,36 +22,37 @@ def fake_service(answer: Company | Exception) -> tuple[CnpjService, NonCallableM
     return CnpjService(companies), companies
 
 
-def test_validate_looks_up_the_normalized_cnpj():
+def test_get_active_company_looks_up_the_normalized_cnpj():
     service, companies = fake_service(BANCO_DO_BRASIL)
 
-    service.validate("00.000.000/0001-91")
+    company = service.get_active_company("00.000.000/0001-91")
 
+    assert company == BANCO_DO_BRASIL
     companies.get_company.assert_called_once_with("00000000000191")
 
 
-def test_validate_rejects_company_that_is_not_active():
+def test_get_active_company_rejects_company_that_is_not_active():
     service, _ = fake_service(BANCO_DO_BRASIL.model_copy(update={"registration_status": "Baixada"}))
 
     with pytest.raises(CnpjNotActiveError, match="Baixada"):
-        service.validate("00000000000191")
+        service.get_active_company("00000000000191")
 
 
 @pytest.mark.parametrize(
     "error", [InvalidCnpjError, CnpjNotFoundError, RateLimitedError, ExternalServiceError]
 )
-def test_validate_propagates_the_connector_errors(error: type[Exception]):
+def test_get_active_company_propagates_the_connector_errors(error: type[Exception]):
     service, _ = fake_service(error("00000000000191"))
 
     with pytest.raises(error):
-        service.validate("00000000000191")
+        service.get_active_company("00000000000191")
 
 
-def test_validate_rejects_invalid_cnpj_without_calling_the_api():
+def test_get_active_company_rejects_invalid_cnpj_without_calling_the_api():
     service, companies = fake_service(BANCO_DO_BRASIL)
 
     with pytest.raises(InvalidCnpjError):
-        service.validate("00000000000190")
+        service.get_active_company("00000000000190")
 
     companies.get_company.assert_not_called()
 

@@ -22,22 +22,27 @@ from src.models.buyer import LinkStatus
 from src.models.user import User
 from tests.connectors.fakes import fake_client
 from tests.connectors.test_brasilapi import ACRELANDIA, PAULISTA
-from tests.connectors.test_cnpja import BANCO_DO_BRASIL, NOT_FOUND, RATE_LIMITED
+from tests.connectors.test_cnpja import (
+    BANCO_DO_BRASIL,
+    BANCO_DO_BRASIL_ADDRESS,
+    NOT_FOUND,
+    RATE_LIMITED,
+)
 from tests.helpers import (
     ITAU_CNPJ,
     add_building,
     add_farmer,
     add_resident,
     add_user,
+    login,
 )
 
-FARMER = {"zip_code": "01310-200"}
-APARTMENT = {
-    "building_name": "Edifício Araraquara",
-    "zip_code": "01310-200",
-    "manager_name": "Matheus Silveira",
-    "building_cnpj": "00.000.000/0001-91",
-}
+CPF = "529.982.247-25"
+CPF_DIGITS = "52998224725"
+COMMON_FIELDS = {"cpf": CPF, "cellphone": "(11) 94464-4502"}
+FARMER = {**COMMON_FIELDS, "farm_name": "Sítio Boa Vista", "zip_code": "01310-200"}
+APARTMENT = {**COMMON_FIELDS, "building_cnpj": "00.000.000/0001-91", "zip_code": "01310-200"}
+PROFILE_PAYLOADS = [("/api/profiles/farmer", FARMER), ("/api/profiles/apartment", APARTMENT)]
 WITHOUT_COORDINATES = {**PAULISTA, "location": {"type": "Point", "coordinates": {}}}
 CEP_INVALID = {"type": "validation_error"}
 CEP_NOT_FOUND = {"type": "service_error"}
@@ -74,11 +79,17 @@ def cnpj_requests() -> list[httpx.Request]:
     return answer_cnpj(httpx.Response(200, json=BANCO_DO_BRASIL))
 
 
+def buyer_payload(building: Apartment, **changes) -> dict:
+    apartment_public_id = str(building.public_id)
+    return {**COMMON_FIELDS, "apartment_public_id": apartment_public_id, "unit": "42", **changes}
+
+
 def test_create_farmer_profile(client: TestClient, ana: User, cep_requests: list[httpx.Request]):
     response = client.post("/api/profiles/farmer", json=FARMER)
 
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["profile_type"] == "farmer"
+    assert response.json()["farmer"]["farm_name"] == "Sítio Boa Vista"
     assert response.json()["farmer"]["zip_code"] == "01310200"
     assert cep_requests[0].url.path == "/api/cep/v2/01310200"
 
@@ -93,17 +104,55 @@ def test_create_apartment_profile(
     apartment = response.json()["apartment"]
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["profile_type"] == "apartment"
-    assert response.json()["name"] == "Matheus Silveira"
-    assert apartment["building_name"] == "Edifício Araraquara"
+    assert response.json()["name"] == "Ana Souza"
+    assert apartment["building_name"] == "Direcao Geral"
+    assert apartment["address"] == BANCO_DO_BRASIL_ADDRESS
     assert apartment["zip_code"] == "01310200"
     assert apartment["building_cnpj"] == "00000000000191"
     assert cnpj_requests[0].url.path == "/office/00000000000191"
 
 
-def test_create_buyer_profile_starts_pending(client: TestClient, ana: User, building: Apartment):
-    payload = {"apartment_public_id": str(building.public_id), "block": "B", "unit": "42"}
+def test_building_without_alias_takes_the_company_name(client: TestClient, ana: User):
+    answer_cnpj(httpx.Response(200, json={**BANCO_DO_BRASIL, "alias": None}))
 
-    response = client.post("/api/profiles/buyer", json=payload)
+    response = client.post("/api/profiles/apartment", json=APARTMENT)
+
+    assert response.json()["apartment"]["building_name"] == "BANCO DO BRASIL SA"
+
+
+@pytest.mark.parametrize("path, payload", PROFILE_PAYLOADS, ids=["agricultor", "sindico"])
+def test_new_profile_saves_cpf_and_phones_without_returning_the_cpf(
+    client: TestClient, session: Session, ana: User, path: str, payload: dict
+):
+    response = client.post(path, json={**payload, "homephone": "(11) 2464-4502"})
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert CPF_DIGITS not in response.text
+    assert response.json()["cellphone"] == "11944644502"
+    assert response.json()["homephone"] == "1124644502"
+    session.refresh(ana)
+    assert ana.cpf == CPF_DIGITS
+
+
+def test_cpf_never_leaves_the_api(
+    client: TestClient, ana: User, manager: User, building: Apartment
+):
+    responses = [
+        client.post("/api/profiles/buyer", json=buyer_payload(building)),
+        client.get("/api/auth/me"),
+        client.get("/api/profiles/me"),
+        client.patch("/api/profiles/me", json={"name": "Ana Lima"}),
+    ]
+    login(client, manager)
+    responses.append(client.get("/api/apartments/me/buyers"))
+
+    for response in responses:
+        assert response.is_success
+        assert CPF_DIGITS not in response.text
+
+
+def test_create_buyer_profile_starts_pending(client: TestClient, ana: User, building: Apartment):
+    response = client.post("/api/profiles/buyer", json=buyer_payload(building, block="B"))
 
     buyer = response.json()["buyer"]
     assert response.status_code == status.HTTP_201_CREATED
@@ -117,9 +166,9 @@ def test_create_buyer_profile_starts_pending(client: TestClient, ana: User, buil
 
 
 def test_create_buyer_profile_for_unknown_building(client: TestClient, ana: User):
-    response = client.post(
-        "/api/profiles/buyer", json={"apartment_public_id": str(uuid4()), "unit": "42"}
-    )
+    payload = {**COMMON_FIELDS, "apartment_public_id": str(uuid4()), "unit": "42"}
+
+    response = client.post("/api/profiles/buyer", json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert response.json()["detail"] == "Prédio não encontrado"
@@ -141,11 +190,10 @@ def test_user_with_profile_cannot_create_another(
         add_building(session, ana, name="Edifício Bauru")
     if existing_profile == "buyer":
         add_resident(session, building, ana)
-    buyer_payload = {"apartment_public_id": str(building.public_id), "unit": "42"}
 
     farmer_response = client.post("/api/profiles/farmer", json=FARMER)
     apartment_response = client.post("/api/profiles/apartment", json=APARTMENT)
-    buyer_response = client.post("/api/profiles/buyer", json=buyer_payload)
+    buyer_response = client.post("/api/profiles/buyer", json=buyer_payload(building))
 
     assert farmer_response.status_code == status.HTTP_409_CONFLICT
     assert apartment_response.status_code == status.HTTP_409_CONFLICT
@@ -176,11 +224,124 @@ def test_profile_created_meanwhile_by_another_request_returns_409(
     assert client.get("/api/profiles/me").json()["profile_type"] == "buyer"
 
 
+@pytest.mark.parametrize("profile", ["farmer", "apartment", "buyer"])
+def test_cpf_of_another_account_returns_409_without_calling_the_apis(
+    client: TestClient,
+    session: Session,
+    ana: User,
+    building: Apartment,
+    cep_requests: list[httpx.Request],
+    cnpj_requests: list[httpx.Request],
+    profile: str,
+):
+    add_user(session, "bia@example.com", cpf=CPF_DIGITS)
+    payloads = {"farmer": FARMER, "apartment": APARTMENT, "buyer": buyer_payload(building)}
+
+    response = client.post(f"/api/profiles/{profile}", json=payloads[profile])
+
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert response.json()["detail"] == "CPF já cadastrado"
+    assert client.get("/api/profiles/me").json()["profile_type"] is None
+    assert cep_requests == []
+    assert cnpj_requests == []
+
+
+def test_cpf_saved_meanwhile_by_another_account_returns_409(
+    client: TestClient, session: Session, ana: User
+):
+    def save_the_same_cpf_during_the_cep_lookup(request: httpx.Request) -> httpx.Response:
+        add_user(session, "bia@example.com", cpf=CPF_DIGITS)
+        return httpx.Response(200, json=PAULISTA)
+
+    answer_cep(save_the_same_cpf_during_the_cep_lookup)
+
+    response = client.post("/api/profiles/farmer", json=FARMER)
+
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert response.json()["detail"] == "CPF já cadastrado"
+    session.refresh(ana)
+    assert ana.cpf is None
+
+
 @pytest.mark.parametrize(
-    "path, payload",
-    [("/api/profiles/farmer", FARMER), ("/api/profiles/apartment", APARTMENT)],
-    ids=["agricultor", "sindico"],
+    "cpf", ["529.982.247-24", "111.111.111-11", "5" * 21], ids=["verificador", "repetido", "longo"]
 )
+def test_invalid_cpf_is_rejected_without_calling_the_apis(
+    client: TestClient,
+    ana: User,
+    cep_requests: list[httpx.Request],
+    cpf: str,
+):
+    response = client.post("/api/profiles/farmer", json={**FARMER, "cpf": cpf})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert cep_requests == []
+
+
+@pytest.mark.parametrize("missing", ["cpf", "cellphone"])
+def test_cpf_and_cellphone_are_required(client: TestClient, ana: User, missing: str):
+    payload = {**FARMER}
+    del payload[missing]
+
+    response = client.post("/api/profiles/farmer", json=payload)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def test_two_managers_can_register_the_same_cnpj(
+    client: TestClient, ana: User, building: Apartment
+):
+    response = client.post("/api/profiles/apartment", json=APARTMENT)
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["apartment"]["building_cnpj"] == building.building_cnpj
+    assert response.json()["apartment"]["public_id"] != str(building.public_id)
+
+
+def test_preview_apartment_shows_the_registry_data(
+    client: TestClient, ana: User, cnpj_requests: list[httpx.Request]
+):
+    response = client.get("/api/profiles/apartment/preview", params={"cnpj": "00.000.000/0001-91"})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {
+        "building_name": "Direcao Geral",
+        "zip_code": "70040912",
+        "address": BANCO_DO_BRASIL_ADDRESS,
+    }
+    assert cnpj_requests[0].url.path == "/office/00000000000191"
+
+
+def test_preview_apartment_rejects_invalid_cnpj_without_calling_the_api(
+    client: TestClient, ana: User, cnpj_requests: list[httpx.Request]
+):
+    response = client.get("/api/profiles/apartment/preview", params={"cnpj": "00.000.000/0001-90"})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"] == "CNPJ inválido"
+    assert cnpj_requests == []
+
+
+@pytest.mark.parametrize(
+    "answer, status_code",
+    [
+        (httpx.Response(404, json=NOT_FOUND), 422),
+        (httpx.Response(200, json=CNPJ_CLOSED), 422),
+        (httpx.Response(429, json=RATE_LIMITED), 503),
+    ],
+    ids=["inexistente", "baixado", "cota-esgotada"],
+)
+def test_preview_apartment_reports_registry_errors(
+    client: TestClient, ana: User, answer: httpx.Response, status_code: int
+):
+    answer_cnpj(answer)
+
+    response = client.get("/api/profiles/apartment/preview", params={"cnpj": "00000000000191"})
+
+    assert response.status_code == status_code
+
+
+@pytest.mark.parametrize("path, payload", PROFILE_PAYLOADS, ids=["agricultor", "sindico"])
 def test_cep_without_coordinates_asks_for_a_nearby_cep(
     client: TestClient,
     ana: User,
@@ -236,7 +397,7 @@ def test_malformed_cep_is_rejected_without_calling_the_api(
     cep_requests: list[httpx.Request],
     zip_code: str,
 ):
-    response = client.post("/api/profiles/farmer", json={"zip_code": zip_code})
+    response = client.post("/api/profiles/farmer", json={**FARMER, "zip_code": zip_code})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert cep_requests == []
@@ -284,11 +445,12 @@ def test_cnpj_lookup_answers(
 @pytest.mark.parametrize(
     "path, payload",
     [
-        ("/api/profiles/farmer", {**FARMER, "cellphone": "11944644502"}),
+        ("/api/profiles/farmer", {**FARMER, "name": "Ana Lima"}),
         ("/api/profiles/apartment", {**APARTMENT, "manager_id": 1}),
-        ("/api/profiles/buyer", {"unit": "42", "x": 1}),
+        ("/api/profiles/apartment", {**APARTMENT, "building_name": "Edifício Bauru"}),
+        ("/api/profiles/buyer", {"x": 1}),
     ],
-    ids=["agricultor", "sindico", "morador"],
+    ids=["agricultor", "sindico", "sindico-com-nome-do-predio", "morador"],
 )
 def test_create_profile_rejects_unknown_fields(
     client: TestClient,
@@ -298,7 +460,7 @@ def test_create_profile_rejects_unknown_fields(
     payload: dict,
 ):
     if path == "/api/profiles/buyer":
-        payload = {**payload, "apartment_public_id": str(building.public_id)}
+        payload = {**buyer_payload(building), **payload}
 
     response = client.post(path, json=payload)
 
@@ -311,13 +473,10 @@ def test_free_text_fields_reject_the_null_character(
     ana: User,
     building: Apartment,
 ):
-    apartment_payload = {**APARTMENT, "building_name": "Ed\x00"}
-    buyer_payload = {"apartment_public_id": str(building.public_id), "block": "B\x00", "unit": "42"}
+    farmer_response = client.post("/api/profiles/farmer", json={**FARMER, "farm_name": "Sí\x00"})
+    buyer_response = client.post("/api/profiles/buyer", json=buyer_payload(building, block="B\x00"))
 
-    apartment_response = client.post("/api/profiles/apartment", json=apartment_payload)
-    buyer_response = client.post("/api/profiles/buyer", json=buyer_payload)
-
-    assert apartment_response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert farmer_response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert buyer_response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
@@ -352,7 +511,9 @@ def test_read_profile_of_buyer_shows_building_and_link_status(
     assert buyer["apartment"] == {
         "public_id": str(building.public_id),
         "building_name": "Edifício Araraquara",
+        "building_cnpj": "00000000000191",
         "zip_code": "01310200",
+        "address": None,
     }
 
 
@@ -401,6 +562,14 @@ def test_update_clears_homephone_with_null(client: TestClient, ana: User):
     response = client.patch("/api/profiles/me", json={"homephone": None})
 
     assert response.json()["homephone"] is None
+
+
+def test_update_farm_name(client: TestClient, ana: User):
+    client.post("/api/profiles/farmer", json=FARMER)
+
+    response = client.patch("/api/profiles/me", json={"farm_name": "Horta da Ana"})
+
+    assert response.json()["farmer"]["farm_name"] == "Horta da Ana"
 
 
 @pytest.mark.parametrize(
@@ -462,10 +631,10 @@ def test_update_rejects_malformed_cep_with_the_same_digits(
 
 
 @pytest.mark.parametrize(
-    "path, payload, profile, original_name",
+    "path, payload, profile",
     [
-        ("/api/profiles/farmer", FARMER, "farmer", "Ana Souza"),
-        ("/api/profiles/apartment", APARTMENT, "apartment", "Matheus Silveira"),
+        ("/api/profiles/farmer", FARMER, "farmer"),
+        ("/api/profiles/apartment", APARTMENT, "apartment"),
     ],
     ids=["agricultor", "sindico"],
 )
@@ -475,7 +644,6 @@ def test_failed_update_changes_nothing(
     path: str,
     payload: dict,
     profile: str,
-    original_name: str,
 ):
     client.post(path, json=payload)
     answer_cep(httpx.Response(200, json={**ACRELANDIA, "location": None}))
@@ -484,7 +652,7 @@ def test_failed_update_changes_nothing(
 
     profile_after = client.get("/api/profiles/me").json()
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-    assert profile_after["name"] == original_name
+    assert profile_after["name"] == "Ana Souza"
     assert profile_after[profile]["zip_code"] == "01310200"
 
 
@@ -518,17 +686,28 @@ def test_update_apartment_reports_lookup_errors(
     assert apartment["building_cnpj"] == "00000000000191"
 
 
-def test_update_apartment_checks_the_new_cnpj(client: TestClient, ana: User):
+def test_update_apartment_cnpj_takes_the_registry_name_and_address(client: TestClient, ana: User):
     client.post("/api/profiles/apartment", json=APARTMENT)
-    cnpj_requests = answer_cnpj(httpx.Response(200, json=BANCO_DO_BRASIL))
-    changes = {"building_name": "Edifício Bauru", "building_cnpj": "60.701.190/0001-04"}
+    itau_address = {"street": "Rua X", "zip": None}
+    itau = {**BANCO_DO_BRASIL, "alias": "Edifício Itaú", "address": itau_address}
+    cnpj_requests = answer_cnpj(httpx.Response(200, json=itau))
 
-    response = client.patch("/api/profiles/me", json=changes)
+    response = client.patch("/api/profiles/me", json={"building_cnpj": "60.701.190/0001-04"})
 
     apartment = response.json()["apartment"]
-    assert apartment["building_name"] == "Edifício Bauru"
     assert apartment["building_cnpj"] == ITAU_CNPJ
+    assert apartment["building_name"] == "Edifício Itaú"
+    assert apartment["address"] == "Rua X"
     assert cnpj_requests[0].url.path == f"/office/{ITAU_CNPJ}"
+
+
+def test_manager_cannot_rename_the_building(client: TestClient, ana: User):
+    client.post("/api/profiles/apartment", json=APARTMENT)
+
+    response = client.patch("/api/profiles/me", json={"building_name": "Edifício Bauru"})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert client.get("/api/profiles/me").json()["apartment"]["building_name"] == "Direcao Geral"
 
 
 def test_update_apartment_checks_the_cep_before_the_cnpj_api(
@@ -684,9 +863,7 @@ def test_update_buyer_to_unknown_building_changes_nothing(
 
 @pytest.mark.parametrize("unit", ["", "12345678901", "42\x00"], ids=["vazia", "longa", "nulo"])
 def test_buyer_unit_is_validated(client: TestClient, ana: User, building: Apartment, unit: str):
-    payload = {"apartment_public_id": str(building.public_id), "unit": unit}
-
-    response = client.post("/api/profiles/buyer", json=payload)
+    response = client.post("/api/profiles/buyer", json=buyer_payload(building, unit=unit))
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -723,6 +900,7 @@ def test_update_rejects_fields_of_another_profile(
         ("POST", "/api/profiles/buyer"),
         ("GET", "/api/profiles/me"),
         ("PATCH", "/api/profiles/me"),
+        ("GET", "/api/profiles/apartment/preview?cnpj=00000000000191"),
     ],
 )
 def test_profile_routes_require_login(client: TestClient, method: str, path: str):
