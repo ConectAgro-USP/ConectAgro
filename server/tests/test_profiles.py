@@ -112,6 +112,18 @@ def test_create_apartment_profile(
     assert cnpj_requests[0].url.path == "/office/00000000000191"
 
 
+def test_create_apartment_reuses_the_registry_answer_of_the_preview(
+    client: TestClient, ana: User, cnpj_requests: list[httpx.Request]
+):
+    client.get("/api/profiles/apartment/preview", params={"cnpj": "00.000.000/0001-91"})
+
+    response = client.post("/api/profiles/apartment", json=APARTMENT)
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["apartment"]["building_name"] == "Direcao Geral"
+    assert len(cnpj_requests) == 1
+
+
 def test_building_without_alias_takes_the_company_name(client: TestClient, ana: User):
     answer_cnpj(httpx.Response(200, json={**BANCO_DO_BRASIL, "alias": None}))
 

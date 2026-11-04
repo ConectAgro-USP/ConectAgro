@@ -1,12 +1,5 @@
 from src.core.rate_limiter import RateLimiter
-
-
-class FakeClock:
-    def __init__(self):
-        self.now = 1000.0
-
-    def read(self) -> float:
-        return self.now
+from tests.helpers import FakeClock
 
 
 def test_refuses_the_attempts_beyond_the_maximum():

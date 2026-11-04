@@ -18,10 +18,13 @@ from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
 from src.services.cnpj_service import CnpjService
+from src.services.company_cache import CompanyCache
 from src.services.profile_service import ProfileService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
 http_client = httpx.Client()
+# a CNPJá aceita poucas consultas: a prévia e o cadastro gastam uma só
+RECENT_COMPANIES = CompanyCache(keep_seconds=60 * 60)
 
 
 def get_session() -> Generator[Session, None, None]:
@@ -93,7 +96,7 @@ ProfileRepositoryDep = Annotated[ProfileRepository, Depends(get_profile_reposito
 def get_profile_service(
     profiles: ProfileRepositoryDep, ceps: BrasilApiDep, companies: CnpjaDep
 ) -> ProfileService:
-    return ProfileService(profiles, ceps, CnpjService(companies))
+    return ProfileService(profiles, ceps, CnpjService(companies, RECENT_COMPANIES))
 
 
 ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]

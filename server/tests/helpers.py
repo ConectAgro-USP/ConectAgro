@@ -12,6 +12,14 @@ BANCO_DO_BRASIL_CNPJ = "00000000000191"
 ITAU_CNPJ = "60701190000104"
 
 
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def read(self) -> float:
+        return self.now
+
+
 def add_user(
     session: Session, email: str, name: str = "Ana Souza", cpf: str | None = None
 ) -> User:

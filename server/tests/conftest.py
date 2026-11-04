@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from src.api import rate_limits
-from src.api.deps import get_session
+from src.api.deps import RECENT_COMPANIES, get_session
 from src.main import app
 from src.models.apartment import Apartment
 from src.models.user import User
@@ -47,6 +47,11 @@ def setup_database():
 def reset_rate_limits():
     for limiter in rate_limits.ALL_LIMITERS:
         limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_recent_companies():
+    RECENT_COMPANIES.reset()
 
 
 @pytest.fixture
