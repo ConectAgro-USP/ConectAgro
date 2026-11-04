@@ -43,6 +43,8 @@ class User(UserBase, table=True):
     hashed_password: str | None = None
     # fica fora do UserBase para não sair nas respostas da API
     cpf: str | None = Field(default=None, unique=True, index=True)
+    # vai em cada token; aumentar o número encerra todas as sessões abertas
+    session_version: int = 0
 
     farmer: Optional["Farmer"] = Relationship(back_populates="user")
     apartment: Optional["Apartment"] = Relationship(back_populates="manager")

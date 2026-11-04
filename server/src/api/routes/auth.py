@@ -28,7 +28,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _set_auth_cookie(response: Response, user: User) -> None:
     response.set_cookie(
         key="access_token",
-        value=create_access_token(user.id),
+        value=create_access_token(user.id, user.session_version),
         httponly=True,
         secure=settings.is_prod,
         samesite="lax",

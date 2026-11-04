@@ -58,6 +58,26 @@ def test_google_callback_links_password_account_and_disables_password(
     assert client.post("/api/auth/login", json=credentials).status_code == 401
 
 
+def test_google_callback_ends_the_sessions_opened_with_the_password(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    credentials = {"email": "cintia@gmail.com", "password": "#NHJgrej4"}
+    client.post("/api/auth/register", json={"name": "Cintia", **credentials})
+    password_login = client.post("/api/auth/login", json=credentials)
+    assert password_login.status_code == 200
+    assert client.get("/api/auth/me").status_code == 200
+    password_session = client.cookies.get("access_token")
+    fake_google_userinfo(monkeypatch, email="cintia@gmail.com", email_verified=True)
+
+    client.get("/api/auth/callback/google", follow_redirects=False)
+    google_session_status = client.get("/api/auth/me").status_code
+    client.cookies.clear()
+    client.cookies.set("access_token", password_session)
+
+    assert google_session_status == 200
+    assert client.get("/api/auth/me").status_code == 401
+
+
 def test_google_callback_keeps_password_account_outside_gmail_and_workspace(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):

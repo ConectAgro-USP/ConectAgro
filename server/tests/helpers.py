@@ -23,7 +23,7 @@ def add_user(
 
 
 def login(client: TestClient, user: User) -> None:
-    client.cookies.set("access_token", create_access_token(user.id))
+    client.cookies.set("access_token", create_access_token(user.id, user.session_version))
 
 
 def add_farmer(session: Session, user: User) -> Farmer:
