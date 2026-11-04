@@ -3,17 +3,31 @@ from uuid import UUID
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
+from src.models.profile import ApartmentMatch
 from src.repository.profile_repository import ProfileRepository
 from src.services.cnpj_service import normalize_cnpj
 from src.services.exceptions import ResidentNotFoundError
+from src.services.text_service import short_name
 
 
 class ApartmentService:
     def __init__(self, profiles: ProfileRepository):
         self.profiles = profiles
 
-    def list_by_cnpj(self, cnpj: str) -> list[Apartment]:
-        return self.profiles.list_apartments_by_cnpj(normalize_cnpj(cnpj))
+    def list_by_cnpj(self, cnpj: str) -> list[ApartmentMatch]:
+        apartments = self.profiles.list_apartments_by_cnpj(normalize_cnpj(cnpj))
+        apartment_matches = []
+        for apartment in apartments:
+            apartment_match = ApartmentMatch(
+                public_id=apartment.public_id,
+                building_name=apartment.building_name,
+                building_cnpj=apartment.building_cnpj,
+                zip_code=apartment.zip_code,
+                address=apartment.address,
+                manager_short_name=short_name(apartment.manager.name),
+            )
+            apartment_matches.append(apartment_match)
+        return apartment_matches
 
     def list_residents(self, apartment: Apartment, link_status: LinkStatus | None) -> list[Buyer]:
         return self.profiles.list_buyers_of_apartment(apartment.id, link_status)

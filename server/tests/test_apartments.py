@@ -29,7 +29,8 @@ def test_list_apartments_returns_every_building_with_the_cnpj(
 ):
     building.address = "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra"
     session.commit()
-    copy = add_building(session, add_user(session, "copia@example.com"), name="Edifício Cópia")
+    squatter = add_user(session, "copia@example.com", name="Bruno Lima Costa")
+    copy = add_building(session, squatter, name="Edifício Cópia")
 
     response = client.get("/api/apartments", params={"cnpj": "00.000.000/0001-91"})
 
@@ -41,6 +42,7 @@ def test_list_apartments_returns_every_building_with_the_cnpj(
             "building_cnpj": "00000000000191",
             "zip_code": "01310200",
             "address": "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra",
+            "manager_short_name": "Ana S.",
         },
         {
             "public_id": str(copy.public_id),
@@ -48,6 +50,7 @@ def test_list_apartments_returns_every_building_with_the_cnpj(
             "building_cnpj": "00000000000191",
             "zip_code": "01310200",
             "address": None,
+            "manager_short_name": "Bruno C.",
         },
     ]
 

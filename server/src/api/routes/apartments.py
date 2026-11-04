@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.deps import ApartmentServiceDep, CurrentApartment, get_current_user
 from src.models.buyer import LinkStatus
-from src.models.profile import ApartmentSummary, Cnpj, ResidentRead
+from src.models.profile import ApartmentMatch, Cnpj, ResidentRead
 from src.services.exceptions import InvalidCnpjError, ResidentNotFoundError
 
 router = APIRouter(prefix="/apartments", tags=["apartments"])
 
 
-@router.get("", response_model=list[ApartmentSummary], dependencies=[Depends(get_current_user)])
+@router.get("", response_model=list[ApartmentMatch], dependencies=[Depends(get_current_user)])
 def list_apartments(cnpj: Cnpj, apartment_service: ApartmentServiceDep):
     try:
         return apartment_service.list_by_cnpj(cnpj)

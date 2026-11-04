@@ -27,6 +27,7 @@ class ProfileRepository:
 
     def list_apartments_by_cnpj(self, cnpj: str) -> list[Apartment]:
         statement = select(Apartment).where(Apartment.building_cnpj == cnpj)
+        statement = statement.options(selectinload(Apartment.manager))
         statement = statement.order_by(Apartment.id)
         return list(self.session.exec(statement).all())
 

@@ -82,6 +82,11 @@ class ApartmentSummary(SQLModel):
     address: str | None
 
 
+class ApartmentMatch(ApartmentSummary):
+    # nome e endereço vêm da CNPJá; o síndico diferencia prédios com o mesmo CNPJ
+    manager_short_name: str
+
+
 class BuyerSummary(SQLModel):
     public_id: UUID
     block: str | None
