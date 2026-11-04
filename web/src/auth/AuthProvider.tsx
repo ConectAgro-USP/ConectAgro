@@ -42,8 +42,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     try {
       setUser(await request);
     } catch (error) {
-      // pode ser um perfil criado em outra aba; recarregar mostra a tela certa
-      if (error instanceof ApiError && error.status === 409) {
+      // 409: perfil criado em outra aba; 401: a sessão acabou. Recarregar resolve
+      if (error instanceof ApiError && (error.status === 409 || error.status === 401)) {
         await refreshUser();
       }
       throw error;

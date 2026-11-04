@@ -1,11 +1,24 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { ApiError } from "../api/client";
+import { fakeAuth, withAuth } from "../test/helpers";
 import { useBuildingLookup } from "./useBuildingLookup";
 
 const FIRST_CNPJ = "00.000.000/0001-91";
 const SECOND_CNPJ = "60.701.190/0001-04";
 
+function renderLookup<Found>(
+  find: (cnpj: string) => Promise<Found>,
+  initialCnpj?: string,
+  auth = fakeAuth(),
+) {
+  return renderHook(() => useBuildingLookup(find, initialCnpj), { wrapper: withAuth(auth) });
+}
+
 describe("useBuildingLookup", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("ignores the answer of a CNPJ that was replaced", async () => {
     let answerFirst: (name: string) => void = () => {};
     const find = vi.fn((cnpj: string) => {
@@ -16,7 +29,7 @@ describe("useBuildingLookup", () => {
       }
       return Promise.resolve("Edifício Bauru");
     });
-    const { result } = renderHook(() => useBuildingLookup(find));
+    const { result } = renderLookup(find);
 
     act(() => result.current.changeCnpj(FIRST_CNPJ));
     expect(result.current.searching).toBe(true);
@@ -31,7 +44,7 @@ describe("useBuildingLookup", () => {
   it("searches for a CNPJ with letters", async () => {
     const find = vi.fn().mockResolvedValue("Edifício Novo");
 
-    const { result } = renderHook(() => useBuildingLookup(find, "12.ABC.345/01DE-35"));
+    const { result } = renderLookup(find, "12.ABC.345/01DE-35");
 
     await waitFor(() => expect(result.current.found).toBe("Edifício Novo"));
     expect(find).toHaveBeenCalledWith("12.ABC.345/01DE-35");
@@ -39,7 +52,7 @@ describe("useBuildingLookup", () => {
 
   it("forgets the building when the CNPJ changes", async () => {
     const find = vi.fn().mockResolvedValue("Edifício Bauru");
-    const { result } = renderHook(() => useBuildingLookup(find, SECOND_CNPJ));
+    const { result } = renderLookup(find, SECOND_CNPJ);
     await waitFor(() => expect(result.current.found).toBe("Edifício Bauru"));
 
     act(() => result.current.changeCnpj("60.701.190/0001-0"));
@@ -50,7 +63,7 @@ describe("useBuildingLookup", () => {
 
   it("asks to check an incomplete CNPJ when the building is required", () => {
     const find = vi.fn();
-    const { result } = renderHook(() => useBuildingLookup(find, "60.701.190"));
+    const { result } = renderLookup(find, "60.701.190");
 
     let found: unknown;
     act(() => {
@@ -64,7 +77,7 @@ describe("useBuildingLookup", () => {
 
   it("does not search again when the API refused the CNPJ", async () => {
     const find = vi.fn().mockRejectedValue(new ApiError(422, "CNPJ não encontrado"));
-    const { result } = renderHook(() => useBuildingLookup(find, SECOND_CNPJ));
+    const { result } = renderLookup(find, SECOND_CNPJ);
     await waitFor(() => expect(result.current.error).toBe("CNPJ não encontrado"));
 
     act(() => {
@@ -80,7 +93,7 @@ describe("useBuildingLookup", () => {
       .fn()
       .mockRejectedValueOnce(new ApiError(503, "Tente mais tarde"))
       .mockResolvedValueOnce("Edifício Bauru");
-    const { result } = renderHook(() => useBuildingLookup(find, SECOND_CNPJ));
+    const { result } = renderLookup(find, SECOND_CNPJ);
     await waitFor(() => expect(result.current.error).toBe("Tente mais tarde"));
 
     act(() => {
@@ -89,5 +102,36 @@ describe("useBuildingLookup", () => {
 
     await waitFor(() => expect(result.current.found).toBe("Edifício Bauru"));
     expect(find).toHaveBeenCalledTimes(2);
+  });
+
+  it("reloads the session when the API says it ended", async () => {
+    const auth = fakeAuth();
+    const find = vi.fn().mockRejectedValue(new ApiError(401, "Sessão inválida ou expirada"));
+
+    const { result } = renderLookup(find, SECOND_CNPJ, auth);
+
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
+    expect(result.current.error).toBe("Sessão inválida ou expirada");
+  });
+
+  it("keeps the message when the ended session cannot be reloaded", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const refreshUser = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    const find = vi.fn().mockRejectedValue(new ApiError(401, "Sessão inválida ou expirada"));
+
+    const { result } = renderLookup(find, SECOND_CNPJ, fakeAuth({ refreshUser }));
+
+    await waitFor(() => expect(consoleError).toHaveBeenCalledOnce());
+    expect(result.current.error).toBe("Sessão inválida ou expirada");
+  });
+
+  it("does not reload the session for other failures", async () => {
+    const auth = fakeAuth();
+    const find = vi.fn().mockRejectedValue(new ApiError(503, "Tente mais tarde"));
+
+    const { result } = renderLookup(find, SECOND_CNPJ, auth);
+
+    await waitFor(() => expect(result.current.error).toBe("Tente mais tarde"));
+    expect(auth.refreshUser).not.toHaveBeenCalled();
   });
 });

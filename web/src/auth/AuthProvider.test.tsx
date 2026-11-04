@@ -14,9 +14,9 @@ function ShowSession() {
     useAuth();
   const [saveError, setSaveError] = useState("");
 
-  function saveWithConflict() {
-    saveProfile(Promise.reject(new ApiError(409, "Conflito"))).catch((conflictError: Error) =>
-      setSaveError(conflictError.message),
+  function saveRejected(status: number, message: string) {
+    saveProfile(Promise.reject(new ApiError(status, message))).catch((rejection: Error) =>
+      setSaveError(rejection.message),
     );
   }
 
@@ -30,7 +30,8 @@ function ShowSession() {
       {saveError && <p>Erro ao salvar: {saveError}</p>}
       <button onClick={() => refreshUser()}>Atualizar</button>
       <button onClick={() => saveProfile(Promise.resolve(farmer))}>Salvar</button>
-      <button onClick={saveWithConflict}>Salvar com conflito</button>
+      <button onClick={() => saveRejected(409, "Conflito")}>Salvar com conflito</button>
+      <button onClick={() => saveRejected(401, "Sessão expirada")}>Salvar sem sessão</button>
       <button onClick={() => logout()}>Sair</button>
     </>
   );
@@ -124,6 +125,21 @@ describe("AuthProvider", () => {
 
     expect(await screen.findByText("Perfil: farmer")).toBeInTheDocument();
     expect(screen.getByText("Erro ao salvar: Conflito")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("forgets the user when saving says the session ended", async () => {
+    const fetchMock = stubFetch(
+      jsonResponse(ana),
+      jsonResponse({ detail: "Sessão inválida ou expirada" }, 401),
+    );
+    renderSession();
+    await screen.findByText("Ana Souza");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar sem sessão" }));
+
+    expect(await screen.findByText("Sem sessão")).toBeInTheDocument();
+    expect(screen.getByText("Erro ao salvar: Sessão expirada")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

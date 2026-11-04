@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, errorMessage } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export interface BuildingLookup<Found> {
   cnpj: string;
@@ -20,10 +21,15 @@ function canRetry(lookupError: unknown): boolean {
   return !(lookupError instanceof ApiError && lookupError.status === 422);
 }
 
+function isSessionEnded(lookupError: unknown): boolean {
+  return lookupError instanceof ApiError && lookupError.status === 401;
+}
+
 export function useBuildingLookup<Found>(
   find: (cnpj: string) => Promise<Found>,
   initialCnpj = "",
 ): BuildingLookup<Found> {
+  const { refreshUser } = useAuth();
   const [cnpj, setCnpj] = useState(initialCnpj);
   const [found, setFound] = useState<Found | null>(null);
   const [error, setError] = useState("");
@@ -58,19 +64,27 @@ export function useBuildingLookup<Found>(
       return;
     }
     let outdated = false;
-    find(cnpj)
-      .then((result) => {
+
+    async function search() {
+      try {
+        const result = await find(cnpj);
         if (!outdated) setFound(result);
-      })
-      .catch((lookupError: unknown) => {
+      } catch (lookupError) {
         if (outdated) return;
         setRetryable(canRetry(lookupError));
         setError(errorMessage(lookupError));
-      });
+        if (isSessionEnded(lookupError)) {
+          // sem sessão, recarregar o usuário leva quem preenche de volta ao login
+          await refreshUser();
+        }
+      }
+    }
+
+    search().catch((refreshError: unknown) => console.error(refreshError));
     return () => {
       outdated = true;
     };
-  }, [cnpj, find, attempt]);
+  }, [cnpj, find, attempt, refreshUser]);
 
   return { cnpj, changeCnpj, found, searching, error, requireFound };
 }

@@ -47,6 +47,12 @@ export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContext
   };
 }
 
+export function withAuth(auth: AuthContextValue) {
+  return function AuthWrapper({ children }: Readonly<{ children: ReactNode }>) {
+    return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  };
+}
+
 export function renderWithAuth(ui: ReactNode, auth: AuthContextValue, url = "/") {
   return render(
     <AuthContext.Provider value={auth}>
