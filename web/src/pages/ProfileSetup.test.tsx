@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ApartmentSummary, ProfileRead } from "../api/profiles";
+import type { ApartmentMatch, ProfileRead } from "../api/profiles";
 import {
   ana,
   fakeAuth,
@@ -10,14 +10,16 @@ import {
   sentBody,
   stubFetch,
   villageVilaVerde,
+  villageVilaVerdeMatch,
 } from "../test/helpers";
 import { ProfileSetup } from "./ProfileSetup";
 
 const CNPJ = "50.673.649/0001-44";
-const copyOfVillage: ApartmentSummary = {
-  ...villageVilaVerde,
+const copyOfVillage: ApartmentMatch = {
+  ...villageVilaVerdeMatch,
   public_id: "0b9f8d2a-1c3e-4f5a-9b7c-6d5e4f3a2b1c",
   building_name: "Village Vila Verde (cópia)",
+  manager_short_name: "Bruno C.",
 };
 
 function renderSetup() {
@@ -249,7 +251,7 @@ describe("ProfileSetup", () => {
 
   it("creates the buyer profile after the building is confirmed", async () => {
     const buyer: ProfileRead = { ...ana, profile_type: "buyer" };
-    const fetchMock = stubFetch(jsonResponse([villageVilaVerde]), jsonResponse(buyer, 201));
+    const fetchMock = stubFetch(jsonResponse([villageVilaVerdeMatch]), jsonResponse(buyer, 201));
     const auth = renderSetup();
     await choose("Quero comprar");
 
@@ -276,7 +278,7 @@ describe("ProfileSetup", () => {
 
   it("lets the buyer pick one of the buildings that share the CNPJ", async () => {
     const fetchMock = stubFetch(
-      jsonResponse([villageVilaVerde, copyOfVillage]),
+      jsonResponse([villageVilaVerdeMatch, copyOfVillage]),
       jsonResponse({ ...ana, profile_type: "buyer" }, 201),
     );
     const auth = renderSetup();
@@ -297,8 +299,46 @@ describe("ProfileSetup", () => {
     });
   });
 
+  it("tells apart the buildings that share the CNPJ by their manager", async () => {
+    stubFetch(jsonResponse([villageVilaVerdeMatch, copyOfVillage]));
+    renderSetup();
+    await choose("Quero comprar");
+
+    await fillIn("CNPJ do Prédio", CNPJ);
+
+    const original = await screen.findByRole("radio", {
+      name: /^Cond\. Village Vila Verde.*Síndico: Maria S\.$/,
+    });
+    const copy = screen.getByRole("radio", {
+      name: /^Village Vila Verde \(cópia\).*Síndico: Bruno C\.$/,
+    });
+    expect(original).toBeInTheDocument();
+    expect(copy).toBeInTheDocument();
+  });
+
+  it("shows the manager of the only building with the CNPJ", async () => {
+    stubFetch(jsonResponse([villageVilaVerdeMatch]));
+    renderSetup();
+    await choose("Quero comprar");
+
+    await fillIn("CNPJ do Prédio", CNPJ);
+
+    expect(await screen.findByText("Síndico: Maria S.")).toBeInTheDocument();
+  });
+
+  it("hides the manager line when the API sends no manager name", async () => {
+    stubFetch(jsonResponse([{ ...villageVilaVerdeMatch, manager_short_name: "" }]));
+    renderSetup();
+    await choose("Quero comprar");
+
+    await fillIn("CNPJ do Prédio", CNPJ);
+
+    expect(await screen.findByText("Cond. Village Vila Verde")).toBeInTheDocument();
+    expect(screen.queryByText(/Síndico/)).not.toBeInTheDocument();
+  });
+
   it("does not create the buyer profile before the building is confirmed", async () => {
-    const fetchMock = stubFetch(jsonResponse([villageVilaVerde]));
+    const fetchMock = stubFetch(jsonResponse([villageVilaVerdeMatch]));
     renderSetup();
     await choose("Quero comprar");
 

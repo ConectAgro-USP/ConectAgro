@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   emptyToNull,
   findApartments,
-  type ApartmentSummary,
+  type ApartmentMatch,
   type BuyerLink,
 } from "../api/profiles";
 import { useBuildingLookup } from "./useBuildingLookup";
@@ -16,10 +16,10 @@ export interface InitialLink {
 export interface BuildingLinkForm {
   cnpj: string;
   changeCnpj: (cnpj: string) => void;
-  found: ApartmentSummary[] | null;
+  found: ApartmentMatch[] | null;
   searching: boolean;
   error: string;
-  choose: (building: ApartmentSummary | null) => void;
+  choose: (building: ApartmentMatch | null) => void;
   block: string;
   setBlock: (block: string) => void;
   unit: string;
@@ -29,7 +29,7 @@ export interface BuildingLinkForm {
 
 export function useBuildingLink(initial: InitialLink): BuildingLinkForm {
   const lookup = useBuildingLookup(findApartments, initial.cnpj);
-  const [chosen, setChosen] = useState<ApartmentSummary | null>(null);
+  const [chosen, setChosen] = useState<ApartmentMatch | null>(null);
   const [block, setBlock] = useState(initial.block);
   const [unit, setUnit] = useState(initial.unit);
 

@@ -16,6 +16,10 @@ export interface ApartmentSummary {
   address: string | null;
 }
 
+export interface ApartmentMatch extends ApartmentSummary {
+  manager_short_name: string;
+}
+
 export interface BuyerRead {
   block: string | null;
   unit: string;
@@ -86,6 +90,6 @@ export function previewApartment(cnpj: string): Promise<ApartmentPreview> {
   return apiFetch<ApartmentPreview>(`/profiles/apartment/preview?${new URLSearchParams({ cnpj })}`);
 }
 
-export function findApartments(cnpj: string): Promise<ApartmentSummary[]> {
-  return apiFetch<ApartmentSummary[]>(`/apartments?${new URLSearchParams({ cnpj })}`);
+export function findApartments(cnpj: string): Promise<ApartmentMatch[]> {
+  return apiFetch<ApartmentMatch[]>(`/apartments?${new URLSearchParams({ cnpj })}`);
 }

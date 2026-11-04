@@ -8,7 +8,7 @@ import {
   jsonResponse,
   renderWithAuth,
   stubFetch,
-  villageVilaVerde,
+  villageVilaVerdeMatch,
 } from "../test/helpers";
 import { ProtectedRoute } from "./ProtectedRoute";
 
@@ -74,7 +74,7 @@ describe("ProtectedRoute", () => {
   });
 
   it("shows the rejected link instead of the page", async () => {
-    stubFetch(jsonResponse([villageVilaVerde]));
+    stubFetch(jsonResponse([villageVilaVerdeMatch]));
 
     renderRoute(anaAsBuyer("RECUSADO"));
 

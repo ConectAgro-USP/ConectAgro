@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
-import type { ApartmentSummary, LinkStatus, ProfileRead } from "../api/profiles";
+import type { ApartmentMatch, ApartmentSummary, LinkStatus, ProfileRead } from "../api/profiles";
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 
 export const ana: ProfileRead = {
@@ -16,6 +16,12 @@ export const villageVilaVerde: ApartmentSummary = {
   building_name: "Cond. Village Vila Verde",
   building_cnpj: "50673649000144",
   address: "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra",
+};
+
+// como o prédio aparece na busca por CNPJ, que também mostra o síndico
+export const villageVilaVerdeMatch: ApartmentMatch = {
+  ...villageVilaVerde,
+  manager_short_name: "Maria S.",
 };
 
 export function anaAsBuyer(linkStatus: LinkStatus): ProfileRead {

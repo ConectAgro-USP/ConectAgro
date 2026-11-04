@@ -1,4 +1,4 @@
-import type { ApartmentSummary } from "../api/profiles";
+import type { ApartmentMatch } from "../api/profiles";
 import { BuildingCard } from "./BuildingCard";
 import { FormError } from "./FormError";
 
@@ -10,8 +10,8 @@ const CHOICE_CLASSES =
   "has-checked:border-2 has-checked:border-lime-800 has-checked:bg-lime-50";
 
 interface BuildingChoiceProps {
-  buildings: ApartmentSummary[];
-  onChoose: (building: ApartmentSummary | null) => void;
+  buildings: ApartmentMatch[];
+  onChoose: (building: ApartmentMatch | null) => void;
 }
 
 export function BuildingChoice({ buildings, onChoose }: Readonly<BuildingChoiceProps>) {

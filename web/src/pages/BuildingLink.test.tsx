@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "../api/client";
-import type { ApartmentSummary } from "../api/profiles";
+import type { ApartmentMatch } from "../api/profiles";
 import {
   anaAsBuyer,
   fakeAuth,
@@ -11,14 +11,16 @@ import {
   sentBody,
   stubFetch,
   villageVilaVerde,
+  villageVilaVerdeMatch,
 } from "../test/helpers";
 import { PendingLink, RejectedLink } from "./BuildingLink";
 
-const bauru: ApartmentSummary = {
-  ...villageVilaVerde,
+const bauru: ApartmentMatch = {
+  ...villageVilaVerdeMatch,
   public_id: "0b9f8d2a-1c3e-4f5a-9b7c-6d5e4f3a2b1c",
   building_name: "Edifício Bauru",
   building_cnpj: "60701190000104",
+  manager_short_name: "Bruno C.",
 };
 
 describe("PendingLink", () => {
@@ -65,7 +67,7 @@ describe("PendingLink", () => {
 describe("RejectedLink", () => {
   it("asks for the same building again with the previous data", async () => {
     const pending = anaAsBuyer("PENDENTE");
-    const fetchMock = stubFetch(jsonResponse([villageVilaVerde]), jsonResponse(pending));
+    const fetchMock = stubFetch(jsonResponse([villageVilaVerdeMatch]), jsonResponse(pending));
     const auth = fakeAuth({ user: anaAsBuyer("RECUSADO") });
     renderWithAuth(<RejectedLink />, auth);
 
@@ -88,7 +90,7 @@ describe("RejectedLink", () => {
 
   it("asks for another building", async () => {
     const fetchMock = stubFetch(
-      jsonResponse([villageVilaVerde]),
+      jsonResponse([villageVilaVerdeMatch]),
       jsonResponse([bauru]),
       jsonResponse(anaAsBuyer("PENDENTE")),
     );
@@ -125,7 +127,7 @@ describe("RejectedLink", () => {
   });
 
   it("keeps the buttons disabled while the new request is sent", async () => {
-    const fetchMock = stubFetch(jsonResponse([villageVilaVerde]));
+    const fetchMock = stubFetch(jsonResponse([villageVilaVerdeMatch]));
     fetchMock.mockReturnValueOnce(new Promise<Response>(() => {}));
     renderWithAuth(<RejectedLink />, fakeAuth({ user: anaAsBuyer("RECUSADO") }));
 
@@ -137,7 +139,7 @@ describe("RejectedLink", () => {
   });
 
   it("logs out from the rejected link", async () => {
-    stubFetch(jsonResponse([villageVilaVerde]));
+    stubFetch(jsonResponse([villageVilaVerdeMatch]));
     const auth = fakeAuth({ user: anaAsBuyer("RECUSADO") });
     renderWithAuth(<RejectedLink />, auth);
 
