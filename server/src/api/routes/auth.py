@@ -4,6 +4,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 
 from src.api.deps import AuthServiceDep, CurrentUser
+from src.api.rate_limits import (
+    LOGIN_FAILURES_PER_EMAIL,
+    LOGIN_FAILURES_PER_IP,
+    SIGNUPS_PER_IP,
+    IpKey,
+    count_or_reject,
+    reject_if_blocked,
+)
 from src.auth.oauth import oauth
 from src.core.config import settings
 from src.core.security import create_access_token
@@ -70,7 +78,10 @@ async def logout(response: Response):
 
 # def e não async, para o FastAPI rodar o banco e o argon2 síncronos no threadpool
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_in: UserCreate, auth_service: AuthServiceDep) -> dict[str, str | int]:
+def register(
+    user_in: UserCreate, auth_service: AuthServiceDep, ip_key: IpKey
+) -> dict[str, str | int]:
+    count_or_reject(SIGNUPS_PER_IP, ip_key)
     try:
         new_user = auth_service.register(user_in)
     except EmailAlreadyRegisteredError:
@@ -80,11 +91,23 @@ def register(user_in: UserCreate, auth_service: AuthServiceDep) -> dict[str, str
 
 
 @router.post("/login")
-def login(user_in: UserLogin, auth_service: AuthServiceDep, response: Response) -> dict[str, str]:
+def login(
+    user_in: UserLogin, auth_service: AuthServiceDep, response: Response, ip_key: IpKey
+) -> dict[str, str]:
+    # o IP só conta senhas erradas: logins certos de uma turma não o bloqueiam
+    reject_if_blocked(LOGIN_FAILURES_PER_IP, ip_key)
+    # o e-mail conta antes do argon2: pedidos simultâneos não furam o limite
+    count_or_reject(LOGIN_FAILURES_PER_EMAIL, user_in.email)
     try:
         user = auth_service.authenticate(user_in.email, user_in.password)
     except InvalidCredentialsError:
+        LOGIN_FAILURES_PER_IP.count_attempt(ip_key)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos") from None
+    except Exception:
+        # o erro é do servidor, não da senha: a tentativa não conta
+        LOGIN_FAILURES_PER_EMAIL.undo_attempt(user_in.email)
+        raise
 
+    LOGIN_FAILURES_PER_EMAIL.undo_attempt(user_in.email)
     _set_auth_cookie(response, user)
     return {"message": "Login realizado com sucesso"}

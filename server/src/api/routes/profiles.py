@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.deps import CurrentUser, ProfileServiceDep, get_current_user
+from src.api.rate_limits import limit_profile_requests
 from src.models.profile import (
     ApartmentCreate,
     ApartmentPreview,
@@ -58,7 +59,12 @@ def http_error(error: Exception) -> HTTPException:
 
 
 # def e não async, para o FastAPI rodar o banco e as APIs externas no threadpool
-@router.post("/farmer", status_code=status.HTTP_201_CREATED, response_model=ProfileRead)
+@router.post(
+    "/farmer",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileRead,
+    dependencies=[Depends(limit_profile_requests)],
+)
 def create_farmer_profile(
     farmer_in: FarmerCreate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
@@ -71,7 +77,7 @@ def create_farmer_profile(
 @router.get(
     "/apartment/preview",
     response_model=ApartmentPreview,
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(limit_profile_requests)],
 )
 def preview_apartment_profile(cnpj: Cnpj, profile_service: ProfileServiceDep):
     try:
@@ -80,7 +86,12 @@ def preview_apartment_profile(cnpj: Cnpj, profile_service: ProfileServiceDep):
         raise http_error(error) from None
 
 
-@router.post("/apartment", status_code=status.HTTP_201_CREATED, response_model=ProfileRead)
+@router.post(
+    "/apartment",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileRead,
+    dependencies=[Depends(limit_profile_requests)],
+)
 def create_apartment_profile(
     apartment_in: ApartmentCreate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
@@ -90,7 +101,12 @@ def create_apartment_profile(
         raise http_error(error) from None
 
 
-@router.post("/buyer", status_code=status.HTTP_201_CREATED, response_model=ProfileRead)
+@router.post(
+    "/buyer",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileRead,
+    dependencies=[Depends(limit_profile_requests)],
+)
 def create_buyer_profile(
     buyer_in: BuyerCreate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
@@ -105,7 +121,7 @@ def read_my_profile(current_user: CurrentUser, profile_service: ProfileServiceDe
     return profile_service.get_profile(current_user)
 
 
-@router.patch("/me", response_model=ProfileRead)
+@router.patch("/me", response_model=ProfileRead, dependencies=[Depends(limit_profile_requests)])
 def update_my_profile(
     changes: ProfileUpdate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
