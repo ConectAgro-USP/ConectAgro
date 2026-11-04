@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 
 export function Dashboard() {
   const { user, logout } = useAuth();
+  const [logoutFailed, setLogoutFailed] = useState(false);
+
+  const handleLogout = () => {
+    logout().catch(() => setLogoutFailed(true));
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 p-8">
@@ -9,11 +15,16 @@ export function Dashboard() {
         <h1 className="mb-2 text-xl font-semibold text-slate-800">Olá, {user?.name}</h1>
         <p className="mb-6 text-slate-500">{user?.email}</p>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="rounded border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-100"
         >
           Sair
         </button>
+        {logoutFailed && (
+          <p role="alert" className="mt-4 text-sm text-red-600">
+            Não foi possível sair. Tente novamente.
+          </p>
+        )}
       </div>
     </main>
   );

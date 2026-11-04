@@ -1,16 +1,26 @@
 import os
+from collections.abc import Generator
 
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-os.environ.setdefault("SESSION_SECRET_KEY", "test-secret")
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
+os.environ.update(
+    APP_FLAVOR="dev",
+    DATABASE_URL="sqlite://",
+    SESSION_SECRET_KEY="test-session-secret-with-32-chars!",
+    JWT_SECRET_KEY="test-jwt-secret-with-at-least-32-chars",
+    ACCESS_TOKEN_EXPIRE_MINUTES="60",
+    FRONTEND_URL="http://localhost:5173",
+)
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from src.api.deps import get_session
+from src.api import rate_limits
+from src.api.deps import RECENT_COMPANIES, get_session
 from src.main import app
+from src.models.apartment import Apartment
+from src.models.user import User
+from tests.helpers import ITAU_CNPJ, add_building, add_user, login
 
 engine_test = create_engine(
     "sqlite://",
@@ -33,6 +43,47 @@ def setup_database():
     SQLModel.metadata.drop_all(engine_test)
 
 
-@pytest.fixture()
-def client() -> TestClient:
-    return TestClient(app)
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    for limiter in rate_limits.ALL_LIMITERS:
+        limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_recent_companies():
+    RECENT_COMPANIES.reset()
+
+
+@pytest.fixture
+def session() -> Generator[Session, None, None]:
+    with Session(engine_test) as session:
+        yield session
+
+
+@pytest.fixture
+def client() -> Generator[TestClient, None, None]:
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def ana(client: TestClient, session: Session) -> User:
+    user = add_user(session, "ana@example.com")
+    login(client, user)
+    return user
+
+
+@pytest.fixture
+def manager(session: Session) -> User:
+    return add_user(session, "sindico@example.com")
+
+
+@pytest.fixture
+def building(session: Session, manager: User) -> Apartment:
+    return add_building(session, manager)
+
+
+@pytest.fixture
+def other_building(session: Session) -> Apartment:
+    other_manager = add_user(session, "outro@example.com")
+    return add_building(session, other_manager, name="Edifício Bauru", cnpj=ITAU_CNPJ)

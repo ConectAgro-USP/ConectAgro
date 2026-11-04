@@ -1,20 +1,54 @@
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Annotated, Optional
 
-from sqlmodel import Field, SQLModel
+from pydantic import AfterValidator, EmailStr, StringConstraints
+from sqlalchemy import DateTime
+from sqlmodel import Field, Relationship, SQLModel
 
+from src.services.cpf_service import validate_cpf
+from src.services.phone_service import validate_cellphone, validate_homephone
+from src.services.text_service import reject_null_character
+
+NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
+PersonName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=2, max_length=100),
+    AfterValidator(reject_null_character),
+]
+# o limite vem antes da validação, para um texto enorme não custar caro
+CellPhone = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_cellphone)]
+HomePhone = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_homephone)]
+Cpf = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_cpf)]
+
+if TYPE_CHECKING:
+    from .apartment import Apartment
+    from .buyer import Buyer
+    from .farmer import Farmer
 
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
     name: str
     picture_url: str | None = None
+    cellphone: CellPhone | None = None
+    homephone: HomePhone | None = None
 
 
 class User(UserBase, table=True):
     __tablename__ = "users"
 
     id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
+    )
     hashed_password: str | None = None
+    # fica fora do UserBase para não sair nas respostas da API
+    cpf: str | None = Field(default=None, unique=True, index=True)
+    # vai em cada token; aumentar o número encerra todas as sessões abertas
+    session_version: int = 0
+
+    farmer: Optional["Farmer"] = Relationship(back_populates="user")
+    apartment: Optional["Apartment"] = Relationship(back_populates="manager")
+    buyer: Optional["Buyer"] = Relationship(back_populates="user")
 
 
 class UserRead(UserBase):
@@ -23,12 +57,11 @@ class UserRead(UserBase):
 
 
 class UserCreate(SQLModel):
-    name: str = Field(min_length=5)
-    email: str = Field(min_length=8)
-    password: str = Field(min_length=8)
-    address: str | None = None
+    name: PersonName
+    email: NormalizedEmail
+    password: str = Field(min_length=8, max_length=128)
 
 
 class UserLogin(SQLModel):
-    email: str
-    password: str
+    email: NormalizedEmail
+    password: str = Field(max_length=128)

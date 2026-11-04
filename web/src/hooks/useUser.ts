@@ -13,7 +13,7 @@ interface UseUserState {
 }
 
 export function useUser(userId: string): UseUserState {
-	const [data, setData] = useState<User | null>(null)
+	const [data] = useState<User | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<Error | null>(null)
 

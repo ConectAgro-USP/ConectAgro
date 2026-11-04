@@ -13,7 +13,7 @@ interface UseProductsState {
 }
 
 export function useProducts(): UseProductsState {
-	const [data, setData] = useState<Product[]>([])
+	const [data] = useState<Product[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<Error | null>(null)
 

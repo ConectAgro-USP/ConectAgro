@@ -7,8 +7,8 @@ repositório, junto com o log de desenvolvimento do projeto.
 
 - **Backend**: FastAPI + SQLModel + PostgreSQL
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS
-- **Autenticação**: OAuth
-- **Infra**: Docker
+- **Autenticação**: Google OAuth e e-mail/senha, com JWT em cookie HttpOnly
+- **Infra**: Docker (local); Vercel (frontend) e Render (backend) em produção
 
 ## Primeiros Passos
 

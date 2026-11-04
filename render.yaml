@@ -19,8 +19,6 @@ services:
         generateValue: true
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: GOOGLE_METADATA_URL
-        value: https://accounts.google.com/.well-known/openid-configuration
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET

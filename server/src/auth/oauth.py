@@ -8,5 +8,5 @@ oauth.register(
     server_metadata_url=settings.GOOGLE_METADATA_URL,
     client_id=settings.GOOGLE_CLIENT_ID,
     client_secret=settings.GOOGLE_CLIENT_SECRET,
-    client_kwargs={"scope": "openid email profile"},
+    client_kwargs={"scope": "openid email profile", "code_challenge_method": "S256"},
 )

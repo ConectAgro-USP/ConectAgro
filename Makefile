@@ -12,24 +12,27 @@ build:
 logs:
 	docker compose logs -f
 
+ALEMBIC = docker compose run --rm -v ./server:/app server alembic
+
 migrate:
-	docker compose exec server alembic upgrade head
+	$(ALEMBIC) upgrade head
 
 makemigration:
-	docker compose exec server alembic revision --autogenerate -m "$(m)"
+	$(ALEMBIC) revision --autogenerate -m "$(m)"
 
 server-shell:
 	docker compose exec server bash
 
 db-shell:
-	docker compose exec db psql -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 lint:
 	cd server && ruff check .
-	cd web && npm run lint
+	cd web && npm run lint && npx tsc -b
 
 test:
 	cd server && pytest
+	cd web && npm test
 
 dev-server:
 	cd server && uvicorn src.main:app --reload --env-file ../.env

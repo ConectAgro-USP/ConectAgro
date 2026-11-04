@@ -17,7 +17,7 @@ interface UseCartState {
 }
 
 export function useCart(userId: string): UseCartState {
-	const [data, setData] = useState<Cart | null>(null)
+	const [data] = useState<Cart | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<Error | null>(null)
 

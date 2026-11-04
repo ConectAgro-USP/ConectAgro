@@ -1,51 +1,67 @@
+from authlib.integrations.starlette_client import OAuthError
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
-from sqlmodel import select
 
-from src.api.deps import CurrentUser, SessionDep
+from src.api.deps import AuthServiceDep, CurrentUser
+from src.api.rate_limits import (
+    LOGIN_FAILURES_PER_EMAIL,
+    LOGIN_FAILURES_PER_IP,
+    SIGNUPS_PER_IP,
+    IpKey,
+    count_or_reject,
+    reject_if_blocked,
+)
 from src.auth.oauth import oauth
 from src.core.config import settings
-from src.core.security import create_access_token, get_password_hash, verify_password
+from src.core.security import create_access_token
 from src.models.user import User, UserCreate, UserLogin, UserRead
+from src.services.exceptions import (
+    EmailAlreadyRegisteredError,
+    GoogleLoginRejectedError,
+    InvalidCredentialsError,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _set_auth_cookie(response: Response, user: User) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=create_access_token(user.id, user.session_version),
+        httponly=True,
+        secure=settings.is_prod,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @router.get("/login/google")
 async def login_google(request: Request):
     # O callback passa pelo /api do frontend (Vite/Vercel) para receber o cookie de estado do OAuth.
     callback_path = request.url_for("auth_google_callback").path
-    redirect_uri = settings.FRONTEND_URL.rstrip("/") + callback_path
+    redirect_uri = settings.FRONTEND_URL + callback_path
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/callback/google", name="auth_google_callback")
-async def auth_google_callback(request: Request, session: SessionDep):
-    token = await oauth.google.authorize_access_token(request)
-    userinfo = token["userinfo"]
-
-    user = session.exec(select(User).where(User.email == userinfo["email"])).first()
-    if user is None:
-        user = User(
-            email=userinfo["email"],
-            name=userinfo["name"],
+async def auth_google_callback(request: Request, auth_service: AuthServiceDep):
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        userinfo = token["userinfo"]
+        user = await run_in_threadpool(
+            auth_service.authenticate_with_google,
+            email=userinfo["email"].lower(),
+            name=userinfo.get("name", userinfo["email"]),
             picture_url=userinfo.get("picture"),
+            email_verified=userinfo.get("email_verified") is True,
+            hosted_domain=userinfo.get("hd"),
         )
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-
-    access_token = create_access_token(subject=str(user.id))
+    except (OAuthError, GoogleLoginRejectedError):
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=google")
 
     response = RedirectResponse(url=settings.FRONTEND_URL)
-    response.set_cookie(
-        "access_token",
-        access_token,
-        httponly=True,
-        secure=settings.is_prod,
-        samesite="lax",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    _set_auth_cookie(response, user)
     return response
 
 
@@ -56,46 +72,42 @@ async def read_current_user(current_user: CurrentUser):
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", httponly=True, secure=settings.is_prod)
     return {"ok": True}
 
 
+# def e não async, para o FastAPI rodar o banco e o argon2 síncronos no threadpool
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_farmer(user_in: UserCreate, session: SessionDep):
-    existing_user = session.exec(select(User).where(User.email == user_in.email)).first()
+def register(
+    user_in: UserCreate, auth_service: AuthServiceDep, ip_key: IpKey
+) -> dict[str, str | int]:
+    count_or_reject(SIGNUPS_PER_IP, ip_key)
+    try:
+        new_user = auth_service.register(user_in)
+    except EmailAlreadyRegisteredError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "E-mail já cadastrado") from None
 
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="E-mail já cadastrado")
-    
-    new_user = User(
-        name=user_in.name,
-        email=user_in.email,
-        address=user_in.address,
-        hashed_password=get_password_hash(user_in.password),
-    )
-
-    session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
-    return {"status_code": status.HTTP_201_CREATED, "message": "Conta criada com sucesso",
-            "user_id": new_user.id}
+    return {"message": "Conta criada com sucesso", "user_id": new_user.id}
 
 
 @router.post("/login")
-async def login_farmer(user_in: UserLogin, session: SessionDep, response: Response):
-    user = session.exec(select(User).where(User.email == user_in.email)).first()
-    
-    if not user or not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                             detail="E-mail ou senha incorretos")
-    
-    access_token = create_access_token(subject=str(user.id))
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=settings.is_prod,
-        samesite="lax",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-    return {"status_code": status.HTTP_200_OK, "message": "Login realizado com sucesso"}
+def login(
+    user_in: UserLogin, auth_service: AuthServiceDep, response: Response, ip_key: IpKey
+) -> dict[str, str]:
+    # o IP só conta senhas erradas: logins certos de uma turma não o bloqueiam
+    reject_if_blocked(LOGIN_FAILURES_PER_IP, ip_key)
+    # o e-mail conta antes do argon2: pedidos simultâneos não furam o limite
+    count_or_reject(LOGIN_FAILURES_PER_EMAIL, user_in.email)
+    try:
+        user = auth_service.authenticate(user_in.email, user_in.password)
+    except InvalidCredentialsError:
+        LOGIN_FAILURES_PER_IP.count_attempt(ip_key)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos") from None
+    except Exception:
+        # o erro é do servidor, não da senha: a tentativa não conta
+        LOGIN_FAILURES_PER_EMAIL.undo_attempt(user_in.email)
+        raise
+
+    LOGIN_FAILURES_PER_EMAIL.undo_attempt(user_in.email)
+    _set_auth_cookie(response, user)
+    return {"message": "Login realizado com sucesso"}

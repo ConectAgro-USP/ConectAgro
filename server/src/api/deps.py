@@ -1,12 +1,30 @@
 from collections.abc import Generator
 from typing import Annotated
 
+import httpx
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlmodel import Session
 
+from src.connectors.brasilapi import BrasilApiConnector
+from src.connectors.cnpja import CnpjaConnector
 from src.core.db import engine
 from src.core.security import decode_access_token
+from src.models.apartment import Apartment
+from src.models.buyer import Buyer, LinkStatus
+from src.models.farmer import Farmer
 from src.models.user import User
+from src.repository.profile_repository import ProfileRepository
+from src.repository.user_repository import UserRepository
+from src.services.apartment_service import ApartmentService
+from src.services.auth_service import AuthService
+from src.services.cnpj_service import CnpjService
+from src.services.company_cache import CompanyCache
+from src.services.profile_service import ProfileService
+
+# um client só, dividido entre as threads, reaproveita as conexões abertas
+http_client = httpx.Client()
+# a CNPJá aceita poucas consultas: a prévia e o cadastro gastam uma só
+RECENT_COMPANIES = CompanyCache(keep_seconds=60 * 60)
 
 
 def get_session() -> Generator[Session, None, None]:
@@ -17,22 +35,109 @@ def get_session() -> Generator[Session, None, None]:
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
+def get_user_repository(session: SessionDep) -> UserRepository:
+    return UserRepository(session)
+
+
+UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
+
+
+def get_auth_service(users: UserRepositoryDep) -> AuthService:
+    return AuthService(users)
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
 def get_current_user(
-    session: SessionDep,
+    users: UserRepositoryDep,
     access_token: Annotated[str | None, Cookie()] = None,
 ) -> User:
     if access_token is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Não autenticado")
 
-    payload = decode_access_token(access_token)
-    if payload is None:
+    token_data = decode_access_token(access_token)
+    if token_data is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sessão inválida ou expirada")
 
-    user = session.get(User, int(payload["sub"]))
+    user = users.get_by_id(token_data.user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário não encontrado")
+    if token_data.session_version != user.session_version:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sessão inválida ou expirada")
 
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_brasilapi_connector() -> BrasilApiConnector:
+    return BrasilApiConnector(http_client)
+
+
+BrasilApiDep = Annotated[BrasilApiConnector, Depends(get_brasilapi_connector)]
+
+
+def get_cnpja_connector() -> CnpjaConnector:
+    return CnpjaConnector(http_client)
+
+
+CnpjaDep = Annotated[CnpjaConnector, Depends(get_cnpja_connector)]
+
+
+def get_profile_repository(session: SessionDep) -> ProfileRepository:
+    return ProfileRepository(session)
+
+
+ProfileRepositoryDep = Annotated[ProfileRepository, Depends(get_profile_repository)]
+
+
+def get_profile_service(
+    profiles: ProfileRepositoryDep, ceps: BrasilApiDep, companies: CnpjaDep
+) -> ProfileService:
+    return ProfileService(profiles, ceps, CnpjService(companies, RECENT_COMPANIES))
+
+
+ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]
+
+
+def get_apartment_service(profiles: ProfileRepositoryDep) -> ApartmentService:
+    return ApartmentService(profiles)
+
+
+ApartmentServiceDep = Annotated[ApartmentService, Depends(get_apartment_service)]
+
+
+def get_current_farmer(current_user: CurrentUser) -> Farmer:
+    if current_user.farmer is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso permitido apenas para agricultores")
+    return current_user.farmer
+
+
+CurrentFarmer = Annotated[Farmer, Depends(get_current_farmer)]
+
+
+def get_current_apartment(current_user: CurrentUser) -> Apartment:
+    if current_user.apartment is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso permitido apenas para síndicos")
+    return current_user.apartment
+
+
+CurrentApartment = Annotated[Apartment, Depends(get_current_apartment)]
+
+
+def get_current_buyer(current_user: CurrentUser) -> Buyer:
+    buyer = current_user.buyer
+    if buyer is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso permitido apenas para moradores")
+    if buyer.link_status == LinkStatus.PENDENTE:
+        message = "Seu vínculo com o prédio está aguardando aprovação do síndico"
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+    if buyer.link_status != LinkStatus.APROVADO:
+        message = "Seu vínculo com o prédio foi recusado pelo síndico"
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+    return buyer
+
+
+CurrentBuyer = Annotated[Buyer, Depends(get_current_buyer)]
