@@ -2,23 +2,27 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from src.connectors.brasilapi import BrasilApiConnector, normalize_cep
+from src.connectors.models import Company
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.profile import (
     ApartmentCreate,
+    ApartmentPreview,
     BuyerCreate,
     FarmerCreate,
+    ProfileCreate,
     ProfileRead,
     ProfileType,
     ProfileUpdate,
 )
 from src.models.user import User
-from src.repository.profile_repository import ProfileRepository
+from src.repository.profile_repository import DuplicateValueError, ProfileRepository
 from src.services.cnpj_service import CnpjService, normalize_cnpj
 from src.services.exceptions import (
     ApartmentNotFoundError,
     CepWithoutCoordinatesError,
+    CpfAlreadyRegisteredError,
     FieldNotInProfileError,
     ProfileAlreadyExistsError,
 )
@@ -27,8 +31,8 @@ Profile = Farmer | Apartment | Buyer
 
 USER_FIELDS = ["name", "cellphone", "homephone"]
 PROFILE_FIELDS = {
-    Farmer: ["zip_code"],
-    Apartment: ["building_name", "zip_code", "building_cnpj"],
+    Farmer: ["farm_name", "zip_code"],
+    Apartment: ["zip_code", "building_cnpj"],
     Buyer: ["apartment_public_id", "block", "unit"],
 }
 
@@ -49,31 +53,42 @@ class ProfileService:
             profile.profile_type = ProfileType.BUYER
         return profile
 
+    def preview_apartment(self, building_cnpj: str) -> ApartmentPreview:
+        company = self.cnpjs.get_active_company(building_cnpj)
+        return ApartmentPreview(
+            building_name=_building_name(company),
+            zip_code=company.cep,
+            address=company.address,
+        )
+
     def create_farmer(self, user: User, farmer_in: FarmerCreate) -> ProfileRead:
         self._check_user_has_no_profile(user)
+        self._check_cpf_is_new(farmer_in.cpf)
         zip_code = self._check_zip_code(farmer_in.zip_code)
 
-        farmer = Farmer(user_id=user.id, zip_code=zip_code)
-        return self._save_new_profile(user, farmer)
+        farmer = Farmer(user_id=user.id, farm_name=farmer_in.farm_name, zip_code=zip_code)
+        return self._save_new_profile(user, farmer_in, farmer)
 
     def create_apartment(self, user: User, apartment_in: ApartmentCreate) -> ProfileRead:
         self._check_user_has_no_profile(user)
+        self._check_cpf_is_new(apartment_in.cpf)
         cnpj = normalize_cnpj(apartment_in.building_cnpj)
         zip_code = self._check_zip_code(apartment_in.zip_code)
         # a CNPJá fica por último porque aceita poucas consultas por minuto
-        self.cnpjs.validate(cnpj)
+        company = self.cnpjs.get_active_company(cnpj)
 
-        user.name = apartment_in.manager_name
         apartment = Apartment(
             manager_id=user.id,
-            building_name=apartment_in.building_name,
+            building_name=_building_name(company),
             zip_code=zip_code,
             building_cnpj=cnpj,
+            address=company.address,
         )
-        return self._save_new_profile(user, apartment)
+        return self._save_new_profile(user, apartment_in, apartment)
 
     def create_buyer(self, user: User, buyer_in: BuyerCreate) -> ProfileRead:
         self._check_user_has_no_profile(user)
+        self._check_cpf_is_new(buyer_in.cpf)
         apartment = self._find_apartment(buyer_in.apartment_public_id)
 
         buyer = Buyer(
@@ -82,7 +97,7 @@ class ProfileService:
             block=buyer_in.block,
             unit=buyer_in.unit,
         )
-        return self._save_new_profile(user, buyer)
+        return self._save_new_profile(user, buyer_in, buyer)
 
     def update_profile(self, user: User, changes: ProfileUpdate) -> ProfileRead:
         new_values = changes.model_dump(exclude_unset=True)
@@ -91,7 +106,7 @@ class ProfileService:
 
         self._update_user(user, new_values)
         if isinstance(profile, Farmer):
-            self._update_zip_code(profile, new_values)
+            self._update_farmer(profile, new_values)
         if isinstance(profile, Apartment):
             self._update_apartment(profile, new_values)
         if isinstance(profile, Buyer):
@@ -114,6 +129,11 @@ class ProfileService:
         if "homephone" in new_values:
             user.homephone = new_values["homephone"]
 
+    def _update_farmer(self, farmer: Farmer, new_values: dict) -> None:
+        if "farm_name" in new_values:
+            farmer.farm_name = new_values["farm_name"]
+        self._update_zip_code(farmer, new_values)
+
     def _update_zip_code(self, profile: Farmer | Apartment, new_values: dict) -> None:
         if "zip_code" in new_values:
             zip_code = normalize_cep(new_values["zip_code"])
@@ -127,15 +147,14 @@ class ProfileService:
             if cnpj != apartment.building_cnpj:
                 new_cnpj = cnpj
 
-        if "building_name" in new_values:
-            apartment.building_name = new_values["building_name"]
-
         self._update_zip_code(apartment, new_values)
 
         if new_cnpj is not None:
             # a CNPJá fica por último porque aceita poucas consultas por minuto
-            self.cnpjs.validate(new_cnpj)
+            company = self.cnpjs.get_active_company(new_cnpj)
             apartment.building_cnpj = new_cnpj
+            apartment.building_name = _building_name(company)
+            apartment.address = company.address
 
     def _update_buyer(self, buyer: Buyer, new_values: dict) -> None:
         sends_link = (
@@ -163,11 +182,27 @@ class ProfileService:
         if user.farmer or user.apartment or user.buyer:
             raise ProfileAlreadyExistsError
 
-    def _save_new_profile(self, user: User, profile: Profile) -> ProfileRead:
+    def _check_cpf_is_new(self, cpf: str) -> None:
+        if self.profiles.get_user_by_cpf(cpf) is not None:
+            raise CpfAlreadyRegisteredError
+
+    def _save_new_profile(
+        self, user: User, profile_in: ProfileCreate, profile: Profile
+    ) -> ProfileRead:
         self.profiles.lock_and_reload(user)
         self._check_user_has_no_profile(user)
+
+        user.cpf = profile_in.cpf
+        user.cellphone = profile_in.cellphone
+        user.homephone = profile_in.homephone
         self.profiles.add(profile)
-        self.profiles.commit()
+        try:
+            self.profiles.commit()
+        except DuplicateValueError:
+            # pode ser o CPF, gravado por outra conta depois da conferência
+            if self.profiles.get_user_by_cpf(profile_in.cpf) is not None:
+                raise CpfAlreadyRegisteredError from None
+            raise
         return self.get_profile(user)
 
     def _check_zip_code(self, zip_code: str) -> str:
@@ -181,3 +216,9 @@ class ProfileService:
         if apartment is None:
             raise ApartmentNotFoundError
         return apartment
+
+
+def _building_name(company: Company) -> str:
+    if company.alias:
+        return company.alias
+    return company.name

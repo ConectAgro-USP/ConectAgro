@@ -135,3 +135,52 @@ def test_purchase_parts_migration_on_postgres(
     assert "status purchasestatus NOT NULL" in sql
     assert "PRIMARY KEY (purchase_part_id, product_id)" in sql
     assert "closed_at TIMESTAMP WITH TIME ZONE" in sql
+
+
+def test_cpf_and_address_migration_keeps_existing_rows(db_url: str) -> None:
+    command.upgrade(alembic_config(), "e0ed8ac0498c")
+    engine = create_engine(db_url)
+    with engine.begin() as connection:
+        # SQL cru: os models já têm as colunas do head
+        connection.execute(
+            text(
+                "INSERT INTO users (email, name, created_at) "
+                "VALUES (:email, 'Conta', CURRENT_TIMESTAMP)"
+            ),
+            [{"email": "sindico@example.com"}, {"email": "outro@example.com"}],
+        )
+        connection.execute(
+            text(
+                "INSERT INTO apartments "
+                "(public_id, zip_code, building_name, building_cnpj, manager_id) "
+                "VALUES (:public_id, '01310200', 'Edifício', '00000000000191', :manager_id)"
+            ),
+            [
+                {"public_id": uuid4().hex, "manager_id": 1},
+                {"public_id": uuid4().hex, "manager_id": 2},
+            ],
+        )
+        connection.execute(
+            text(
+                "INSERT INTO farmers (public_id, zip_code, user_id) "
+                "VALUES (:public_id, '01310200', 1)"
+            ),
+            {"public_id": uuid4().hex},
+        )
+
+    command.upgrade(alembic_config(), "head")
+
+    with engine.connect() as connection:
+        addresses = connection.execute(text("SELECT address FROM apartments")).scalars().all()
+        farm_names = connection.execute(text("SELECT farm_name FROM farmers")).scalars().all()
+        cpfs = connection.execute(text("SELECT cpf FROM users")).scalars().all()
+    command.downgrade(alembic_config(), "e0ed8ac0498c")
+    command.upgrade(alembic_config(), "head")
+    with engine.connect() as connection:
+        buildings = connection.execute(text("SELECT COUNT(*) FROM apartments")).scalar()
+    engine.dispose()
+
+    assert addresses == [None, None]
+    assert farm_names == [None]
+    assert cpfs == [None, None]
+    assert buildings == 2

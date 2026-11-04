@@ -12,15 +12,24 @@ from src.connectors.exceptions import (
 from src.connectors.models import Company
 from tests.connectors.fakes import fake_client
 
-# respostas reais da CNPJá em outubro de 2026, reduzidas aos campos lidos
+# respostas reais da CNPJá (out. e nov. de 2026), reduzidas aos campos lidos
 BANCO_DO_BRASIL = {
+    "alias": "Direcao Geral",
     "company": {"name": "BANCO DO BRASIL SA"},
     "status": {"text": "Ativa"},
-    "address": {"zip": "70040912"},
+    "address": {
+        "street": "Quadra Saun Quadra 5 Bloco B Torre I, II, III",
+        "number": "SN",
+        "district": "Asa Norte",
+        "city": "Brasília",
+        "zip": "70040912",
+    },
 }
 INVALID = {"code": 400, "message": "request validation failed"}
 NOT_FOUND = {"code": 404, "message": "tax id not registered at revenue service"}
 RATE_LIMITED = {"code": 429, "message": "rate limit exceeded"}
+
+BANCO_DO_BRASIL_ADDRESS = "Quadra Saun Quadra 5 Bloco B Torre I, II, III, SN - Asa Norte, Brasília"
 
 
 def fake_cnpja(response, **options) -> tuple[CnpjaConnector, list[httpx.Request]]:
@@ -34,7 +43,11 @@ def test_get_company_uses_the_default_url_and_returns_the_company():
     company = connector.get_company("00000000000191")
 
     assert company == Company(
-        name="BANCO DO BRASIL SA", registration_status="Ativa", cep="70040912"
+        name="BANCO DO BRASIL SA",
+        alias="Direcao Geral",
+        registration_status="Ativa",
+        cep="70040912",
+        address=BANCO_DO_BRASIL_ADDRESS,
     )
     assert str(requests[0].url) == "https://open.cnpja.com/office/00000000000191"
     assert requests[0].extensions["timeout"] == httpx.Timeout(5.0).as_dict()
@@ -132,6 +145,49 @@ def test_get_company_returns_no_cep_when_zip_is_null_or_empty(zip_code: str | No
     connector, _ = fake_cnpja(httpx.Response(200, json=payload))
 
     assert connector.get_company("00000000000191").cep is None
+
+
+@pytest.mark.parametrize("alias", [None, ""], ids=["nulo", "vazio"])
+def test_get_company_returns_no_alias_when_it_is_null_or_empty(alias: str | None):
+    connector, _ = fake_cnpja(httpx.Response(200, json={**BANCO_DO_BRASIL, "alias": alias}))
+
+    assert connector.get_company("00000000000191").alias is None
+
+
+@pytest.mark.parametrize(
+    "address, text",
+    [
+        ({"street": "Rua Quatro", "number": "251", "zip": None}, "Rua Quatro, 251"),
+        ({"street": "Rua Quatro", "city": "Mauá", "zip": None}, "Rua Quatro, Mauá"),
+        (
+            {"number": "251", "district": "Centro", "city": "Mauá", "zip": None},
+            "251 - Centro, Mauá",
+        ),
+        ({"street": None, "number": None, "zip": None}, None),
+    ],
+    ids=["sem-bairro-e-cidade", "sem-numero-e-bairro", "sem-rua", "sem-endereco"],
+)
+def test_get_company_skips_the_missing_parts_of_the_address(address: dict, text: str | None):
+    connector, _ = fake_cnpja(httpx.Response(200, json={**BANCO_DO_BRASIL, "address": address}))
+
+    assert connector.get_company("00000000000191").address == text
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {**BANCO_DO_BRASIL, "company": {"name": "BANCO\x00"}},
+        {**BANCO_DO_BRASIL, "company": {"name": "B" * 151}},
+        {**BANCO_DO_BRASIL, "alias": "Direcao\x00"},
+        {**BANCO_DO_BRASIL, "address": {"street": "Rua\x00", "zip": None}},
+    ],
+    ids=["nome-com-nulo", "nome-longo", "apelido-com-nulo", "endereco-com-nulo"],
+)
+def test_get_company_rejects_registry_text_that_cannot_be_saved(answer: dict):
+    connector, _ = fake_cnpja(httpx.Response(200, json=answer))
+
+    with pytest.raises(ExternalServiceError):
+        connector.get_company("00000000000191")
 
 
 def test_get_company_keeps_the_validation_error_as_cause():

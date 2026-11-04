@@ -68,4 +68,6 @@ class AuthService:
 
         # a senha pode ter sido cadastrada por quem não é dono do e-mail, num pré-sequestro de conta
         user.hashed_password = None
+        # quem entrou com a senha não pode seguir logado com o token que já tem
+        user.session_version += 1
         return self.users.save(user)

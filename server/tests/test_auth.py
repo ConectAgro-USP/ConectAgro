@@ -186,12 +186,16 @@ def test_me_without_cookie(client: TestClient):
     "token",
     [
         "nao-e-um-jwt",
-        signed_token({"sub": "1", "exp": IN_ONE_HOUR}, key=OTHER_KEY),
-        signed_token({"sub": "1", "exp": datetime.now(UTC) - timedelta(minutes=1)}),
-        signed_token({"sub": "999", "exp": IN_ONE_HOUR}),
-        signed_token({"sub": "1"}),
-        signed_token({"exp": IN_ONE_HOUR}),
-        signed_token({"sub": "abc", "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "1", "ver": 0, "exp": IN_ONE_HOUR}, key=OTHER_KEY),
+        signed_token({"sub": "1", "ver": 0, "exp": datetime.now(UTC) - timedelta(minutes=1)}),
+        signed_token({"sub": "999", "ver": 0, "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "1", "ver": 0}),
+        signed_token({"ver": 0, "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "abc", "ver": 0, "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "1", "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "1", "ver": 1, "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "1", "ver": "abc", "exp": IN_ONE_HOUR}),
+        signed_token({"sub": "1", "ver": [0], "exp": IN_ONE_HOUR}),
     ],
     ids=[
         "malformado",
@@ -201,11 +205,16 @@ def test_me_without_cookie(client: TestClient):
         "sem-exp",
         "sem-sub",
         "sub-nao-numerico",
+        "sem-versao",
+        "outra-versao",
+        "versao-nao-numerica",
+        "versao-lista",
     ],
 )
 def test_me_rejects_invalid_token(client: TestClient, token: str):
-    # com o usuário 1 cadastrado, o 401 dos tokens com sub 1 só pode vir da validação do JWT
-    client.post("/api/auth/register", json=signup_payload)
+    # o usuário 1 existe, então o 401 dos tokens com sub 1 vem do próprio token
+    registered = client.post("/api/auth/register", json=signup_payload)
+    assert registered.status_code == status.HTTP_201_CREATED
     client.cookies.set("access_token", token)
 
     response = client.get("/api/auth/me")

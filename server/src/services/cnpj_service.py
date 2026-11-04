@@ -1,6 +1,8 @@
 import re
 
 from src.connectors.cnpja import TAX_ID_PATTERN, CnpjaConnector
+from src.connectors.models import Company
+from src.services.company_cache import CompanyCache
 from src.services.exceptions import CnpjNotActiveError, InvalidCnpjError
 
 NON_ALPHANUMERIC = re.compile(r"[^A-Za-z0-9]")
@@ -8,13 +10,19 @@ WEIGHTS = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 
 
 class CnpjService:
-    def __init__(self, companies: CnpjaConnector):
+    def __init__(self, companies: CnpjaConnector, recent_companies: CompanyCache):
         self.companies = companies
+        self.recent_companies = recent_companies
 
-    def validate(self, cnpj: str) -> None:
-        company = self.companies.get_company(normalize_cnpj(cnpj))
+    def get_active_company(self, cnpj: str) -> Company:
+        tax_id = normalize_cnpj(cnpj)
+        company = self.recent_companies.get(tax_id)
+        if company is None:
+            company = self.companies.get_company(tax_id)
+            self.recent_companies.save(tax_id, company)
         if company.registration_status != "Ativa":
             raise CnpjNotActiveError(company.registration_status)
+        return company
 
 
 def normalize_cnpj(cnpj: str) -> str:

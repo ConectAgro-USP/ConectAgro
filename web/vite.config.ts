@@ -16,6 +16,8 @@ export default defineConfig({
     environment: "jsdom",
     // Sem globals o Testing Library não limpa o DOM entre os testes
     globals: true,
+    // sem isso o fetch falso de um teste continua valendo nos seguintes
+    unstubGlobals: true,
     setupFiles: "@testing-library/jest-dom/vitest",
     coverage: {
       // O SonarCloud lê a cobertura do frontend no lcov.info

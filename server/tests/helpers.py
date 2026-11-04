@@ -12,8 +12,18 @@ BANCO_DO_BRASIL_CNPJ = "00000000000191"
 ITAU_CNPJ = "60701190000104"
 
 
-def add_user(session: Session, email: str, name: str = "Ana Souza") -> User:
-    user = User(email=email, name=name)
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def read(self) -> float:
+        return self.now
+
+
+def add_user(
+    session: Session, email: str, name: str = "Ana Souza", cpf: str | None = None
+) -> User:
+    user = User(email=email, name=name, cpf=cpf)
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -21,7 +31,7 @@ def add_user(session: Session, email: str, name: str = "Ana Souza") -> User:
 
 
 def login(client: TestClient, user: User) -> None:
-    client.cookies.set("access_token", create_access_token(user.id))
+    client.cookies.set("access_token", create_access_token(user.id, user.session_version))
 
 
 def add_farmer(session: Session, user: User) -> Farmer:
@@ -32,12 +42,17 @@ def add_farmer(session: Session, user: User) -> Farmer:
     return farmer
 
 
-def add_building(session: Session, manager: User, name: str = "Edifício Araraquara") -> Apartment:
+def add_building(
+    session: Session,
+    manager: User,
+    name: str = "Edifício Araraquara",
+    cnpj: str = BANCO_DO_BRASIL_CNPJ,
+) -> Apartment:
     building = Apartment(
         manager_id=manager.id,
         building_name=name,
         zip_code="01310200",
-        building_cnpj=BANCO_DO_BRASIL_CNPJ,
+        building_cnpj=cnpj,
     )
     session.add(building)
     session.commit()

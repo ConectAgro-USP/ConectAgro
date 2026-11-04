@@ -36,8 +36,26 @@ class CnpjaConnector:
         try:
             return Company(
                 name=body["company"]["name"],
+                alias=body.get("alias") or None,
                 registration_status=body["status"]["text"],
                 cep=body["address"]["zip"] or None,
+                address=_format_address(body["address"]),
             )
         except (KeyError, TypeError, ValidationError) as exc:
             raise ExternalServiceError("resposta inesperada da CNPJá") from exc
+
+
+def _format_address(address: dict) -> str | None:
+    text = address.get("street") or ""
+    text = _add_part(text, ", ", address.get("number"))
+    text = _add_part(text, " - ", address.get("district"))
+    text = _add_part(text, ", ", address.get("city"))
+    return text or None
+
+
+def _add_part(text: str, separator: str, part: str | None) -> str:
+    if not part:
+        return text
+    if not text:
+        return part
+    return text + separator + part

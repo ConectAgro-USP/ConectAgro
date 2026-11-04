@@ -24,4 +24,4 @@ USER app
 
 EXPOSE 8000
 # Mesmo contrato do start.sh do Render, inline porque checkouts no Windows trazem o .sh com CRLF
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn src.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 1"]

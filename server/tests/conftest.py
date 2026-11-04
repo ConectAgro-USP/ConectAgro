@@ -15,11 +15,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from src.api.deps import get_session
+from src.api import rate_limits
+from src.api.deps import RECENT_COMPANIES, get_session
 from src.main import app
 from src.models.apartment import Apartment
 from src.models.user import User
-from tests.helpers import add_building, add_user, login
+from tests.helpers import ITAU_CNPJ, add_building, add_user, login
 
 engine_test = create_engine(
     "sqlite://",
@@ -40,6 +41,17 @@ def setup_database():
     yield
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(engine_test)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    for limiter in rate_limits.ALL_LIMITERS:
+        limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_recent_companies():
+    RECENT_COMPANIES.reset()
 
 
 @pytest.fixture
@@ -74,4 +86,4 @@ def building(session: Session, manager: User) -> Apartment:
 @pytest.fixture
 def other_building(session: Session) -> Apartment:
     other_manager = add_user(session, "outro@example.com")
-    return add_building(session, other_manager, name="Edifício Bauru")
+    return add_building(session, other_manager, name="Edifício Bauru", cnpj=ITAU_CNPJ)
