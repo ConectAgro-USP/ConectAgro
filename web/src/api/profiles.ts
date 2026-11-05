@@ -13,6 +13,7 @@ export interface ApartmentSummary {
   public_id: string;
   building_name: string;
   building_cnpj: string;
+  zip_code: string;
   address: string | null;
 }
 
@@ -27,10 +28,19 @@ export interface BuyerRead {
   apartment: ApartmentSummary | null;
 }
 
+export interface FarmerRead {
+  farm_name: string | null;
+  zip_code: string;
+}
+
 export interface ProfileRead {
   name: string;
   email: string;
+  cellphone: string | null;
+  homephone: string | null;
   profile_type: ProfileType | null;
+  farmer: FarmerRead | null;
+  apartment: ApartmentSummary | null;
   buyer: BuyerRead | null;
 }
 
@@ -58,6 +68,15 @@ export interface ApartmentCreate extends ProfileCreate {
 
 export interface BuyerCreate extends ProfileCreate, BuyerLink {}
 
+export interface ProfileUpdate {
+  name: string;
+  cellphone: string;
+  homephone: string | null;
+  farm_name?: string;
+  zip_code?: string;
+  building_cnpj?: string;
+}
+
 export function emptyToNull(text: string): string | null {
   const trimmed = text.trim();
   if (trimmed === "") {
@@ -84,6 +103,10 @@ export function createBuyer(buyer: BuyerCreate): Promise<ProfileRead> {
 
 export function updateBuyerLink(link: BuyerLink): Promise<ProfileRead> {
   return sendJson("PATCH", "/profiles/me", link);
+}
+
+export function updateProfile(changes: ProfileUpdate): Promise<ProfileRead> {
+  return sendJson("PATCH", "/profiles/me", changes);
 }
 
 export function previewApartment(cnpj: string): Promise<ApartmentPreview> {

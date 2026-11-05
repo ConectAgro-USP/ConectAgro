@@ -7,7 +7,11 @@ import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 export const ana: ProfileRead = {
   name: "Ana Souza",
   email: "ana@example.com",
+  cellphone: null,
+  homephone: null,
   profile_type: null,
+  farmer: null,
+  apartment: null,
   buyer: null,
 };
 
@@ -15,6 +19,7 @@ export const villageVilaVerde: ApartmentSummary = {
   public_id: "6f1c2b9e-3d4a-4e5f-8a7b-9c0d1e2f3a4b",
   building_name: "Cond. Village Vila Verde",
   building_cnpj: "50673649000144",
+  zip_code: "09450000",
   address: "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra",
 };
 
