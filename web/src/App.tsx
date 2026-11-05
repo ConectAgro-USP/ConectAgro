@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Outlet, Route, Routes } from "react-router";
+import { AppHeader } from "./components/AppHeader";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -11,21 +12,16 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<SignUp />} />
       <Route
-        path="/"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <AppHeader />
+            <Outlet />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/perfil"
-        element={
-          <ProtectedRoute>
-            <MyProfile />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/perfil" element={<MyProfile />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
