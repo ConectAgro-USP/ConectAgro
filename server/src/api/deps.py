@@ -14,6 +14,7 @@ from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.user import User
+from src.repository.farmer_search_repository import FarmerSearchRepository
 from src.repository.profile_repository import ProfileRepository
 from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
@@ -160,10 +161,20 @@ def get_distance_service(ceps: BrasilApiDep, routes: OsrmDep) -> DistanceService
 DistanceServiceDep = Annotated[DistanceService, Depends(get_distance_service)]
 
 
+def get_farmer_search_repository(session: SessionDep) -> FarmerSearchRepository:
+    return FarmerSearchRepository(session)
+
+
+FarmerSearchRepositoryDep = Annotated[
+    FarmerSearchRepository, Depends(get_farmer_search_repository)
+]
+
+
 def get_farmer_search_service(
-    profiles: ProfileRepositoryDep, distance_service: DistanceServiceDep
+    repository: FarmerSearchRepositoryDep,
+    distance_service: DistanceServiceDep,
 ) -> FarmerSearchService:
-    return FarmerSearchService(profiles, distance_service)
+    return FarmerSearchService(repository, distance_service)
 
 
 FarmerSearchServiceDep = Annotated[FarmerSearchService, Depends(get_farmer_search_service)]

@@ -46,3 +46,11 @@ class ResidentNotFoundError(Exception):
 
 class FieldNotInProfileError(Exception):
     pass
+
+
+class InvalidDistanceError(ValueError):
+    pass
+
+
+class MissingOriginCepError(ValueError):
+    pass
