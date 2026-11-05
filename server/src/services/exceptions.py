@@ -26,3 +26,10 @@ class CepWithoutCoordinatesError(Exception):
 
 class CnpjNotActiveError(Exception):
     pass
+
+class InvalidDistanceError(ValueError):
+    pass
+
+
+class MissingOriginCepError(ValueError):
+    pass
