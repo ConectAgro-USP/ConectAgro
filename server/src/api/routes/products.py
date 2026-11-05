@@ -3,18 +3,24 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.api.deps import CurrentFarmer, ProductServiceDep, get_current_user
+from src.api.deps import (
+    CurrentFarmer,
+    ProductSearchServiceDep,
+    ProductServiceDep,
+    get_current_user,
+)
 from src.models.product import (
-    ProductCatalogRead,
     ProductCreate,
     ProductDetailRead,
     ProductRead,
     ProductUpdate,
 )
+from src.models.product_search import ProductSearchFilters, ProductSearchPage
 from src.services.exceptions import (
     NotProductOwnerError,
     ProductHasPurchasesError,
     ProductNotFoundError,
+    ProductSearchNotImplementedError,
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -34,13 +40,17 @@ def get_farmer_products(farmer: CurrentFarmer, product_service: ProductServiceDe
     return product_service.get_current_farmer_products(farmer)
 
 
-@router.get("", response_model=list[ProductCatalogRead], dependencies=[Depends(get_current_user)])
-def catalog_products(
-    product_service: ProductServiceDep,
-    limit: Annotated[int, Query(ge=1, le=100)] = 10,
-    offset: Annotated[int, Query(ge=0)] = 0,
-):
-    return product_service.catalog_products(limit, offset)
+@router.get("", response_model=ProductSearchPage)
+def search_products(
+    filters: Annotated[ProductSearchFilters, Query()],
+    product_search: ProductSearchServiceDep,
+) -> ProductSearchPage:
+    try:
+        return product_search.search(filters)
+    except ProductSearchNotImplementedError:
+        raise HTTPException(
+            status.HTTP_501_NOT_IMPLEMENTED, "A busca de produtos ainda não foi implementada"
+        ) from None
 
 
 @router.patch("/{public_id}", response_model=ProductRead)

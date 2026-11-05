@@ -20,6 +20,7 @@ from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
 from src.services.cnpj_service import CnpjService
 from src.services.company_cache import CompanyCache
+from src.services.product_search_service import ProductSearchService
 from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
 
@@ -123,6 +124,13 @@ def get_product_service(products: ProductRepositoryDep) -> ProductService:
 
 
 ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]
+
+
+def get_product_search_service(products: ProductRepositoryDep) -> ProductSearchService:
+    return ProductSearchService(products)
+
+
+ProductSearchServiceDep = Annotated[ProductSearchService, Depends(get_product_search_service)]
 
 
 def get_current_farmer(current_user: CurrentUser) -> Farmer:

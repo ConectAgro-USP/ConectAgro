@@ -7,7 +7,9 @@ from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
 from src.models.product import Product
+from src.models.product_search import ProductSearchFilters, ProductSearchPage
 from src.models.purchase import PurchaseProduct
+from src.services.exceptions import ProductSearchNotImplementedError
 
 
 class ProductInUseError(Exception):
@@ -17,6 +19,9 @@ class ProductInUseError(Exception):
 class ProductRepository:
     def __init__(self, session: Session):
         self.session = session
+
+    def search(self, filters: ProductSearchFilters) -> ProductSearchPage:
+        raise ProductSearchNotImplementedError
 
     def save(self, product: Product) -> Product:
         self.session.add(product)
