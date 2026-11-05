@@ -46,3 +46,7 @@ class ResidentNotFoundError(Exception):
 
 class FieldNotInProfileError(Exception):
     pass
+
+
+class ProductSearchNotImplementedError(Exception):
+    pass

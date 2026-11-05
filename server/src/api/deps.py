@@ -13,12 +13,14 @@ from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.user import User
+from src.repository.product_repository import ProductRepository
 from src.repository.profile_repository import ProfileRepository
 from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
 from src.services.cnpj_service import CnpjService
 from src.services.company_cache import CompanyCache
+from src.services.product_search_service import ProductSearchService
 from src.services.profile_service import ProfileService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
@@ -100,6 +102,20 @@ def get_profile_service(
 
 
 ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]
+
+
+def get_product_repository(session: SessionDep) -> ProductRepository:
+    return ProductRepository(session)
+
+
+ProductRepositoryDep = Annotated[ProductRepository, Depends(get_product_repository)]
+
+
+def get_product_search_service(products: ProductRepositoryDep) -> ProductSearchService:
+    return ProductSearchService(products)
+
+
+ProductSearchServiceDep = Annotated[ProductSearchService, Depends(get_product_search_service)]
 
 
 def get_apartment_service(profiles: ProfileRepositoryDep) -> ApartmentService:
