@@ -13,6 +13,7 @@ const INVALID_FIELD_MESSAGES = new Map([
   ["farm_name", "Informe o nome do sítio ou da horta, com 2 a 150 caracteres"],
   ["zip_code", "CEP inválido"],
   ["cnpj", "CNPJ inválido"],
+  ["building_cnpj", "CNPJ inválido"],
   ["block", "O bloco pode ter até 10 caracteres"],
   ["unit", "Informe o número do apartamento, com até 10 caracteres"],
 ]);

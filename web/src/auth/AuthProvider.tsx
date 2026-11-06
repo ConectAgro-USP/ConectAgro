@@ -40,7 +40,14 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const saveProfile = useCallback(async (request: Promise<ProfileRead>) => {
     try {
-      setUser(await request);
+      const saved = await request;
+      // ignora a resposta se a pessoa saiu ou trocou de conta enquanto salvava
+      setUser((current) => {
+        if (current?.email !== saved.email) {
+          return current;
+        }
+        return saved;
+      });
     } catch (error) {
       // 409: perfil criado em outra aba; 401: a sessão acabou. Recarregar resolve
       if (error instanceof ApiError && (error.status === 409 || error.status === 401)) {
