@@ -15,7 +15,7 @@ from src.models.product import (
     ProductRead,
     ProductUpdate,
 )
-from src.models.product_search import ProductSearchFilters, ProductSearchPage
+from src.schemas.product_search import ProductSearchFilters, ProductSearchResponse
 from src.services.exceptions import (
     NotProductOwnerError,
     ProductHasPurchasesError,
@@ -39,11 +39,11 @@ def get_farmer_products(farmer: CurrentFarmer, product_service: ProductServiceDe
     return product_service.get_current_farmer_products(farmer)
 
 
-@router.get("", response_model=ProductSearchPage)
+@router.get("", response_model=ProductSearchResponse)
 def search_products(
     filters: Annotated[ProductSearchFilters, Query()],
     product_search: ProductSearchServiceDep,
-) -> ProductSearchPage:
+) -> ProductSearchResponse:
     return product_search.search(filters)
 
 

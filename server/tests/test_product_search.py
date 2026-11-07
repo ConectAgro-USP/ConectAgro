@@ -58,6 +58,8 @@ def test_search_matches_product_name_only_without_fuzzy_matching(
 
     assert name_match.status_code == status.HTTP_200_OK
     assert [item["name"] for item in name_match.json()["items"]] == ["Tomate Italiano"]
+    assert name_match.json()["items"][0]["public_id"]
+    assert name_match.json()["items"][0]["farmer_public_id"] == str(farmer.public_id)
     assert fuzzy_name.json()["items"] == []
     assert description_match.json()["items"] == []
 
@@ -83,8 +85,9 @@ def test_search_filters_unavailable_products_and_paginates(
     assert first_page.status_code == status.HTTP_200_OK
     assert len(first_page.json()["items"]) == 20
     assert first_page.json()["page"] == 1
-    assert first_page.json()["per_page"] == 20
+    assert first_page.json()["page_size"] == 20
     assert first_page.json()["total"] == 22
+    assert first_page.json()["total_pages"] == 2
     assert len(second_page.json()["items"]) == 2
     assert second_page.json()["page"] == 2
 
