@@ -20,7 +20,6 @@ from src.services.exceptions import (
     NotProductOwnerError,
     ProductHasPurchasesError,
     ProductNotFoundError,
-    ProductSearchNotImplementedError,
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -45,12 +44,7 @@ def search_products(
     filters: Annotated[ProductSearchFilters, Query()],
     product_search: ProductSearchServiceDep,
 ) -> ProductSearchPage:
-    try:
-        return product_search.search(filters)
-    except ProductSearchNotImplementedError:
-        raise HTTPException(
-            status.HTTP_501_NOT_IMPLEMENTED, "A busca de produtos ainda não foi implementada"
-        ) from None
+    return product_search.search(filters)
 
 
 @router.patch("/{public_id}", response_model=ProductRead)

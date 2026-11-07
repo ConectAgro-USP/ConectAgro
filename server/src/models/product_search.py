@@ -2,7 +2,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.models.product import ProductRead
 
@@ -17,11 +17,18 @@ class ProductSort(StrEnum):
 
 
 class ProductSearchFilters(BaseModel):
-    q: str | None = None
+    q: str | None = Field(default=None, max_length=200)
     expiration_from: date | None = None
     min_quantity: int | None = Field(default=None, ge=1)
     sort: ProductSort = ProductSort.RELEVANCE
     page: int = Field(default=1, ge=1)
+
+    @field_validator("q")
+    @classmethod
+    def strip_query(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class ProductSearchPage(BaseModel):
