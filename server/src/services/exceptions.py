@@ -58,7 +58,3 @@ class NotProductOwnerError(Exception):
 
 class ProductHasPurchasesError(Exception):
     pass
-
-
-class ProductSearchNotImplementedError(Exception):
-    pass
