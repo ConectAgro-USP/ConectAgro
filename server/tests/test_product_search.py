@@ -41,7 +41,7 @@ def add_farmer_with_name(session: Session, email: str) -> Farmer:
     return add_farmer(session, add_user(session, email))
 
 
-def test_search_fuzzy_matches_accented_name_and_description(
+def test_search_matches_product_name_only_without_fuzzy_matching(
     client: TestClient, session: Session
 ):
     farmer = add_farmer_with_name(session, "farmer@example.com")
@@ -52,13 +52,14 @@ def test_search_fuzzy_matches_accented_name_and_description(
         "Tomates orgânicos frescos, colhidos hoje.",
     )
 
+    name_match = client.get("/api/products", params={"q": "TOMATE"})
     fuzzy_name = client.get("/api/products", params={"q": "TOMATTE"})
-    fuzzy_description = client.get("/api/products", params={"q": "orgnic"})
+    description_match = client.get("/api/products", params={"q": "orgânicos"})
 
-    assert fuzzy_name.status_code == status.HTTP_200_OK
-    assert [item["name"] for item in fuzzy_name.json()["items"]] == ["Tomate Italiano"]
-    assert fuzzy_description.status_code == status.HTTP_200_OK
-    assert [item["name"] for item in fuzzy_description.json()["items"]] == ["Tomate Italiano"]
+    assert name_match.status_code == status.HTTP_200_OK
+    assert [item["name"] for item in name_match.json()["items"]] == ["Tomate Italiano"]
+    assert fuzzy_name.json()["items"] == []
+    assert description_match.json()["items"] == []
 
 
 def test_search_filters_unavailable_products_and_paginates(
@@ -76,8 +77,8 @@ def test_search_filters_unavailable_products_and_paginates(
         days_until_expiration=-1,
     )
 
-    first_page = client.get("/api/products", params={"q": "lote disponivel", "page": 1})
-    second_page = client.get("/api/products", params={"q": "lote disponivel", "page": 2})
+    first_page = client.get("/api/products", params={"q": "produto", "page": 1})
+    second_page = client.get("/api/products", params={"q": "produto", "page": 2})
 
     assert first_page.status_code == status.HTTP_200_OK
     assert len(first_page.json()["items"]) == 20
@@ -114,20 +115,20 @@ def test_search_applies_expiration_and_minimum_quantity_filters(
     ]
 
 
-def test_default_sort_uses_relevance_before_farmer_rating(
+def test_default_sort_prefers_name_prefix_before_farmer_rating(
     client: TestClient, session: Session
 ):
     low_rated_farmer = add_farmer_with_name(session, "low-rated@example.com")
     high_rated_farmer = add_farmer_with_name(session, "high-rated@example.com")
     unrated_farmer = add_farmer_with_name(session, "unrated@example.com")
-    low_relevance = add_product(
+    name_prefix = add_product(
         session, low_rated_farmer, "Tomate maduro", "Tomate fresco."
     )
-    high_relevance = add_product(
-        session, high_rated_farmer, "Pimentão", "Acompanha tomate maduro."
+    name_contains = add_product(
+        session, high_rated_farmer, "Pimentão com tomate", "Outro produto."
     )
-    unrated = add_product(
-        session, unrated_farmer, "Maçã", "Também temos tomate maduro."
+    unrated_prefix = add_product(
+        session, unrated_farmer, "Tomate italiano", "Outro produto."
     )
 
     apartment = add_building(session, add_user(session, "manager@example.com"))
@@ -156,21 +157,21 @@ def test_default_sort_uses_relevance_before_farmer_rating(
     )
     session.commit()
 
-    relevance_response = client.get("/api/products", params={"q": "tomate maduro"})
+    relevance_response = client.get("/api/products", params={"q": "tomate"})
     rating_response = client.get(
         "/api/products",
-        params={"q": "tomate maduro", "sort": "highest_rating"},
+        params={"q": "tomate", "sort": "highest_rating"},
     )
 
     assert [item["public_id"] for item in relevance_response.json()["items"]] == [
-        str(low_relevance.public_id),
-        str(high_relevance.public_id),
-        str(unrated.public_id),
+        str(name_prefix.public_id),
+        str(unrated_prefix.public_id),
+        str(name_contains.public_id),
     ]
     assert [item["public_id"] for item in rating_response.json()["items"]] == [
-        str(high_relevance.public_id),
-        str(low_relevance.public_id),
-        str(unrated.public_id),
+        str(name_contains.public_id),
+        str(name_prefix.public_id),
+        str(unrated_prefix.public_id),
     ]
 
 

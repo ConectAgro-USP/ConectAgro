@@ -1,15 +1,20 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
-from src.models.product import Product
-from src.models.product_search import ProductSearchFilters, ProductSearchPage
+from src.models.product import BUSINESS_TZ, Product
+from src.models.product_search import (
+    PRODUCTS_PER_PAGE,
+    ProductSearchFilters,
+    ProductSort,
+)
 from src.models.purchase import PurchaseProduct
-from src.services.exceptions import ProductSearchNotImplementedError
+from src.models.review import Review
 
 
 class ProductInUseError(Exception):
@@ -20,8 +25,60 @@ class ProductRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def search(self, filters: ProductSearchFilters) -> ProductSearchPage:
-        raise ProductSearchNotImplementedError
+    def search(self, filters: ProductSearchFilters) -> tuple[list[Product], int]:
+        today = datetime.now(BUSINESS_TZ).date()
+        conditions = [Product.expiration_date >= today, Product.quantity > 0]
+        if filters.expiration_from is not None:
+            conditions.append(Product.expiration_date >= filters.expiration_from)
+        if filters.min_quantity is not None:
+            conditions.append(Product.quantity >= filters.min_quantity)
+        if filters.q is not None:
+            conditions.append(Product.name.icontains(filters.q, autoescape=True))
+
+        ratings = self._farmer_ratings()
+        statement = (
+            select(Product, ratings.c.average_rating)
+            .outerjoin(ratings, ratings.c.farmer_id == Product.farmer_id)
+            .where(*conditions)
+            .options(selectinload(Product.farmer))
+        )
+        statement = self._order_statement(statement, filters.sort, filters.q, ratings)
+        offset = (filters.page - 1) * PRODUCTS_PER_PAGE
+        rows = self.session.exec(
+            statement.offset(offset).limit(PRODUCTS_PER_PAGE)
+        ).all()
+        total = self.session.exec(
+            select(func.count(Product.id)).where(*conditions)
+        ).one()
+        return [product for product, _ in rows], total
+
+    @staticmethod
+    def _farmer_ratings():
+        return (
+            select(
+                Review.farmer_id.label("farmer_id"),
+                func.avg(Review.rating).label("average_rating"),
+            )
+            .group_by(Review.farmer_id)
+            .subquery()
+        )
+
+    @staticmethod
+    def _order_statement(statement, sort: ProductSort, query: str | None, ratings):
+        rating_order = ratings.c.average_rating.desc().nulls_last()
+        if sort == ProductSort.LOWEST_PRICE:
+            return statement.order_by(Product.price, Product.id)
+        if sort == ProductSort.LATEST_EXPIRATION:
+            return statement.order_by(Product.expiration_date.desc(), Product.id)
+        if sort == ProductSort.HIGHEST_RATING:
+            return statement.order_by(rating_order, Product.id)
+        if query is not None:
+            return statement.order_by(
+                Product.name.istartswith(query, autoescape=True).desc(),
+                rating_order,
+                Product.id,
+            )
+        return statement.order_by(rating_order, Product.id)
 
     def save(self, product: Product) -> Product:
         self.session.add(product)
