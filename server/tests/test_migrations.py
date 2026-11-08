@@ -2,11 +2,11 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from alembic.config import Config
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from alembic import command
-from alembic.config import Config
 from src.core.config import settings
 from src.models import User
 

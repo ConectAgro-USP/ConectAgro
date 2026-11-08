@@ -1,11 +1,16 @@
+from datetime import datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, SQLModel, case, func, select
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
+from src.models.farmer import Farmer
+from src.models.product import Product
 
+BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
 
 class ProfileRepository:
     def __init__(self, session: Session):
@@ -46,3 +51,19 @@ class ProfileRepository:
 
     def commit(self) -> None:
         self.session.commit()
+
+    def get_farmers_with_products_count(self) -> list[tuple[Farmer, int]]:
+        today = datetime.now(BUSINESS_TZ).date()
+
+        is_available_expr = (Product.quantity > 0) & (Product.expiration_date >= today)
+
+        available_count = func.count(
+            case((is_available_expr, Product.id), else_=None)
+        ).label("available_products_count")
+
+        statement = (
+            select(Farmer, available_count)
+            .outerjoin(Farmer.products)
+            .group_by(Farmer.id)
+        )
+        return self.session.exec(statement).all()
