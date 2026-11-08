@@ -9,6 +9,7 @@ from src.models.apartment import Apartment
 from src.models.buyer import LinkStatus
 from src.models.user import User
 from tests.helpers import (
+    ITAU_CNPJ,
     add_building,
     add_farmer,
     add_resident,
@@ -19,29 +20,70 @@ from tests.helpers import (
 UNKNOWN_ID = "6f1c2b9e-3d4a-4e5f-8a7b-9c0d1e2f3a4b"
 
 
-def test_list_apartments_returns_name_cep_and_public_id(
+@pytest.mark.usefixtures("other_building")
+def test_list_apartments_returns_every_building_with_the_cnpj(
     client: TestClient,
     session: Session,
     ana: User,
+    building: Apartment,
 ):
-    bauru = add_building(session, add_user(session, "bauru@example.com"), name="Edifício Bauru")
-    araraquara = add_building(session, add_user(session, "araraquara@example.com"))
+    building.address = "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra"
+    session.commit()
+    squatter = add_user(session, "copia@example.com", name="Bruno Lima Costa")
+    copy = add_building(session, squatter, name="Edifício Cópia")
 
-    response = client.get("/api/apartments")
+    response = client.get("/api/apartments", params={"cnpj": "00.000.000/0001-91"})
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == [
         {
-            "public_id": str(araraquara.public_id),
+            "public_id": str(building.public_id),
             "building_name": "Edifício Araraquara",
+            "building_cnpj": "00000000000191",
             "zip_code": "01310200",
+            "address": "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra",
+            "manager_short_name": "Ana S.",
         },
         {
-            "public_id": str(bauru.public_id),
-            "building_name": "Edifício Bauru",
+            "public_id": str(copy.public_id),
+            "building_name": "Edifício Cópia",
+            "building_cnpj": "00000000000191",
             "zip_code": "01310200",
+            "address": None,
+            "manager_short_name": "Bruno C.",
         },
     ]
+
+
+@pytest.mark.parametrize("cnpj", ["60.701.190/0001-04", "60701190000104"])
+@pytest.mark.usefixtures("ana", "building")
+def test_list_apartments_finds_the_building_by_cnpj(
+    client: TestClient, other_building: Apartment, cnpj: str
+):
+    response = client.get("/api/apartments", params={"cnpj": cnpj})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert [found["public_id"] for found in response.json()] == [str(other_building.public_id)]
+
+
+@pytest.mark.usefixtures("ana", "building")
+def test_list_apartments_by_unregistered_cnpj_is_empty(client: TestClient):
+    response = client.get("/api/apartments", params={"cnpj": ITAU_CNPJ})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == []
+
+
+@pytest.mark.parametrize(
+    "params",
+    [{"cnpj": "60.701.190/0001-05"}, {"cnpj": "6" * 21}, {}],
+    ids=["verificador", "longo", "sem-cnpj"],
+)
+@pytest.mark.usefixtures("ana")
+def test_list_apartments_requires_a_valid_cnpj(client: TestClient, params: dict):
+    response = client.get("/api/apartments", params=params)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_manager_lists_residents_by_status(
@@ -244,7 +286,7 @@ def test_resident_routes_require_a_manager(
 @pytest.mark.parametrize(
     "method, path",
     [
-        ("GET", "/api/apartments"),
+        ("GET", "/api/apartments?cnpj=00000000000191"),
         ("GET", "/api/apartments/me/buyers"),
         ("POST", f"/api/apartments/me/buyers/{UNKNOWN_ID}/approve"),
         ("POST", f"/api/apartments/me/buyers/{UNKNOWN_ID}/reject"),

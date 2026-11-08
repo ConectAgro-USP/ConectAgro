@@ -5,6 +5,7 @@ from pydantic import AfterValidator, EmailStr, StringConstraints
 from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
+from src.services.cpf_service import validate_cpf
 from src.services.phone_service import validate_cellphone, validate_homephone
 from src.services.text_service import reject_null_character
 
@@ -17,6 +18,7 @@ PersonName = Annotated[
 # o limite vem antes da validação, para um texto enorme não custar caro
 CellPhone = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_cellphone)]
 HomePhone = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_homephone)]
+Cpf = Annotated[str, StringConstraints(max_length=20), AfterValidator(validate_cpf)]
 
 if TYPE_CHECKING:
     from .apartment import Apartment
@@ -39,6 +41,10 @@ class User(UserBase, table=True):
         default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True)
     )
     hashed_password: str | None = None
+    # fica fora do UserBase para não sair nas respostas da API
+    cpf: str | None = Field(default=None, unique=True, index=True)
+    # vai em cada token; aumentar o número encerra todas as sessões abertas
+    session_version: int = 0
 
     farmer: Optional["Farmer"] = Relationship(back_populates="user")
     apartment: Optional["Apartment"] = Relationship(back_populates="manager")

@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.deps import CurrentUser, ProfileServiceDep
+from src.api.deps import CurrentUser, ProfileServiceDep, get_current_user
+from src.api.rate_limits import limit_profile_requests
 from src.models.profile import (
     ApartmentCreate,
+    ApartmentPreview,
     BuyerCreate,
+    Cnpj,
     FarmerCreate,
     ProfileRead,
     ProfileUpdate,
@@ -14,6 +17,7 @@ from src.services.exceptions import (
     CepWithoutCoordinatesError,
     CnpjNotActiveError,
     CnpjNotFoundError,
+    CpfAlreadyRegisteredError,
     ExternalServiceError,
     FieldNotInProfileError,
     InvalidCepError,
@@ -26,6 +30,7 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 
 HTTP_ERRORS = {
     ProfileAlreadyExistsError: (status.HTTP_409_CONFLICT, "Você já tem um perfil"),
+    CpfAlreadyRegisteredError: (status.HTTP_409_CONFLICT, "CPF já cadastrado"),
     ApartmentNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "Prédio não encontrado"),
     InvalidCepError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP inválido"),
     CepNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP não encontrado"),
@@ -54,7 +59,12 @@ def http_error(error: Exception) -> HTTPException:
 
 
 # def e não async, para o FastAPI rodar o banco e as APIs externas no threadpool
-@router.post("/farmer", status_code=status.HTTP_201_CREATED, response_model=ProfileRead)
+@router.post(
+    "/farmer",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileRead,
+    dependencies=[Depends(limit_profile_requests)],
+)
 def create_farmer_profile(
     farmer_in: FarmerCreate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
@@ -64,7 +74,24 @@ def create_farmer_profile(
         raise http_error(error) from None
 
 
-@router.post("/apartment", status_code=status.HTTP_201_CREATED, response_model=ProfileRead)
+@router.get(
+    "/apartment/preview",
+    response_model=ApartmentPreview,
+    dependencies=[Depends(get_current_user), Depends(limit_profile_requests)],
+)
+def preview_apartment_profile(cnpj: Cnpj, profile_service: ProfileServiceDep):
+    try:
+        return profile_service.preview_apartment(cnpj)
+    except PROFILE_ERRORS as error:
+        raise http_error(error) from None
+
+
+@router.post(
+    "/apartment",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileRead,
+    dependencies=[Depends(limit_profile_requests)],
+)
 def create_apartment_profile(
     apartment_in: ApartmentCreate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
@@ -74,7 +101,12 @@ def create_apartment_profile(
         raise http_error(error) from None
 
 
-@router.post("/buyer", status_code=status.HTTP_201_CREATED, response_model=ProfileRead)
+@router.post(
+    "/buyer",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileRead,
+    dependencies=[Depends(limit_profile_requests)],
+)
 def create_buyer_profile(
     buyer_in: BuyerCreate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):
@@ -89,7 +121,7 @@ def read_my_profile(current_user: CurrentUser, profile_service: ProfileServiceDe
     return profile_service.get_profile(current_user)
 
 
-@router.patch("/me", response_model=ProfileRead)
+@router.patch("/me", response_model=ProfileRead, dependencies=[Depends(limit_profile_requests)])
 def update_my_profile(
     changes: ProfileUpdate, current_user: CurrentUser, profile_service: ProfileServiceDep
 ):

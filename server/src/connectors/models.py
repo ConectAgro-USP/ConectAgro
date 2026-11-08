@@ -1,4 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+# o PostgreSQL recusa o caractere nulo nos textos que vão ser gravados
+WITHOUT_NULL = r"^[^\x00]*$"
 
 
 class Coordinates(BaseModel):
@@ -21,6 +24,11 @@ class Route(BaseModel):
 
 
 class Company(BaseModel):
-    name: str
+    # a mesma empresa fica guardada e vai para vários pedidos: ninguém a altera
+    model_config = ConfigDict(frozen=True)
+
+    name: str = Field(max_length=150, pattern=WITHOUT_NULL)
+    alias: str | None = Field(default=None, max_length=150, pattern=WITHOUT_NULL)
     registration_status: str
     cep: str | None = Field(default=None, pattern=r"^[0-9]{8}$")
+    address: str | None = Field(default=None, max_length=300, pattern=WITHOUT_NULL)

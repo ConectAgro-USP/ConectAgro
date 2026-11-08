@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, SQLModel, case, func, select
 
@@ -9,6 +10,11 @@ from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.product import Product
+from src.models.user import User
+
+
+class DuplicateValueError(Exception):
+    pass
 
 BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
 
@@ -20,8 +26,14 @@ class ProfileRepository:
         statement = select(Apartment).where(Apartment.public_id == public_id)
         return self.session.exec(statement).first()
 
-    def list_apartments(self) -> list[Apartment]:
-        statement = select(Apartment).order_by(Apartment.building_name, Apartment.id)
+    def get_user_by_cpf(self, cpf: str) -> User | None:
+        statement = select(User).where(User.cpf == cpf)
+        return self.session.exec(statement).first()
+
+    def list_apartments_by_cnpj(self, cnpj: str) -> list[Apartment]:
+        statement = select(Apartment).where(Apartment.building_cnpj == cnpj)
+        statement = statement.options(selectinload(Apartment.manager))
+        statement = statement.order_by(Apartment.id)
         return list(self.session.exec(statement).all())
 
     def list_buyers_of_apartment(
@@ -50,7 +62,11 @@ class ProfileRepository:
         self.session.add(item)
 
     def commit(self) -> None:
-        self.session.commit()
+        try:
+            self.session.commit()
+        except IntegrityError as error:
+            self.session.rollback()
+            raise DuplicateValueError from error
 
     def get_farmers_with_products_count(self) -> list[tuple[Farmer, int]]:
         today = datetime.now(BUSINESS_TZ).date()

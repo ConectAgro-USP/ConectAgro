@@ -15,6 +15,8 @@ class Farmer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
     zip_code: str
+    # None só nos cadastros feitos antes de o nome ser pedido
+    farm_name: str | None = None
 
     user_id: int = Field(foreign_key="users.id", unique=True)
     

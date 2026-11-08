@@ -1,0 +1,196 @@
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { ApiError } from "../api/client";
+import type { ProfileRead } from "../api/profiles";
+import { ana, anaAsBuyer, jsonResponse, stubFetch } from "../test/helpers";
+import { useAuth } from "./AuthContext";
+import { AuthProvider } from "./AuthProvider";
+
+const farmer: ProfileRead = { ...ana, profile_type: "farmer" };
+
+function ShowSession({ slowSave }: Readonly<{ slowSave?: Promise<ProfileRead> }>) {
+  const { user, profileType, linkStatus, loading, sessionError, refreshUser, saveProfile, logout } =
+    useAuth();
+  const [saveError, setSaveError] = useState("");
+
+  function saveRejected(status: number, message: string) {
+    saveProfile(Promise.reject(new ApiError(status, message))).catch((rejection: Error) =>
+      setSaveError(rejection.message),
+    );
+  }
+
+  if (loading) return <p>Carregando</p>;
+  return (
+    <>
+      <p>{user ? user.name : "Sem sessão"}</p>
+      <p>Perfil: {profileType ?? "nenhum"}</p>
+      <p>Vínculo: {linkStatus ?? "nenhum"}</p>
+      {sessionError && <p>Erro de sessão</p>}
+      {saveError && <p>Erro ao salvar: {saveError}</p>}
+      <button onClick={() => refreshUser()}>Atualizar</button>
+      <button onClick={() => saveProfile(Promise.resolve(farmer))}>Salvar</button>
+      <button onClick={() => saveRejected(409, "Conflito")}>Salvar com conflito</button>
+      <button onClick={() => saveRejected(401, "Sessão expirada")}>Salvar sem sessão</button>
+      {slowSave && <button onClick={() => saveProfile(slowSave)}>Salvar devagar</button>}
+      <button onClick={() => logout()}>Sair</button>
+    </>
+  );
+}
+
+function slowRequest() {
+  let answer: (profile: ProfileRead) => void = () => {};
+  const request = new Promise<ProfileRead>((resolve) => {
+    answer = resolve;
+  });
+  return { request, answer };
+}
+
+function renderSession(slowSave?: Promise<ProfileRead>) {
+  render(
+    <AuthProvider>
+      <ShowSession slowSave={slowSave} />
+    </AuthProvider>,
+  );
+}
+
+describe("AuthProvider", () => {
+  it("loads the user with the profile type and the link status", async () => {
+    const fetchMock = stubFetch(jsonResponse(anaAsBuyer("PENDENTE")));
+
+    renderSession();
+
+    expect(await screen.findByText("Ana Souza")).toBeInTheDocument();
+    expect(screen.getByText("Perfil: buyer")).toBeInTheDocument();
+    expect(screen.getByText("Vínculo: PENDENTE")).toBeInTheDocument();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/profiles/me");
+  });
+
+  it("treats 401 as a visitor without session", async () => {
+    stubFetch(jsonResponse({ detail: "Não autenticado" }, 401));
+
+    renderSession();
+
+    expect(await screen.findByText("Sem sessão")).toBeInTheDocument();
+    expect(screen.queryByText("Erro de sessão")).not.toBeInTheDocument();
+  });
+
+  it("reports a session error when the profile cannot be loaded", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    stubFetch(jsonResponse({ detail: "Erro" }, 500));
+
+    renderSession();
+
+    expect(await screen.findByText("Erro de sessão")).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it("forgets the session error once a reload works", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    stubFetch(jsonResponse({ detail: "Erro" }, 500), jsonResponse(ana));
+    renderSession();
+    await screen.findByText("Erro de sessão");
+
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+
+    expect(await screen.findByText("Ana Souza")).toBeInTheDocument();
+    expect(screen.queryByText("Erro de sessão")).not.toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it("reloads the user on refresh and forgets it on logout", async () => {
+    const fetchMock = stubFetch(
+      jsonResponse({ detail: "Não autenticado" }, 401),
+      jsonResponse(anaAsBuyer("APROVADO")),
+      jsonResponse({ ok: true }),
+    );
+    renderSession();
+    await screen.findByText("Sem sessão");
+
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    expect(await screen.findByText("Vínculo: APROVADO")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }));
+    expect(await screen.findByText("Sem sessão")).toBeInTheDocument();
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/auth/logout");
+  });
+
+  it("keeps the profile the API returns after saving it", async () => {
+    stubFetch(jsonResponse(ana));
+    renderSession();
+    await screen.findByText("Perfil: nenhum");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil: farmer")).toBeInTheDocument();
+  });
+
+  it("reloads the session on a conflict and still reports it", async () => {
+    const fetchMock = stubFetch(jsonResponse(ana), jsonResponse(farmer));
+    renderSession();
+    await screen.findByText("Perfil: nenhum");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar com conflito" }));
+
+    expect(await screen.findByText("Perfil: farmer")).toBeInTheDocument();
+    expect(screen.getByText("Erro ao salvar: Conflito")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("forgets the user when saving says the session ended", async () => {
+    const fetchMock = stubFetch(
+      jsonResponse(ana),
+      jsonResponse({ detail: "Sessão inválida ou expirada" }, 401),
+    );
+    renderSession();
+    await screen.findByText("Ana Souza");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar sem sessão" }));
+
+    expect(await screen.findByText("Sem sessão")).toBeInTheDocument();
+    expect(screen.getByText("Erro ao salvar: Sessão expirada")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the user without profile when the conflict was not about the profile", async () => {
+    stubFetch(jsonResponse(ana), jsonResponse(ana));
+    renderSession();
+    await screen.findByText("Perfil: nenhum");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar com conflito" }));
+
+    expect(await screen.findByText("Erro ao salvar: Conflito")).toBeInTheDocument();
+    expect(screen.getByText("Perfil: nenhum")).toBeInTheDocument();
+  });
+
+  it("stays signed out when a save answers after the logout", async () => {
+    const slowSave = slowRequest();
+    stubFetch(jsonResponse(ana), jsonResponse({ ok: true }));
+    renderSession(slowSave.request);
+    await screen.findByText("Ana Souza");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar devagar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }));
+    await screen.findByText("Sem sessão");
+    await act(async () => slowSave.answer(farmer));
+
+    expect(screen.getByText("Sem sessão")).toBeInTheDocument();
+  });
+
+  it("keeps the account that signed in when an old save answers late", async () => {
+    const bia: ProfileRead = { ...ana, name: "Bia Lima", email: "bia@example.com" };
+    const slowSave = slowRequest();
+    stubFetch(jsonResponse(ana), jsonResponse({ ok: true }), jsonResponse(bia));
+    renderSession(slowSave.request);
+    await screen.findByText("Ana Souza");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar devagar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }));
+    await screen.findByText("Sem sessão");
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    await screen.findByText("Bia Lima");
+    await act(async () => slowSave.answer(farmer));
+
+    expect(screen.getByText("Bia Lima")).toBeInTheDocument();
+  });
+});

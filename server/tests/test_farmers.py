@@ -76,7 +76,8 @@ def setup_fake_http_connectors(
 
 def authenticate_user(client, user):
     """Autentica o usuário via Cookie de sessão conforme deps.py."""
-    token = create_access_token(user.id)
+    session_version = getattr(user, "session_version", 1)
+    token = create_access_token(user.id, session_version)
     client.cookies.set("access_token", token)
 
 

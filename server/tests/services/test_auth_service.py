@@ -144,12 +144,24 @@ def test_authenticate_with_google_returns_existing_google_user(
     assert user.name == "Conta Google"
 
 
+def test_authenticate_with_google_keeps_the_sessions_of_an_account_without_password(
+    auth_service: AuthService, users: UserRepository
+):
+    users.create(User(email="google@gmail.com", name="Conta Google"))
+
+    user = auth_service.authenticate_with_google(
+        email="google@gmail.com", name="Conta Google", picture_url=None, email_verified=True
+    )
+
+    assert user.session_version == 0
+
+
 @pytest.mark.parametrize(
     "email, hosted_domain",
     [("cintia@gmail.com", None), ("cintia@empresa.com.br", "empresa.com.br")],
     ids=["gmail", "workspace"],
 )
-def test_authenticate_with_google_links_password_account_and_clears_password(
+def test_authenticate_with_google_links_password_account_and_ends_its_sessions(
     email: str,
     hosted_domain: str | None,
     auth_service: AuthService,
@@ -168,7 +180,9 @@ def test_authenticate_with_google_links_password_account_and_clears_password(
 
     assert user.id == existing.id
     session.rollback()  # um update sem commit seria desfeito aqui
-    assert users.get_by_email(email).hashed_password is None
+    saved = users.get_by_email(email)
+    assert saved.hashed_password is None
+    assert saved.session_version == 1
 
 
 def test_authenticate_with_google_keeps_password_when_google_is_not_authoritative(
