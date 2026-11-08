@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
-from uuid import uuid4
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import status
@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, Product
 from src.models.user import User
-from tests.helpers import add_farmer, add_user, login
+from tests.helpers import add_farmer, add_product, add_user, login
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -192,3 +192,88 @@ def test_create_product_requires_field(client: TestClient, field: str):
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert response.json()["detail"][0]["loc"] == ["body", field]
+
+
+def test_farmer_lists_own_products(client: TestClient, session: Session, farmer: Farmer):
+    lettuce = add_product(session, farmer, name="Alface")
+    add_product(session, farmer, name="Couve")
+    other_farmer = add_farmer(session, add_user(session, "maria@example.com"))
+    add_product(session, other_farmer, name="Batata")
+
+    response = client.get("/api/products/me")
+
+    body = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert sorted(product["name"] for product in body) == ["Alface", "Couve"]
+    listed_lettuce = next(product for product in body if product["name"] == "Alface")
+    assert listed_lettuce["public_id"] == str(lettuce.public_id)
+    assert listed_lettuce["farmer_public_id"] == str(farmer.public_id)
+    assert listed_lettuce["price"] == "2.50"
+    assert "id" not in listed_lettuce
+    assert "farmer_id" not in listed_lettuce
+
+
+def test_list_my_products_is_empty_when_farmer_has_none(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    other_farmer = add_farmer(session, add_user(session, "maria@example.com"))
+    add_product(session, other_farmer, name="Batata")
+
+    response = client.get("/api/products/me")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == []
+
+
+def test_list_my_products_includes_expired_and_sold_out(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    add_product(session, farmer, name="Alface vencida", expiration_date=PAST)
+    add_product(session, farmer, name="Couve esgotada", quantity=0)
+
+    response = client.get("/api/products/me")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert sorted(product["name"] for product in response.json()) == [
+        "Alface vencida",
+        "Couve esgotada",
+    ]
+
+
+def test_list_my_products_orders_by_creation_date(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    first_day = datetime(2026, 1, 1, tzinfo=UTC)
+    add_product(
+        session,
+        farmer,
+        name="Couve",
+        created_at=first_day + timedelta(days=2),
+        public_id=UUID(int=1),
+    )
+    add_product(session, farmer, name="Alface", created_at=first_day, public_id=UUID(int=3))
+    add_product(
+        session,
+        farmer,
+        name="Rúcula",
+        created_at=first_day + timedelta(days=1),
+        public_id=UUID(int=2),
+    )
+
+    response = client.get("/api/products/me")
+
+    assert [product["name"] for product in response.json()] == ["Alface", "Rúcula", "Couve"]
+
+
+def test_list_my_products_requires_login(client: TestClient):
+    response = client.get("/api/products/me")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.usefixtures("ana")
+def test_list_my_products_requires_a_farmer_profile(client: TestClient):
+    response = client.get("/api/products/me")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "Acesso permitido apenas para agricultores"}
