@@ -16,10 +16,17 @@ from src.models.product import Product
 from src.models.purchase import Purchase, PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
+from src.schemas.farmer_search import FarmerSearchFilters
 from src.services.distance_service import DistanceService
 
 TODAY = date.today()
 FUTURE = TODAY + timedelta(days=60)
+
+
+def farmer_search_params(**filters: str | int | list[str] | None) -> dict[str, object]:
+    return FarmerSearchFilters(**filters).model_dump(
+        exclude_none=True, exclude_defaults=True
+    )
 
 
 def create_farmer(session: Session, name: str, email: str, zip_code: str = "01001-000") -> Farmer:
@@ -84,7 +91,9 @@ def test_api_search_by_farmer_name(client: TestClient, session: Session):
     f1 = create_farmer(session, name="Sebastião Pereira", email="sebastiao@example.com")
     create_farmer(session, name="Luciana Santos", email="luciana@example.com")
 
-    response = client.get("/api/farmers", params={"name": "Sebastião"})
+    response = client.get(
+        "/api/farmers", params=farmer_search_params(name="Sebastião")
+    )
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -96,7 +105,7 @@ def test_api_search_by_farmer_name(client: TestClient, session: Session):
 def test_api_search_by_farmer_name_case_insensitive(client: TestClient, session: Session):
     create_farmer(session, name="Mariana Lima", email="mariana@example.com")
 
-    response = client.get("/api/farmers", params={"name": "mariana"})
+    response = client.get("/api/farmers", params=farmer_search_params(name="mariana"))
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -107,7 +116,9 @@ def test_api_search_by_farmer_name_case_insensitive(client: TestClient, session:
 def test_api_search_by_farmer_name_not_found(client: TestClient, session: Session):
     create_farmer(session, name="Carlos Silva", email="carlos@example.com")
 
-    response = client.get("/api/farmers", params={"name": "NomeQueNaoExiste"})
+    response = client.get(
+        "/api/farmers", params=farmer_search_params(name="NomeQueNaoExiste")
+    )
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -127,7 +138,10 @@ def test_api_filter_by_multiple_products(client: TestClient, session: Session):
     add_product(session, farmer3, name="Banana Nanica")
 
 
-    response = client.get("/api/farmers", params={"products": ["morango", "banana"]})
+    response = client.get(
+        "/api/farmers",
+        params=farmer_search_params(products=["morango", "banana"]),
+    )
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -148,7 +162,8 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
     app.dependency_overrides[get_distance_service] = lambda: mock_distance
 
     res_5km = client.get(
-        "/api/farmers", params={"origin_cep": "01000-000", "max_distance_km": 5}
+        "/api/farmers",
+        params=farmer_search_params(origin_cep="01000-000", max_distance_km=5),
     )
     assert res_5km.status_code == status.HTTP_200_OK
     data_5km = res_5km.json()
@@ -156,7 +171,8 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
     assert data_5km["items"][0]["name"] == "Perto 4km"
 
     res_15km = client.get(
-        "/api/farmers", params={"origin_cep": "01000-000", "max_distance_km": 15}
+        "/api/farmers",
+        params=farmer_search_params(origin_cep="01000-000", max_distance_km=15),
     )
     assert res_15km.status_code == status.HTTP_200_OK
     data_15km = res_15km.json()
@@ -165,18 +181,22 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
 
 def test_api_filter_by_distance_rejects_invalid_km(client: TestClient):
     response = client.get(
-        "/api/farmers", params={"origin_cep": "01000-000", "max_distance_km": 20}
+        "/api/farmers",
+        params=farmer_search_params(origin_cep="01000-000", max_distance_km=20),
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     response_negative = client.get(
-        "/api/farmers", params={"origin_cep": "01000-000", "max_distance_km": -5}
+        "/api/farmers",
+        params=farmer_search_params(origin_cep="01000-000", max_distance_km=-5),
     )
     assert response_negative.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 def test_api_filter_by_distance_without_origin_cep_returns_422(client: TestClient):
-    response = client.get("/api/farmers", params={"max_distance_km": 10})
+    response = client.get(
+        "/api/farmers", params=farmer_search_params(max_distance_km=10)
+    )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
@@ -211,7 +231,9 @@ def test_api_result_fields_schema(client: TestClient, session: Session, apartmen
     session.add_all([review1, review2])
     session.commit()
 
-    response = client.get("/api/farmers", params={"name": "Agricultor Avaliado"})
+    response = client.get(
+        "/api/farmers", params=farmer_search_params(name="Agricultor Avaliado")
+    )
     assert response.status_code == status.HTTP_200_OK
 
     item = response.json()["items"][0]
@@ -229,7 +251,7 @@ def test_api_pagination_20_per_page(client: TestClient, session: Session):
         create_farmer(session, name=f"Produtor Rural {i:02d}", email=f"produtor{i}@example.com")
 
 
-    res_p1 = client.get("/api/farmers", params={"page": 1})
+    res_p1 = client.get("/api/farmers", params=farmer_search_params(page=1))
     assert res_p1.status_code == status.HTTP_200_OK
     data_p1 = res_p1.json()
     assert data_p1["total"] == 25
@@ -238,14 +260,14 @@ def test_api_pagination_20_per_page(client: TestClient, session: Session):
     assert data_p1["page_size"] == 20
     assert data_p1["total_pages"] == 2
 
-    res_p2 = client.get("/api/farmers", params={"page": 2})
+    res_p2 = client.get("/api/farmers", params=farmer_search_params(page=2))
     assert res_p2.status_code == status.HTTP_200_OK
     data_p2 = res_p2.json()
     assert len(data_p2["items"]) == 5
     assert data_p2["page"] == 2
 
 
-    res_p3 = client.get("/api/farmers", params={"page": 3})
+    res_p3 = client.get("/api/farmers", params=farmer_search_params(page=3))
     assert res_p3.status_code == status.HTTP_200_OK
     assert len(res_p3.json()["items"]) == 0
 
@@ -296,7 +318,9 @@ def test_api_performance_with_10k_products(client: TestClient, session: Session)
     start_time = time.perf_counter()
     response = client.get(
         "/api/farmers",
-        params={"name": "Produtor Desempenho", "products": ["Tomate Cereja"], "page": 1},
+        params=farmer_search_params(
+            name="Produtor Desempenho", products=["Tomate Cereja"], page=1
+        ),
     )
     duration_s = time.perf_counter() - start_time
 

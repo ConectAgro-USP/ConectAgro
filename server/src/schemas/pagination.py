@@ -14,12 +14,18 @@ class PaginatedResponse[T](BaseModel):
     @classmethod
     def paginate(cls, items: list[T], page: int, page_size: int) -> Self:
         total = len(items)
-        total_pages = ceil(total / page_size) if total > 0 else 0
         start = (page - 1) * page_size
         end = start + page_size
 
+        return cls.from_page(items[start:end], page, page_size, total)
+
+    @classmethod
+    def from_page(
+        cls, items: list[T], page: int, page_size: int, total: int
+    ) -> Self:
+        total_pages = ceil(total / page_size) if total > 0 else 0
         return cls(
-            items=items[start:end],
+            items=items,
             total=total,
             page=page,
             page_size=page_size,

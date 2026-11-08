@@ -13,7 +13,7 @@ class FarmerSearchRepository:
         self.session = session
 
 
-    def get_farmers_by_name_product(
+    def search(
         self,
         name: str | None = None,
         products: list[str] | None = None
@@ -26,6 +26,8 @@ class FarmerSearchRepository:
         if name:
             query = query.where(col(User.name).ilike(f"%{name}%"))
 
+        products = [product.strip() for product in products or [] if product.strip()]
+
         for product in products or []:
             farmer = select(Product.farmer_id).where(col(Product.name).ilike(f"%{product}%"))
             query = query.where((Farmer.id).in_(farmer))
@@ -35,7 +37,7 @@ class FarmerSearchRepository:
         return farmers
 
 
-    def get_review_summaries_by_name(self, farmer_ids: list[int]) -> dict[int, tuple[float, int]]:
+    def get_review_summaries_by_id(self, farmer_ids: list[int]) -> dict[int, tuple[float, int]]:
         if not farmer_ids:
             return {}
 
@@ -78,7 +80,7 @@ class FarmerSearchRepository:
         
         return delivery_count
 
-    def get_products_by_farmer(self, farmer_ids: list[int]) -> dict[int, list[str]]:
+    def get_products_by_farmer_id(self, farmer_ids: list[int]) -> dict[int, list[str]]:
         if not farmer_ids:
             return {}
 
