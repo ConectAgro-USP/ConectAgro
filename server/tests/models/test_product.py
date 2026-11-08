@@ -24,7 +24,6 @@ def product_create(**overrides) -> ProductCreate:
         "quantity": 1,
         "price": "2.03",
         "expiration_date": FUTURE,
-        "farmer_public_id": uuid4(),
     }
     return ProductCreate(**{**data, **overrides})
 
@@ -82,7 +81,6 @@ def test_product_create():
 
     assert product.price == Decimal("2.03")
     assert product.expiration_date == FUTURE
-    assert isinstance(product.farmer_public_id, UUID)
 
 
 def test_product_create_accepts_today():
@@ -93,7 +91,14 @@ def test_product_create_accepts_today():
     "field, value",
     [
         ("name", ""),
+        ("name", "   "),
+        ("name", "A" * 101),
+        ("name", "Alf\x00ace"),
         ("description", 1),
+        ("description", "D" * 1001),
+        ("description", "Alface\x00crespa"),
+        ("picture_url", "https://example.com/" + "a" * 2029),
+        ("picture_url", "https://example.com/\x00.png"),
         ("quantity", -1),
         ("quantity", 2**31),
         ("price", "-2.03"),
@@ -108,6 +113,33 @@ def test_product_create_rejects_invalid_field(field: str, value: object):
     assert exc_info.value.errors()[0]["loc"] == (field,)
 
 
+def test_product_create_accepts_texts_at_the_length_limit():
+    product = product_create(
+        name="A" * 100,
+        description="D" * 1000,
+        picture_url="https://example.com/" + "a" * 2028,
+    )
+
+    assert len(product.name) == 100
+    assert len(product.description) == 1000
+    assert len(product.picture_url) == 2048
+
+
+def test_product_create_strips_surrounding_spaces():
+    product = product_create(
+        name="  Alface  ", description=" Alface crespa\n", picture_url=" https://example.com/a.png "
+    )
+
+    assert product.name == "Alface"
+    assert product.description == "Alface crespa"
+    assert product.picture_url == "https://example.com/a.png"
+
+
+def test_product_create_explains_null_character():
+    with pytest.raises(ValidationError, match="O texto tem um caractere inválido"):
+        product_create(name="Alf\x00ace")
+
+
 def test_product_create_explains_expired_product():
     with pytest.raises(ValidationError, match="Não é possível cadastrar produto vencido"):
         product_create(expiration_date=PAST)
@@ -118,6 +150,7 @@ def test_product_read_hides_internal_id():
         **product_create().model_dump(),
         public_id=uuid4(),
         created_at=datetime.now(UTC),
+        farmer_public_id=uuid4(),
         id=1,
     )
 
@@ -130,10 +163,13 @@ def test_product_read_rejects_wrong_type():
         "name": 1,
         "public_id": uuid4(),
         "created_at": datetime.now(UTC),
+        "farmer_public_id": uuid4(),
     }
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as exc_info:
         ProductRead(**data)
+
+    assert exc_info.value.errors()[0]["loc"] == ("name",)
 
 
 @pytest.mark.parametrize(
@@ -144,6 +180,13 @@ def test_product_read_rejects_wrong_type():
         ("quantity", 2**31),
         ("expiration_date", PAST),
         ("name", None),
+        ("name", "   "),
+        ("name", "A" * 101),
+        ("name", "Alf\x00ace"),
+        ("description", "D" * 1001),
+        ("description", "Alface\x00crespa"),
+        ("picture_url", "https://example.com/" + "a" * 2029),
+        ("picture_url", "https://example.com/\x00.png"),
         ("quantity", None),
         ("price", None),
         ("expiration_date", None),
@@ -157,9 +200,16 @@ def test_product_update_rejects_invalid_field(field: str, value: object):
 
 
 def test_product_update_accepts_null_for_nullable_fields():
-    product_update = ProductUpdate(description=None)
+    product_update = ProductUpdate(description=None, picture_url=None)
 
-    assert product_update.model_dump(exclude_unset=True) == {"description": None}
+    assert product_update.model_dump(exclude_unset=True) == {
+        "description": None,
+        "picture_url": None,
+    }
+
+
+def test_product_update_strips_name():
+    assert ProductUpdate(name="  Couve  ").name == "Couve"
 
 
 def test_expiration_uses_brazilian_date(monkeypatch: pytest.MonkeyPatch):
