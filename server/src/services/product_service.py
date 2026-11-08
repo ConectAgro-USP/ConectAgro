@@ -11,3 +11,7 @@ class ProductService:
         # o dono vem do perfil logado, e não do corpo, para ninguém cadastrar em nome de outro
         product = Product.model_validate(product_in, update={"farmer_id": farmer.id})
         return self.products.create(product)
+
+    def get_current_farmer_products(self, farmer: Farmer) -> list[Product]:
+        return self.products.list_products_by_farmer_id(farmer.id)
+    

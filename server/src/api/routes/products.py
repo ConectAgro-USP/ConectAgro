@@ -11,3 +11,10 @@ def create_product(
     product_in: ProductCreate, farmer: CurrentFarmer, product_service: ProductServiceDep
 ):
     return product_service.create(farmer, product_in)
+
+
+@router.get("/me", response_model=list[ProductRead])
+def get_farmer_products(
+    farmer: CurrentFarmer, product_service: ProductServiceDep
+):
+    return product_service.get_current_farmer_products(farmer)
