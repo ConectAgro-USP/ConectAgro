@@ -679,3 +679,265 @@ def test_catalog_queries_do_not_grow_with_the_number_of_products(
 
     assert len(response.json()) == 6
     assert len(six_products) == len(one_product)
+
+
+def test_owner_updates_only_the_fields_sent(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    lettuce = add_product(session, farmer, description="Alface crespa")
+
+    response = client.patch(
+        f"/api/products/{lettuce.public_id}", json={"price": "3.00", "quantity": 4}
+    )
+
+    body = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert body.pop("created_at") is not None
+    assert body == {
+        "public_id": str(lettuce.public_id),
+        "name": "Alface",
+        "description": "Alface crespa",
+        "picture_url": None,
+        "quantity": 4,
+        "price": "3.00",
+        "expiration_date": FUTURE.isoformat(),
+        "farmer_public_id": str(farmer.public_id),
+    }
+    session.refresh(lettuce)
+    assert lettuce.price == Decimal("3.00")
+    assert lettuce.quantity == 4
+    assert lettuce.description == "Alface crespa"
+
+
+def test_owner_updates_every_field(client: TestClient, session: Session, farmer: Farmer):
+    lettuce = add_product(session, farmer)
+    changes = {
+        "name": "Alface roxa",
+        "description": "Alface roxa orgânica",
+        "picture_url": "https://example.com/alface-roxa.png",
+        "quantity": 3,
+        "price": "4.75",
+        "expiration_date": (TODAY + timedelta(days=5)).isoformat(),
+    }
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json=changes)
+
+    body = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert body.pop("created_at") is not None
+    assert body == {
+        **changes,
+        "public_id": str(lettuce.public_id),
+        "farmer_public_id": str(farmer.public_id),
+    }
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [("quantity", 0), ("price", "0.00"), ("expiration_date", TODAY.isoformat())],
+    ids=["esgotado", "gratis", "vence-hoje"],
+)
+def test_owner_sets_values_at_the_limit(
+    client: TestClient, session: Session, farmer: Farmer, field: str, value: object
+):
+    lettuce = add_product(session, farmer)
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json={field: value})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()[field] == value
+
+
+def test_owner_clears_optional_fields_with_null(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    lettuce = add_product(
+        session, farmer, description="Alface crespa", picture_url="https://example.com/a.png"
+    )
+
+    response = client.patch(
+        f"/api/products/{lettuce.public_id}", json={"description": None, "picture_url": None}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    session.refresh(lettuce)
+    assert lettuce.description is None
+    assert lettuce.picture_url is None
+    assert lettuce.name == "Alface"
+
+
+def test_update_with_empty_body_changes_nothing(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    lettuce = add_product(session, farmer, description="Alface crespa")
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json={})
+
+    assert response.status_code == status.HTTP_200_OK
+    session.refresh(lettuce)
+    assert lettuce.name == "Alface"
+    assert lettuce.description == "Alface crespa"
+    assert lettuce.price == Decimal("2.50")
+    assert lettuce.quantity == 10
+
+
+def test_update_saves_texts_without_surrounding_spaces(
+    client: TestClient, session: Session, farmer: Farmer
+):
+    lettuce = add_product(session, farmer)
+
+    response = client.patch(
+        f"/api/products/{lettuce.public_id}",
+        json={"name": "  Alface roxa  ", "description": "  Orgânica  "},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    session.refresh(lettuce)
+    assert lettuce.name == "Alface roxa"
+    assert lettuce.description == "Orgânica"
+
+
+def test_update_ignores_owner_and_ids_sent_in_the_body(
+    client: TestClient, session: Session, farmer: Farmer, seller: Farmer
+):
+    lettuce = add_product(session, farmer)
+    original_public_id = lettuce.public_id
+    original_created_at = lettuce.created_at
+
+    response = client.patch(
+        f"/api/products/{lettuce.public_id}",
+        json={
+            "price": "3.00",
+            "farmer_public_id": str(seller.public_id),
+            "farmer_id": seller.id,
+            "public_id": str(uuid4()),
+            "created_at": "2020-01-01T00:00:00Z",
+            "id": 999,
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["farmer_public_id"] == str(farmer.public_id)
+    session.refresh(lettuce)
+    assert lettuce.farmer_id == farmer.id
+    assert lettuce.public_id == original_public_id
+    assert lettuce.created_at == original_created_at
+    assert lettuce.price == Decimal("3.00")
+
+
+def test_owner_renews_an_expired_product(client: TestClient, session: Session, farmer: Farmer):
+    lettuce = add_product(session, farmer, expiration_date=PAST)
+
+    response = client.patch(
+        f"/api/products/{lettuce.public_id}", json={"expiration_date": FUTURE.isoformat()}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    catalog = client.get("/api/products").json()
+    assert [product["public_id"] for product in catalog] == [str(lettuce.public_id)]
+
+
+def test_update_product_requires_login(client: TestClient, session: Session, seller: Farmer):
+    lettuce = add_product(session, seller)
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json={"price": "9.99"})
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    session.refresh(lettuce)
+    assert lettuce.price == Decimal("2.50")
+
+
+@pytest.mark.usefixtures("ana")
+def test_update_product_requires_a_farmer_profile(
+    client: TestClient, session: Session, seller: Farmer
+):
+    lettuce = add_product(session, seller)
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json={"price": "9.99"})
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "Acesso permitido apenas para agricultores"}
+    session.refresh(lettuce)
+    assert lettuce.price == Decimal("2.50")
+
+
+@pytest.mark.usefixtures("farmer")
+def test_farmer_cannot_update_product_of_another_farmer(
+    client: TestClient, session: Session, seller: Farmer
+):
+    lettuce = add_product(session, seller)
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json={"price": "9.99"})
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "Você só pode alterar seus produtos"}
+    session.refresh(lettuce)
+    assert lettuce.price == Decimal("2.50")
+
+
+@pytest.mark.usefixtures("farmer")
+def test_update_unknown_product_returns_404(client: TestClient):
+    response = client.patch(f"/api/products/{uuid4()}", json={"price": "3.00"})
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Produto não encontrado"}
+
+
+@pytest.mark.usefixtures("farmer")
+def test_update_product_rejects_invalid_id(client: TestClient):
+    response = client.patch("/api/products/abc", json={"price": "3.00"})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"][0]["loc"] == ["path", "public_id"]
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("name", ""),
+        ("name", None),
+        ("quantity", -1),
+        ("quantity", 2**31),
+        ("quantity", None),
+        ("price", "-0.01"),
+        ("price", "1.234"),
+        ("price", "1000000.00"),
+        ("price", None),
+        ("expiration_date", PAST.isoformat()),
+        ("expiration_date", None),
+        ("expiration_date", "amanhã"),
+    ],
+)
+def test_update_product_rejects_invalid_field(
+    client: TestClient, session: Session, farmer: Farmer, field: str, value: object
+):
+    lettuce = add_product(session, farmer)
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json={field: value})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"][0]["loc"] == ["body", field]
+    session.refresh(lettuce)
+    assert lettuce.name == "Alface"
+    assert lettuce.quantity == 10
+    assert lettuce.price == Decimal("2.50")
+    assert lettuce.expiration_date == FUTURE
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"expiration_date": PAST.isoformat()}, "Atualização faz com que o produto esteja fora"),
+        ({"name": "Alf\x00ace"}, "O texto tem um caractere inválido"),
+    ],
+    ids=["vencido", "caractere-nulo"],
+)
+def test_update_product_explains_the_error(
+    client: TestClient, session: Session, farmer: Farmer, changes: dict, message: str
+):
+    lettuce = add_product(session, farmer)
+
+    response = client.patch(f"/api/products/{lettuce.public_id}", json=changes)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert message in response.json()["detail"][0]["msg"]
