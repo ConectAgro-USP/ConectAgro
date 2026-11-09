@@ -4,8 +4,14 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 
 from src.api.deps import CurrentFarmer, ProductServiceDep
-from src.models.product import ProductCatalogRead, ProductCreate, ProductDetailRead, ProductRead
-from src.services.exceptions import ProductNotFoundError
+from src.models.product import (
+    ProductCatalogRead,
+    ProductCreate,
+    ProductDetailRead,
+    ProductRead,
+    ProductUpdate,
+)
+from src.services.exceptions import NotProductOwnerError, ProductNotFoundError
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -31,6 +37,21 @@ def catalog_products(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     return product_service.catalog_products(limit, offset)
+
+
+@router.patch("/{public_id}", response_model=ProductRead)
+def patch_product(public_id: UUID, farmer: CurrentFarmer, 
+                  product_update: ProductUpdate, 
+                  product_service: ProductServiceDep):
+    try:
+        return product_service.update_product(public_id, 
+                                              farmer, product_update)
+    except ProductNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 
+                            "Produto não encontrado") from None
+    except NotProductOwnerError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, 
+                            "Você só pode alterar seus produtos") from None
 
 @router.get("/{public_id}", response_model=ProductDetailRead)
 def get_product_by_public_id(

@@ -49,3 +49,6 @@ class FieldNotInProfileError(Exception):
 
 class ProductNotFoundError(Exception):
     pass
+
+class NotProductOwnerError(Exception):
+    pass

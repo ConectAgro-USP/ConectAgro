@@ -9,9 +9,10 @@ from src.models.product import (
     ProductCreate,
     ProductDetailRead,
     ProductFarmerRead,
+    ProductUpdate,
 )
 from src.repository.product_repository import ProductRepository
-from src.services.exceptions import ProductNotFoundError
+from src.services.exceptions import NotProductOwnerError, ProductNotFoundError
 from src.services.text_service import short_name
 
 
@@ -22,7 +23,7 @@ class ProductService:
     def create(self, farmer: Farmer, product_in: ProductCreate) -> Product:
         # o dono vem do perfil logado, e não do corpo, para ninguém cadastrar em nome de outro
         product = Product.model_validate(product_in, update={"farmer_id": farmer.id})
-        return self.products.create(product)
+        return self.products.save(product)
 
     def get_current_farmer_products(self, farmer: Farmer) -> list[Product]:
         return self.products.list_products_by_farmer_id(farmer.id)
@@ -45,6 +46,16 @@ class ProductService:
                 product, update={"farmer_short_name": short_name(product.farmer.user.name)}
             ))
         return catalog_products
+
+    def update_product(self, public_id: UUID, farmer: Farmer, 
+                       product_update: ProductUpdate) -> Product:
+        product = self.products.get_product_by_public_id(public_id)
+        if product is None:
+            raise ProductNotFoundError
+        if product.farmer_id != farmer.id:
+            raise NotProductOwnerError 
+        product.sqlmodel_update(product_update.model_dump(exclude_unset=True))
+        return self.products.save(product)
 
 
 def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
