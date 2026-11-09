@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -5,6 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
@@ -428,3 +431,251 @@ def test_get_product_rejects_invalid_id(client: TestClient, public_id: str):
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert response.json()["detail"][0]["loc"] == ["path", "public_id"]
+
+
+FIRST_DAY = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def add_products_in_order(session: Session, farmer: Farmer, *names: str) -> list[Product]:
+    return [
+        add_product(session, farmer, name=name, created_at=FIRST_DAY + timedelta(days=day))
+        for day, name in enumerate(names)
+    ]
+
+
+@contextmanager
+def recorded_queries(session: Session) -> Iterator[list[str]]:
+    queries: list[str] = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        queries.append(statement)
+
+    engine = session.get_bind()
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield queries
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_lists_products_of_every_farmer(
+    client: TestClient, session: Session, seller: Farmer
+):
+    maria = add_farmer(session, add_user(session, "maria@example.com", name="Maria Souza"))
+    lettuce = add_product(session, seller, name="Alface", created_at=FIRST_DAY)
+    potato = add_product(
+        session,
+        maria,
+        name="Batata",
+        description="Batata inglesa",
+        quantity=3,
+        price=Decimal("4.90"),
+        created_at=FIRST_DAY + timedelta(days=1),
+    )
+
+    response = client.get("/api/products")
+
+    body = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    for item in body:
+        assert item.pop("created_at") is not None
+    assert body == [
+        {
+            "public_id": str(lettuce.public_id),
+            "name": "Alface",
+            "description": None,
+            "picture_url": None,
+            "quantity": 10,
+            "price": "2.50",
+            "expiration_date": FUTURE.isoformat(),
+            "farmer_public_id": str(seller.public_id),
+            "farmer_short_name": "João S.",
+        },
+        {
+            "public_id": str(potato.public_id),
+            "name": "Batata",
+            "description": "Batata inglesa",
+            "picture_url": None,
+            "quantity": 3,
+            "price": "4.90",
+            "expiration_date": FUTURE.isoformat(),
+            "farmer_public_id": str(maria.public_id),
+            "farmer_short_name": "Maria S.",
+        },
+    ]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_is_empty_without_products(client: TestClient):
+    response = client.get("/api/products")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == []
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_hides_expired_and_sold_out_products(
+    client: TestClient, session: Session, seller: Farmer
+):
+    add_product(session, seller, name="Alface")
+    add_product(session, seller, name="Couve vencida", expiration_date=PAST)
+    add_product(session, seller, name="Batata esgotada", quantity=0)
+
+    response = client.get("/api/products")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert [product["name"] for product in response.json()] == ["Alface"]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"expiration_date": TODAY}, {"quantity": 1}],
+    ids=["vence-hoje", "ultima-unidade"],
+)
+@pytest.mark.usefixtures("ana")
+def test_catalog_shows_products_at_the_limit(
+    client: TestClient, session: Session, seller: Farmer, overrides: dict
+):
+    # o cadastro aceita produto que vence hoje, então ele ainda está na validade
+    product = add_product(session, seller, **overrides)
+
+    response = client.get("/api/products")
+
+    assert [item["public_id"] for item in response.json()] == [str(product.public_id)]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_orders_by_creation_date(client: TestClient, session: Session, seller: Farmer):
+    add_product(session, seller, name="Couve", created_at=FIRST_DAY + timedelta(days=2))
+    add_product(session, seller, name="Alface", created_at=FIRST_DAY)
+    add_product(session, seller, name="Rúcula", created_at=FIRST_DAY + timedelta(days=1))
+
+    response = client.get("/api/products")
+
+    assert [product["name"] for product in response.json()] == ["Alface", "Rúcula", "Couve"]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_breaks_ties_by_public_id(client: TestClient, session: Session, seller: Farmer):
+    # sem desempate, o banco pode trocar a ordem entre as páginas e repetir um produto
+    add_product(session, seller, name="Couve", created_at=FIRST_DAY, public_id=UUID(int=2))
+    add_product(session, seller, name="Alface", created_at=FIRST_DAY, public_id=UUID(int=1))
+
+    response = client.get("/api/products")
+
+    assert [product["name"] for product in response.json()] == ["Alface", "Couve"]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_paginates_without_repeating_products(
+    client: TestClient, session: Session, seller: Farmer
+):
+    add_products_in_order(session, seller, "Alface", "Batata", "Couve", "Rúcula", "Tomate")
+
+    pages = [
+        [
+            product["name"]
+            for product in client.get(
+                "/api/products", params={"limit": 2, "offset": offset}
+            ).json()
+        ]
+        for offset in (0, 2, 4, 6)
+    ]
+
+    assert pages == [["Alface", "Batata"], ["Couve", "Rúcula"], ["Tomate"], []]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_pages_count_only_available_products(
+    client: TestClient, session: Session, seller: Farmer
+):
+    add_product(session, seller, name="Alface", created_at=FIRST_DAY)
+    add_product(
+        session,
+        seller,
+        name="Couve vencida",
+        expiration_date=PAST,
+        created_at=FIRST_DAY + timedelta(days=1),
+    )
+    add_product(session, seller, name="Batata", created_at=FIRST_DAY + timedelta(days=2))
+
+    response = client.get("/api/products", params={"limit": 2})
+
+    assert [product["name"] for product in response.json()] == ["Alface", "Batata"]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_returns_10_products_by_default(
+    client: TestClient, session: Session, seller: Farmer
+):
+    add_products_in_order(session, seller, *[f"Produto {number}" for number in range(12)])
+
+    response = client.get("/api/products")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.json()) == 10
+
+
+@pytest.mark.parametrize("limit", [1, 100])
+@pytest.mark.usefixtures("ana")
+def test_catalog_accepts_limit_from_1_to_100(
+    client: TestClient, session: Session, seller: Farmer, limit: int
+):
+    add_products_in_order(session, seller, "Alface", "Couve")
+
+    response = client.get("/api/products", params={"limit": limit})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.json()) == min(limit, 2)
+
+
+@pytest.mark.parametrize(
+    "params, field",
+    [
+        ({"limit": 0}, "limit"),
+        ({"limit": 101}, "limit"),
+        ({"limit": "dez"}, "limit"),
+        ({"offset": -1}, "offset"),
+        ({"offset": "zero"}, "offset"),
+    ],
+)
+@pytest.mark.usefixtures("ana")
+def test_catalog_rejects_invalid_pagination(client: TestClient, params: dict, field: str):
+    response = client.get("/api/products", params=params)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"][0]["loc"] == ["query", field]
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_hides_email_saved_as_farmer_name(client: TestClient, session: Session):
+    # sem o nome do Google, o cadastro guarda o e-mail no lugar do nome
+    farmer = add_farmer(session, add_user(session, "joao@example.com", name="joao@example.com"))
+    add_product(session, farmer)
+
+    response = client.get("/api/products")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()[0]["farmer_short_name"] == ""
+    assert "joao@example.com" not in response.text
+
+
+@pytest.mark.usefixtures("ana")
+def test_catalog_queries_do_not_grow_with_the_number_of_products(
+    client: TestClient, session: Session
+):
+    def add_farmer_with_product(number: int) -> None:
+        user = add_user(session, f"agricultor{number}@example.com", name=f"Agricultor {number}")
+        add_product(session, add_farmer(session, user))
+
+    add_farmer_with_product(0)
+    with recorded_queries(session) as one_product:
+        client.get("/api/products")
+    for number in range(1, 6):
+        add_farmer_with_product(number)
+    with recorded_queries(session) as six_products:
+        response = client.get("/api/products")
+
+    assert len(response.json()) == 6
+    assert len(six_products) == len(one_product)

@@ -11,6 +11,7 @@ from src.models.farmer import Farmer
 from src.models.product import (
     BUSINESS_TZ,
     Product,
+    ProductCatalogRead,
     ProductCreate,
     ProductDetailRead,
     ProductFarmerRead,
@@ -340,3 +341,72 @@ def test_product_detail_read_requires_the_farmer():
         ProductDetailRead(**data)
 
     assert exc_info.value.errors()[0]["loc"] == ("farmer",)
+
+
+def product_read_data() -> dict:
+    return {
+        **product_create().model_dump(),
+        "public_id": uuid4(),
+        "created_at": datetime.now(UTC),
+        "farmer_public_id": uuid4(),
+    }
+
+
+def test_product_catalog_read_from_table_adds_farmer_short_name(
+    session: Session, farmer: Farmer
+):
+    product = Product(
+        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE,
+        farmer_id=farmer.id
+    )
+    session.add(product)
+    session.commit()
+
+    catalog_item = ProductCatalogRead.model_validate(
+        product, update={"farmer_short_name": "João S."}
+    )
+
+    assert catalog_item.public_id == product.public_id
+    assert catalog_item.name == "Alface"
+    assert catalog_item.farmer_public_id == farmer.public_id
+    assert catalog_item.farmer_short_name == "João S."
+    assert "id" not in catalog_item.model_dump()
+    assert "farmer_id" not in catalog_item.model_dump()
+
+
+def test_product_catalog_read_carries_only_the_farmer_id_and_short_name():
+    # o catálogo é uma lista: a foto e os telefones do agricultor ficam na página do produto
+    catalog_item = ProductCatalogRead(
+        **product_read_data(),
+        farmer_short_name="João S.",
+        cellphone="11957249062",
+        email="joao@example.com",
+    )
+
+    assert set(catalog_item.model_dump()) == {
+        "name",
+        "description",
+        "picture_url",
+        "quantity",
+        "price",
+        "expiration_date",
+        "public_id",
+        "created_at",
+        "farmer_public_id",
+        "farmer_short_name",
+    }
+
+
+def test_product_catalog_read_requires_farmer_short_name():
+    with pytest.raises(ValidationError) as exc_info:
+        ProductCatalogRead(**product_read_data())
+
+    assert exc_info.value.errors()[0]["loc"] == ("farmer_short_name",)
+
+
+@pytest.mark.parametrize("value", [None, 1])
+def test_product_catalog_read_rejects_invalid_farmer_short_name(value: object):
+    with pytest.raises(ValidationError) as exc_info:
+        ProductCatalogRead(**product_read_data(), farmer_short_name=value)
+
+    assert exc_info.value.errors()[0]["loc"] == ("farmer_short_name",)
