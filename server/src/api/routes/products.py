@@ -73,7 +73,7 @@ def delete_product(
     public_id: UUID, farmer: CurrentFarmer, product_service: ProductServiceDep
 ):
     try:
-        return product_service.delete_product(public_id, farmer)
+        product_service.delete_product(public_id, farmer)
     except ProductNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado") from None
     except NotProductOwnerError:
