@@ -1,7 +1,15 @@
+from datetime import datetime
 from uuid import UUID
 
 from src.models.farmer import Farmer
-from src.models.product import Product, ProductCreate, ProductDetailRead, ProductFarmerRead
+from src.models.product import (
+    BUSINESS_TZ,
+    Product,
+    ProductCatalogRead,
+    ProductCreate,
+    ProductDetailRead,
+    ProductFarmerRead,
+)
 from src.repository.product_repository import ProductRepository
 from src.services.exceptions import ProductNotFoundError
 from src.services.text_service import short_name
@@ -26,6 +34,17 @@ class ProductService:
         return ProductDetailRead.model_validate(
             product, update={"farmer": _farmer_summary(product.farmer)}
         )
+
+    def catalog_products(self, limit: int = 10, offset: int = 0) -> list[ProductCatalogRead]:
+        today = datetime.now(BUSINESS_TZ).date()
+        
+        products = self.products.catalog_products(today, limit, offset)
+        catalog_products = []
+        for product in products:
+            catalog_products.append(ProductCatalogRead.model_validate(
+                product, update={"farmer_short_name": short_name(product.farmer.user.name)}
+            ))
+        return catalog_products
 
 
 def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:

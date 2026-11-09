@@ -1,9 +1,10 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from src.api.deps import CurrentFarmer, ProductServiceDep
-from src.models.product import ProductCreate, ProductDetailRead, ProductRead
+from src.models.product import ProductCatalogRead, ProductCreate, ProductDetailRead, ProductRead
 from src.services.exceptions import ProductNotFoundError
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -23,6 +24,14 @@ def get_farmer_products(
     return product_service.get_current_farmer_products(farmer)
 
 
+@router.get("", response_model=list[ProductCatalogRead])
+def catalog_products(
+    product_service: ProductServiceDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    return product_service.catalog_products(limit, offset)
+
 @router.get("/{public_id}", response_model=ProductDetailRead)
 def get_product_by_public_id(
     public_id: UUID, product_service: ProductServiceDep
@@ -33,3 +42,4 @@ def get_product_by_public_id(
         return product_service.get_product_by_public_id(public_id)
     except ProductNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado") from None
+

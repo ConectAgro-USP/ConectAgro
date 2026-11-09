@@ -1,7 +1,10 @@
+from datetime import date
 from uuid import UUID
 
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from src.models.farmer import Farmer
 from src.models.product import Product
 
 
@@ -24,3 +27,11 @@ class ProductRepository:
         statement = select(Product).where(Product.public_id == public_id)
         result = self.session.exec(statement).first()
         return result
+
+    def catalog_products(self, today: date, limit: int = 10, offset: int = 0) -> list[Product]:
+        statement = select(Product).where(Product.quantity > 0, Product.expiration_date >= today)
+        statement = statement.order_by(Product.created_at, Product.public_id)
+        statement = statement.offset(offset).limit(limit)
+        statement = statement.options(selectinload(Product.farmer).selectinload(Farmer.user))
+        
+        return list(self.session.exec(statement).all())
