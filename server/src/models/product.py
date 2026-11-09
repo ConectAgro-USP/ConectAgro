@@ -117,3 +117,7 @@ class ProductFarmerRead(SQLModel):
 
 class ProductDetailRead(ProductRead):
     farmer: ProductFarmerRead
+
+
+class ProductCatalogRead(ProductRead):
+    farmer_short_name: str
