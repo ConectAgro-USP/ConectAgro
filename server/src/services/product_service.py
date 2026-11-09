@@ -85,6 +85,5 @@ def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
         short_name=short_name(farmer.user.name),
         picture_url=farmer.user.picture_url,
         cellphone=farmer.user.cellphone,
-        homephone=farmer.user.homephone,
     )
 

@@ -303,7 +303,7 @@ def test_get_product_shows_public_data_of_the_farmer(client: TestClient, session
     assert response.status_code == status.HTTP_200_OK
     assert body["public_id"] == str(lettuce.public_id)
     assert body["name"] == "Alface"
-    # os telefones são visíveis porque a compra é combinada pelo WhatsApp
+    # só o celular é visível, porque a compra é combinada pelo WhatsApp; o fixo é privado
     # comparar os dicionários também garante que nenhuma informação a mais vaza
     assert body["farmer"] == {
         "public_id": str(farmer.public_id),
@@ -311,8 +311,8 @@ def test_get_product_shows_public_data_of_the_farmer(client: TestClient, session
         "short_name": "João S.",
         "picture_url": "https://example.com/joao.png",
         "cellphone": "11957249062",
-        "homephone": "1140028922",
     }
+    assert "1140028922" not in response.text
 
 
 @pytest.mark.usefixtures("ana")
@@ -396,7 +396,6 @@ def test_get_product_shows_farmer_without_optional_data(client: TestClient, sess
         "short_name": "João",
         "picture_url": None,
         "cellphone": None,
-        "homephone": None,
     }
 
 

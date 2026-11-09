@@ -250,14 +250,17 @@ def product_farmer_read(**overrides) -> ProductFarmerRead:
         "short_name": "João S.",
         "picture_url": "https://example.com/joao.png",
         "cellphone": "11957249062",
-        "homephone": "1140028922",
     }
     return ProductFarmerRead(**{**data, **overrides})
 
 
 def test_product_farmer_read_exposes_only_public_data():
     farmer_read = product_farmer_read(
-        email="joao@example.com", zip_code="01310200", cpf="52998224725", user_id=1
+        email="joao@example.com",
+        zip_code="01310200",
+        cpf="52998224725",
+        homephone="1140028922",
+        user_id=1,
     )
 
     assert set(farmer_read.model_dump()) == {
@@ -266,27 +269,23 @@ def test_product_farmer_read_exposes_only_public_data():
         "short_name",
         "picture_url",
         "cellphone",
-        "homephone",
     }
 
 
 def test_product_farmer_read_accepts_null_for_optional_data():
-    farmer_read = product_farmer_read(
-        farm_name=None, picture_url=None, cellphone=None, homephone=None
-    )
+    farmer_read = product_farmer_read(farm_name=None, picture_url=None, cellphone=None)
 
     assert farmer_read.model_dump(exclude={"public_id"}) == {
         "farm_name": None,
         "short_name": "João S.",
         "picture_url": None,
         "cellphone": None,
-        "homephone": None,
     }
 
 
 @pytest.mark.parametrize(
     "field",
-    ["public_id", "farm_name", "short_name", "picture_url", "cellphone", "homephone"],
+    ["public_id", "farm_name", "short_name", "picture_url", "cellphone"],
 )
 def test_product_farmer_read_requires_every_field(field: str):
     # sem default, o service não consegue esquecer um campo e devolver null sem querer
