@@ -1,11 +1,17 @@
 from datetime import date
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
 from src.models.product import Product
+from src.models.purchase import PurchaseProduct
+
+
+class ProductInUseError(Exception):
+    pass
 
 
 class ProductRepository:
@@ -35,3 +41,17 @@ class ProductRepository:
         statement = statement.options(selectinload(Product.farmer).selectinload(Farmer.user))
         
         return list(self.session.exec(statement).all())
+
+    def has_purchases(self, product_id: int) -> bool:
+        statement = select(PurchaseProduct.product_id).where(
+            PurchaseProduct.product_id == product_id
+        )
+        return self.session.exec(statement.limit(1)).first() is not None
+
+    def delete_product(self, product: Product) -> None:
+        self.session.delete(product)
+        try:
+            self.session.commit()
+        except IntegrityError as error:
+            self.session.rollback()
+            raise ProductInUseError from error

@@ -52,3 +52,7 @@ class ProductNotFoundError(Exception):
 
 class NotProductOwnerError(Exception):
     pass
+
+
+class ProductHasPurchasesError(Exception):
+    pass

@@ -11,8 +11,12 @@ from src.models.product import (
     ProductFarmerRead,
     ProductUpdate,
 )
-from src.repository.product_repository import ProductRepository
-from src.services.exceptions import NotProductOwnerError, ProductNotFoundError
+from src.repository.product_repository import ProductInUseError, ProductRepository
+from src.services.exceptions import (
+    NotProductOwnerError,
+    ProductHasPurchasesError,
+    ProductNotFoundError,
+)
 from src.services.text_service import short_name
 
 
@@ -57,6 +61,22 @@ class ProductService:
         product.sqlmodel_update(product_update.model_dump(exclude_unset=True))
         return self.products.save(product)
 
+    def delete_product(self, public_id: UUID, farmer: Farmer) -> None:
+        product = self.products.get_product_by_public_id(public_id)
+        if product is None:
+            raise ProductNotFoundError
+        if farmer.id != product.farmer_id:
+            raise NotProductOwnerError
+        # a compra guarda o produto e o preço da época, e esse histórico não pode sumir
+        if self.products.has_purchases(product.id):
+            raise ProductHasPurchasesError
+        try:
+            self.products.delete_product(product)
+        except ProductInUseError:
+            # pode ser uma compra, gravada por outra pessoa depois da conferência acima
+            if self.products.has_purchases(product.id):
+                raise ProductHasPurchasesError from None
+            raise
 
 def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
     return ProductFarmerRead(

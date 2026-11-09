@@ -11,7 +11,11 @@ from src.models.product import (
     ProductRead,
     ProductUpdate,
 )
-from src.services.exceptions import NotProductOwnerError, ProductNotFoundError
+from src.services.exceptions import (
+    NotProductOwnerError,
+    ProductHasPurchasesError,
+    ProductNotFoundError,
+)
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -63,4 +67,22 @@ def get_product_by_public_id(
         return product_service.get_product_by_public_id(public_id)
     except ProductNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado") from None
+
+@router.delete("/{public_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    public_id: UUID, farmer: CurrentFarmer, product_service: ProductServiceDep
+):
+    try:
+        return product_service.delete_product(public_id, farmer)
+    except ProductNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado") from None
+    except NotProductOwnerError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, 
+                            "Você só pode deletar seus produtos") from None
+    except ProductHasPurchasesError:
+        message = (
+            "Este produto já foi vendido e não pode ser removido. "
+            "Zere a quantidade para tirá-lo do catálogo"
+        )
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
