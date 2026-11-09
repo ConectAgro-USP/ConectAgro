@@ -10,10 +10,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlmodel import Session, select
 
+from src.models.apartment import Apartment
 from src.models.farmer import Farmer
+from src.models.interest import Interest
 from src.models.product import BUSINESS_TZ, Product
+from src.models.purchase import Purchase, PurchasePart, PurchaseProduct
 from src.models.user import User
-from tests.helpers import add_farmer, add_product, add_user, login
+from tests.helpers import add_farmer, add_product, add_resident, add_user, login
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -941,3 +944,186 @@ def test_update_product_explains_the_error(
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert message in response.json()["detail"][0]["msg"]
+
+
+def add_purchase(session: Session, building: Apartment, product: Product) -> PurchaseProduct:
+    purchase = Purchase(apartment_id=building.id, expected_delivery_date=FUTURE)
+    session.add(purchase)
+    session.commit()
+    part = PurchasePart(purchase_id=purchase.id, farmer_id=product.farmer_id)
+    session.add(part)
+    session.commit()
+    item = PurchaseProduct(
+        purchase_part_id=part.id, product_id=product.id, quantity=1, unit_price=product.price
+    )
+    session.add(item)
+    session.commit()
+    return item
+
+
+def test_owner_cannot_remove_a_product_already_sold(
+    client: TestClient, session: Session, farmer: Farmer, building: Apartment
+):
+    lettuce = add_product(session, farmer)
+    add_purchase(session, building, lettuce)
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert response.json() == {
+        "detail": "Este produto já foi vendido e não pode ser removido. "
+        "Zere a quantidade para tirá-lo do catálogo"
+    }
+    session.expire_all()
+    assert session.get(Product, lettuce.id) is not None
+    assert len(session.exec(select(PurchaseProduct)).all()) == 1
+
+
+@pytest.mark.usefixtures("farmer")
+def test_another_farmer_gets_403_and_not_409_for_a_sold_product(
+    client: TestClient, session: Session, seller: Farmer, building: Apartment
+):
+    # quem não é o dono não pode descobrir se o produto já foi vendido
+    lettuce = add_product(session, seller)
+    add_purchase(session, building, lettuce)
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_sale_of_another_product_does_not_block_removal(
+    client: TestClient, session: Session, farmer: Farmer, building: Apartment
+):
+    sold = add_product(session, farmer, name="Alface")
+    add_purchase(session, building, sold)
+    unsold = add_product(session, farmer, name="Couve")
+    sold_id, unsold_id = sold.id, unsold.id
+
+    response = client.delete(f"/api/products/{unsold.public_id}")
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    session.expire_all()
+    assert session.get(Product, unsold_id) is None
+    assert session.get(Product, sold_id) is not None
+
+
+def test_farmer_follows_the_409_message_to_hide_a_sold_product(
+    client: TestClient, session: Session, farmer: Farmer, building: Apartment
+):
+    # a mensagem do 409 manda zerar a quantidade; o teste segue esse caminho até o fim
+    lettuce = add_product(session, farmer)
+    add_purchase(session, building, lettuce)
+    url = f"/api/products/{lettuce.public_id}"
+
+    removal = client.delete(url)
+    assert removal.status_code == status.HTTP_409_CONFLICT
+    assert "Zere a quantidade" in removal.json()["detail"]
+
+    response = client.patch(url, json={"quantity": 0})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert client.get("/api/products").json() == []
+    # some do catálogo, mas continua com o agricultor e no histórico da compra
+    assert [product["public_id"] for product in client.get("/api/products/me").json()] == [
+        str(lettuce.public_id)
+    ]
+    assert len(session.exec(select(PurchaseProduct)).all()) == 1
+
+
+def test_owner_removes_product(client: TestClient, session: Session, farmer: Farmer):
+    lettuce = add_product(session, farmer, name="Alface")
+    kale = add_product(session, farmer, name="Couve")
+    lettuce_id, lettuce_url = lettuce.id, f"/api/products/{lettuce.public_id}"
+
+    response = client.delete(lettuce_url)
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.content == b""
+    session.expire_all()
+    assert session.get(Product, lettuce_id) is None
+    assert session.get(Product, kale.id) is not None
+    assert [product["name"] for product in client.get("/api/products/me").json()] == ["Couve"]
+    assert [product["name"] for product in client.get("/api/products").json()] == ["Couve"]
+    assert client.get(lettuce_url).status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_removing_a_product_removes_only_its_interests(
+    client: TestClient, session: Session, farmer: Farmer, building: Apartment
+):
+    lettuce = add_product(session, farmer, name="Alface")
+    kale = add_product(session, farmer, name="Couve")
+    resident = add_resident(session, building, add_user(session, "bia@example.com"))
+    session.add(Interest(buyer_id=resident.id, product_id=lettuce.id, quantity=2))
+    session.add(Interest(buyer_id=resident.id, product_id=kale.id, quantity=1))
+    session.commit()
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    session.expire_all()
+    interests = session.exec(select(Interest)).all()
+    assert [interest.product_id for interest in interests] == [kale.id]
+
+
+def test_remove_product_requires_login(client: TestClient, session: Session, seller: Farmer):
+    lettuce = add_product(session, seller)
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    session.expire_all()
+    assert session.get(Product, lettuce.id) is not None
+
+
+@pytest.mark.usefixtures("ana")
+def test_remove_product_requires_a_farmer_profile(
+    client: TestClient, session: Session, seller: Farmer
+):
+    lettuce = add_product(session, seller)
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "Acesso permitido apenas para agricultores"}
+    session.expire_all()
+    assert session.get(Product, lettuce.id) is not None
+
+
+@pytest.mark.usefixtures("farmer")
+def test_farmer_cannot_remove_product_of_another_farmer(
+    client: TestClient, session: Session, seller: Farmer
+):
+    lettuce = add_product(session, seller)
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "Você só pode deletar seus produtos"}
+    session.expire_all()
+    assert session.get(Product, lettuce.id) is not None
+
+
+@pytest.mark.usefixtures("farmer")
+def test_remove_unknown_product_returns_404(client: TestClient):
+    response = client.delete(f"/api/products/{uuid4()}")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Produto não encontrado"}
+
+
+def test_remove_product_twice_returns_404(client: TestClient, session: Session, farmer: Farmer):
+    lettuce = add_product(session, farmer)
+    client.delete(f"/api/products/{lettuce.public_id}")
+
+    response = client.delete(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.usefixtures("farmer")
+def test_remove_product_rejects_invalid_id(client: TestClient):
+    response = client.delete("/api/products/abc")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"][0]["loc"] == ["path", "public_id"]
