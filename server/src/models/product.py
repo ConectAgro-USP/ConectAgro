@@ -104,3 +104,16 @@ class ProductRead(ProductBase):
     public_id: UUID
     created_at: datetime
     farmer_public_id: UUID
+
+
+class ProductFarmerRead(SQLModel):
+    public_id: UUID
+    farm_name: str | None
+    short_name: str
+    picture_url: str | None
+    cellphone: str | None
+    homephone: str | None
+
+
+class ProductDetailRead(ProductRead):
+    farmer: ProductFarmerRead

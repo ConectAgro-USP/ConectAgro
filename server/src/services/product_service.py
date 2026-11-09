@@ -1,6 +1,10 @@
+from uuid import UUID
+
 from src.models.farmer import Farmer
-from src.models.product import Product, ProductCreate
+from src.models.product import Product, ProductCreate, ProductDetailRead, ProductFarmerRead
 from src.repository.product_repository import ProductRepository
+from src.services.exceptions import ProductNotFoundError
+from src.services.text_service import short_name
 
 
 class ProductService:
@@ -14,4 +18,23 @@ class ProductService:
 
     def get_current_farmer_products(self, farmer: Farmer) -> list[Product]:
         return self.products.list_products_by_farmer_id(farmer.id)
-    
+
+    def get_product_by_public_id(self, public_id: UUID) -> ProductDetailRead:
+        product = self.products.get_product_by_public_id(public_id)
+        if product is None:
+            raise ProductNotFoundError
+        return ProductDetailRead.model_validate(
+            product, update={"farmer": _farmer_summary(product.farmer)}
+        )
+
+
+def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
+    return ProductFarmerRead(
+        public_id=farmer.public_id,
+        farm_name=farmer.farm_name,
+        short_name=short_name(farmer.user.name),
+        picture_url=farmer.user.picture_url,
+        cellphone=farmer.user.cellphone,
+        homephone=farmer.user.homephone,
+    )
+

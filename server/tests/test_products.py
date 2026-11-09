@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
@@ -277,3 +278,153 @@ def test_list_my_products_requires_a_farmer_profile(client: TestClient):
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
     assert response.json() == {"detail": "Acesso permitido apenas para agricultores"}
+
+
+@pytest.mark.usefixtures("ana")
+def test_get_product_shows_public_data_of_the_farmer(client: TestClient, session: Session):
+    user = add_user(session, "joao@example.com", name="João da Silva")
+    user.picture_url = "https://example.com/joao.png"
+    user.cellphone = "11957249062"
+    user.homephone = "1140028922"
+    farmer = add_farmer(session, user)
+    farmer.farm_name = "Sítio Boa Vista"
+    session.commit()
+    lettuce = add_product(session, farmer)
+
+    response = client.get(f"/api/products/{lettuce.public_id}")
+
+    body = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert body["public_id"] == str(lettuce.public_id)
+    assert body["name"] == "Alface"
+    # os telefones são visíveis porque a compra é combinada pelo WhatsApp
+    # comparar os dicionários também garante que nenhuma informação a mais vaza
+    assert body["farmer"] == {
+        "public_id": str(farmer.public_id),
+        "farm_name": "Sítio Boa Vista",
+        "short_name": "João S.",
+        "picture_url": "https://example.com/joao.png",
+        "cellphone": "11957249062",
+        "homephone": "1140028922",
+    }
+
+
+@pytest.mark.usefixtures("ana")
+def test_get_product_hides_email_saved_as_farmer_name(client: TestClient, session: Session):
+    # sem o nome do Google, o cadastro guarda o e-mail no lugar do nome
+    user = add_user(session, "joao@example.com", name="joao@example.com")
+    lettuce = add_product(session, add_farmer(session, user))
+
+    response = client.get(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["farmer"]["short_name"] == ""
+    assert "joao@example.com" not in response.text
+
+
+@pytest.fixture
+def seller(session: Session) -> Farmer:
+    # agricultor sem login, para a página do produto ser vista por quem não é o dono
+    return add_farmer(session, add_user(session, "sitio@example.com", name="João Silva"))
+
+
+@pytest.mark.usefixtures("ana")
+def test_get_product_returns_every_product_field(
+    client: TestClient, session: Session, seller: Farmer
+):
+    lettuce = add_product(
+        session,
+        seller,
+        description="Alface crespa",
+        picture_url="https://example.com/alface.png",
+        quantity=7,
+        price=Decimal("3.20"),
+    )
+
+    response = client.get(f"/api/products/{lettuce.public_id}")
+
+    body = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert body.pop("created_at") is not None
+    assert body.pop("farmer")["public_id"] == str(seller.public_id)
+    assert body == {
+        "public_id": str(lettuce.public_id),
+        "name": "Alface",
+        "description": "Alface crespa",
+        "picture_url": "https://example.com/alface.png",
+        "quantity": 7,
+        "price": "3.20",
+        "expiration_date": FUTURE.isoformat(),
+        "farmer_public_id": str(seller.public_id),
+    }
+
+
+@pytest.mark.usefixtures("ana")
+def test_get_product_shows_the_farmer_of_that_product(
+    client: TestClient, session: Session, seller: Farmer
+):
+    maria = add_farmer(session, add_user(session, "maria@example.com", name="Maria Souza"))
+    add_product(session, seller, name="Alface")
+    potato = add_product(session, maria, name="Batata")
+
+    response = client.get(f"/api/products/{potato.public_id}")
+
+    body = response.json()
+    assert body["name"] == "Batata"
+    assert body["farmer_public_id"] == str(maria.public_id)
+    assert body["farmer"]["public_id"] == str(maria.public_id)
+    assert body["farmer"]["short_name"] == "Maria S."
+
+
+@pytest.mark.usefixtures("ana")
+def test_get_product_shows_farmer_without_optional_data(client: TestClient, session: Session):
+    farmer = add_farmer(session, add_user(session, "joao@example.com", name="João"))
+    lettuce = add_product(session, farmer)
+
+    response = client.get(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["farmer"] == {
+        "public_id": str(farmer.public_id),
+        "farm_name": None,
+        "short_name": "João",
+        "picture_url": None,
+        "cellphone": None,
+        "homephone": None,
+    }
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"expiration_date": PAST}, {"quantity": 0}],
+    ids=["vencido", "esgotado"],
+)
+@pytest.mark.usefixtures("ana")
+def test_get_product_still_shows_expired_and_sold_out(
+    client: TestClient, session: Session, seller: Farmer, overrides: dict
+):
+    product = add_product(session, seller, **overrides)
+
+    response = client.get(f"/api/products/{product.public_id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["public_id"] == str(product.public_id)
+
+
+@pytest.mark.usefixtures("ana")
+def test_get_unknown_product_returns_404(client: TestClient, session: Session, seller: Farmer):
+    add_product(session, seller)
+
+    response = client.get(f"/api/products/{uuid4()}")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Produto não encontrado"}
+
+
+@pytest.mark.parametrize("public_id", ["abc", "123", "6f1c2b9e-3d4a-4e5f-8a7b"])
+@pytest.mark.usefixtures("ana")
+def test_get_product_rejects_invalid_id(client: TestClient, public_id: str):
+    response = client.get(f"/api/products/{public_id}")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"][0]["loc"] == ["path", "public_id"]

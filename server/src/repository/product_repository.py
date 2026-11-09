@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlmodel import Session, select
 
 from src.models.product import Product
@@ -17,4 +19,8 @@ class ProductRepository:
         statement = select(Product).where(Product.farmer_id == farmer_id)
         statement = statement.order_by(Product.created_at, Product.public_id)
         return list(self.session.exec(statement).all())
-    
+
+    def get_product_by_public_id(self, public_id: UUID) -> Product | None:
+        statement = select(Product).where(Product.public_id == public_id)
+        result = self.session.exec(statement).first()
+        return result

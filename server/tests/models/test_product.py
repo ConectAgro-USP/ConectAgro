@@ -8,7 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from src.models.farmer import Farmer
-from src.models.product import BUSINESS_TZ, Product, ProductCreate, ProductRead, ProductUpdate
+from src.models.product import (
+    BUSINESS_TZ,
+    Product,
+    ProductCreate,
+    ProductDetailRead,
+    ProductFarmerRead,
+    ProductRead,
+    ProductUpdate,
+)
 from src.models.user import User
 
 TODAY = datetime.now(BUSINESS_TZ).date()
@@ -232,3 +240,103 @@ def test_product_update_ignores_unknown_fields():
 def test_product_update_explains_expired_product():
     with pytest.raises(ValidationError, match="Atualização faz com que o produto esteja fora"):
         ProductUpdate(expiration_date=PAST)
+
+
+def product_farmer_read(**overrides) -> ProductFarmerRead:
+    data = {
+        "public_id": uuid4(),
+        "farm_name": "Sítio Boa Vista",
+        "short_name": "João S.",
+        "picture_url": "https://example.com/joao.png",
+        "cellphone": "11957249062",
+        "homephone": "1140028922",
+    }
+    return ProductFarmerRead(**{**data, **overrides})
+
+
+def test_product_farmer_read_exposes_only_public_data():
+    farmer_read = product_farmer_read(
+        email="joao@example.com", zip_code="01310200", cpf="52998224725", user_id=1
+    )
+
+    assert set(farmer_read.model_dump()) == {
+        "public_id",
+        "farm_name",
+        "short_name",
+        "picture_url",
+        "cellphone",
+        "homephone",
+    }
+
+
+def test_product_farmer_read_accepts_null_for_optional_data():
+    farmer_read = product_farmer_read(
+        farm_name=None, picture_url=None, cellphone=None, homephone=None
+    )
+
+    assert farmer_read.model_dump(exclude={"public_id"}) == {
+        "farm_name": None,
+        "short_name": "João S.",
+        "picture_url": None,
+        "cellphone": None,
+        "homephone": None,
+    }
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["public_id", "farm_name", "short_name", "picture_url", "cellphone", "homephone"],
+)
+def test_product_farmer_read_requires_every_field(field: str):
+    # sem default, o service não consegue esquecer um campo e devolver null sem querer
+    data = product_farmer_read().model_dump()
+    del data[field]
+
+    with pytest.raises(ValidationError) as exc_info:
+        ProductFarmerRead(**data)
+
+    assert exc_info.value.errors()[0]["loc"] == (field,)
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [("public_id", "abc"), ("short_name", None), ("farm_name", 1)],
+)
+def test_product_farmer_read_rejects_invalid_field(field: str, value: object):
+    with pytest.raises(ValidationError) as exc_info:
+        product_farmer_read(**{field: value})
+
+    assert exc_info.value.errors()[0]["loc"] == (field,)
+
+
+def test_product_detail_read_from_table_nests_the_farmer(session: Session, farmer: Farmer):
+    product = Product(
+        name="Alface", quantity=1, price=Decimal("2.03"), expiration_date=FUTURE,
+        farmer_id=farmer.id
+    )
+    session.add(product)
+    session.commit()
+    farmer_read = product_farmer_read(public_id=farmer.public_id)
+
+    product_detail = ProductDetailRead.model_validate(product, update={"farmer": farmer_read})
+
+    assert product_detail.public_id == product.public_id
+    assert product_detail.name == "Alface"
+    assert product_detail.farmer_public_id == farmer.public_id
+    assert product_detail.farmer == farmer_read
+    assert "id" not in product_detail.model_dump()
+    assert "farmer_id" not in product_detail.model_dump()
+
+
+def test_product_detail_read_requires_the_farmer():
+    data = {
+        **product_create().model_dump(),
+        "public_id": uuid4(),
+        "created_at": datetime.now(UTC),
+        "farmer_public_id": uuid4(),
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        ProductDetailRead(**data)
+
+    assert exc_info.value.errors()[0]["loc"] == ("farmer",)
