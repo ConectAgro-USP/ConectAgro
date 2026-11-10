@@ -10,6 +10,7 @@ from src.models.farmer import Farmer
 from src.models.product import Product
 from src.models.user import User
 from tests.connectors.fakes import fake_client
+from tests.helpers import add_farmer, add_resident, add_user, login
 
 # --- Helper de Mock para BrasilAPI e OSRM ---
 
@@ -154,7 +155,7 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
     assert len(data) == 2
 
     # Carlos (2.5 km) deve vir antes de Ana (8.0 km)
-    assert data[0]["name"] == "Carlos Eduardo"
+    assert data[0]["name"] == "Carlos E."
     assert data[0]["distance_km"] < data[1]["distance_km"]
 
 
@@ -247,8 +248,17 @@ def test_list_farmers_returns_expected_fields_and_values(
     assert len(data) == 1
 
     farmer_result = data[0]
-    assert {"name", "cep", "distance_km", "available_products_count"}.issubset(farmer_result)
-    assert farmer_result["cep"] == "05508-020"
+    expected_fields = {
+        "public_id",
+        "name",
+        "farm_name",
+        "zip_code",
+        "distance_km",
+        "available_products_count",
+    }
+    assert expected_fields.issubset(farmer_result)
+    assert farmer_result["public_id"] == str(farmer.public_id)
+    assert farmer_result["zip_code"] == "05508-020"
     assert farmer_result["distance_km"] == pytest.approx(3.5)
     assert farmer_result["available_products_count"] == 0
 
@@ -324,4 +334,88 @@ def test_list_farmers_rejects_unsupported_max_distance_values(
 
     response = client.get(f"/api/farmers?max_distance_km={invalid_distance}")
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def test_manager_lists_farmers_near_the_building(client, manager, building, session, monkeypatch):
+    farmer = add_farmer(session, add_user(session, "carlos@example.com", name="Carlos Souza"))
+    login(client, manager)
+    setup_fake_http_connectors(
+        monkeypatch,
+        building_cep=building.zip_code,
+        farmer_ceps_distances={farmer.zip_code: 3500.0},
+    )
+
+    response = client.get("/api/farmers?max_distance_km=5")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert [item["name"] for item in response.json()] == ["Carlos S."]
+
+
+def test_list_farmers_requires_login(client):
+    response = client.get("/api/farmers?max_distance_km=5")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_user_without_building_cannot_list_farmers(client, ana, session):
+    add_farmer(session, ana)
+
+    response = client.get("/api/farmers?max_distance_km=5")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "Acesso permitido apenas para moradores e síndicos"}
+
+
+@pytest.mark.parametrize("link_status", [LinkStatus.PENDENTE, LinkStatus.RECUSADO])
+def test_resident_not_approved_cannot_list_farmers(client, ana, building, session, link_status):
+    add_resident(session, building, ana, link_status=link_status)
+
+    response = client.get("/api/farmers?max_distance_km=5")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_list_farmers_hides_email_saved_as_farmer_name(
+    client, manager, building, session, monkeypatch
+):
+    email = "carlos@example.com"
+    farmer = add_farmer(session, add_user(session, email, name=email))
+    login(client, manager)
+    setup_fake_http_connectors(
+        monkeypatch,
+        building_cep=building.zip_code,
+        farmer_ceps_distances={farmer.zip_code: 3500.0},
+    )
+
+    response = client.get("/api/farmers?max_distance_km=5")
+
+    assert [item["name"] for item in response.json()] == [""]
+    assert email not in response.text
+
+
+def test_list_farmers_ignores_farmer_with_invalid_cep(client, ana, building, session, monkeypatch):
+    add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
+    session.add(Farmer(user_id=ana.id, zip_code="CEP"))
+    session.commit()
+    setup_fake_http_connectors(
+        monkeypatch, building_cep=building.zip_code, farmer_ceps_distances={}
+    )
+
+    response = client.get("/api/farmers?max_distance_km=15")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == []
+
+
+def test_list_farmers_fails_when_external_service_is_down(
+    client, ana, building, session, monkeypatch
+):
+    add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
+    add_farmer(session, ana)
+    fake_httpx, _ = fake_client(httpx.Response(500))
+    monkeypatch.setattr("src.api.deps.http_client", fake_httpx)
+
+    response = client.get("/api/farmers?max_distance_km=15")
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
