@@ -599,6 +599,7 @@ def test_catalog_paginates_without_repeating_products(
 ):
     names = [f"Produto {number:02}" for number in range(21)]
     add_products_in_order(session, seller, *names)
+    add_product(session, seller, name="Vencido", expiration_date=PAST, created_at=FIRST_DAY)
 
     pages = []
     for page in (1, 2, 3):

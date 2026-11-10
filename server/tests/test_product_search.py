@@ -128,14 +128,14 @@ def test_default_sort_prefers_name_prefix_before_farmer_rating(
     low_rated_farmer = add_farmer_with_name(session, "low-rated@example.com")
     high_rated_farmer = add_farmer_with_name(session, "high-rated@example.com")
     unrated_farmer = add_farmer_with_name(session, "unrated@example.com")
+    unrated_prefix = add_product(
+        session, unrated_farmer, "Tomate italiano", "Outro produto."
+    )
     name_prefix = add_product(
         session, low_rated_farmer, "Tomate maduro", "Tomate fresco."
     )
     name_contains = add_product(
         session, high_rated_farmer, "Pimentão com tomate", "Outro produto."
-    )
-    unrated_prefix = add_product(
-        session, unrated_farmer, "Tomate italiano", "Outro produto."
     )
 
     apartment = add_building(session, add_user(session, "manager@example.com"))
@@ -164,6 +164,7 @@ def test_default_sort_prefers_name_prefix_before_farmer_rating(
     )
     session.commit()
 
+    default_response = client.get("/api/products")
     relevance_response = client.get("/api/products", params={"q": "tomate"})
     rating_response = client.get(
         "/api/products",
@@ -180,6 +181,7 @@ def test_default_sort_prefers_name_prefix_before_farmer_rating(
         str(name_prefix.public_id),
         str(unrated_prefix.public_id),
     ]
+    assert default_response.json()["items"] == rating_response.json()["items"]
 
 
 def test_alternative_sorts_and_invalid_filters(client: TestClient, session: Session):
@@ -206,3 +208,15 @@ def test_alternative_sorts_and_invalid_filters(client: TestClient, session: Sess
         str(cheap.public_id),
     ]
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def test_search_treats_wildcards_as_plain_text(client: TestClient, session: Session):
+    farmer = add_farmer_with_name(session, "farmer@example.com")
+    add_product(session, farmer, "Suco 100% natural")
+    add_product(session, farmer, "Alface")
+
+    percent = client.get("/api/products", params={"q": "%"})
+    underscore = client.get("/api/products", params={"q": "_"})
+
+    assert [item["name"] for item in percent.json()["items"]] == ["Suco 100% natural"]
+    assert underscore.json()["items"] == []
