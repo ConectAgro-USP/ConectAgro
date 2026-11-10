@@ -24,8 +24,11 @@ class Farmer(SQLModel, table=True):
     products: list["Product"] = Relationship(back_populates="farmer")
     purchase_parts: list["PurchasePart"] = Relationship(back_populates="farmer")
 
-class FarmerSearchResponse(SQLModel):
-    name: str = Field(..., min_length=2, max_length=100)
-    cep: str
-    distance_km: float = Field(..., ge=0)
-    available_products_count: int = Field(..., ge=0)
+
+class FarmerSearchRead(SQLModel):
+    public_id: UUID
+    name: str
+    farm_name: str | None
+    zip_code: str
+    distance_km: float
+    available_products_count: int

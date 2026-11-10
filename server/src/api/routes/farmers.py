@@ -1,51 +1,30 @@
 from enum import IntEnum
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.deps import CurrentUser, DistanceServiceDep, SessionDep
-from src.models.farmer import FarmerSearchResponse
-from src.repository.profile_repository import ProfileRepository
-from src.services.farmer_search_service import FarmerSearchService
+from src.api.deps import BuildingZipCode, FarmerSearchServiceDep
+from src.models.farmer import FarmerSearchRead
+from src.services.exceptions import ExternalServiceError
+
+router = APIRouter(prefix="/farmers", tags=["farmers"])
 
 
-class AllowedDistances(IntEnum):
+class AllowedDistance(IntEnum):
     FIVE = 5
     TEN = 10
     FIFTEEN = 15
 
 
-router = APIRouter()
-
-
-@router.get("/farmers", response_model=list[FarmerSearchResponse])
+@router.get("", response_model=list[FarmerSearchRead])
 def list_nearby_farmers(
-    current_user: CurrentUser,
-    session: SessionDep,
-    distance_service: DistanceServiceDep,
-    max_distance_km: AllowedDistances = Query(...) # noqa: B008
+    max_distance_km: Annotated[AllowedDistance, Query()],
+    building_zip_code: BuildingZipCode,
+    search_service: FarmerSearchServiceDep,
 ):
-    # Obtem o CEP
-    building_zip_code = None
-    if current_user.apartment:
-        building_zip_code = current_user.apartment.zip_code
-    elif current_user.buyer and current_user.buyer.apartment:
-        building_zip_code = current_user.buyer.apartment.zip_code
-
-    if not building_zip_code:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Usuário não possui um prédio associado com CEP válido.",
-        )
-
-    # Instancia o repositorio e o serviço de busca
-    profile_repository = ProfileRepository(session)
-    search_service = FarmerSearchService(
-        profile_repository=profile_repository,
-        distance_service=distance_service,
-    )
-
     # Executa a busca e retorna os agricultores filtrados e ordenados
-    return search_service.search_nearby_farmers(
-        building_cep=building_zip_code,
-        max_distance_km=float(max_distance_km.value),
-    )
+    try:
+        return search_service.search_nearby_farmers(building_zip_code, max_distance_km)
+    except ExternalServiceError:
+        message = "Não foi possível calcular as distâncias agora. Tente novamente mais tarde"
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, message) from None

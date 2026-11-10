@@ -1,10 +1,9 @@
-from datetime import datetime
+from datetime import date
 from uuid import UUID
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, SQLModel, case, func, select
+from sqlmodel import Session, SQLModel, func, select
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
@@ -16,7 +15,6 @@ from src.models.user import User
 class DuplicateValueError(Exception):
     pass
 
-BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
 
 class ProfileRepository:
     def __init__(self, session: Session):
@@ -68,18 +66,11 @@ class ProfileRepository:
             self.session.rollback()
             raise DuplicateValueError from error
 
-    def get_farmers_with_products_count(self) -> list[tuple[Farmer, int]]:
-        today = datetime.now(BUSINESS_TZ).date()
-
-        is_available_expr = (Product.quantity > 0) & (Product.expiration_date >= today)
-
-        available_count = func.count(
-            case((is_available_expr, Product.id), else_=None)
-        ).label("available_products_count")
-
-        statement = (
-            select(Farmer, available_count)
-            .outerjoin(Farmer.products)
-            .group_by(Farmer.id)
+    def list_farmers_with_available_products_count(self, today: date) -> list[tuple[Farmer, int]]:
+        available_count = func.count(Product.id).filter(
+            Product.quantity > 0, Product.expiration_date >= today
         )
-        return self.session.exec(statement).all()
+        statement = select(Farmer, available_count).outerjoin(Farmer.products)
+        statement = statement.options(selectinload(Farmer.user))
+        statement = statement.group_by(Farmer.id).order_by(Farmer.id)
+        return list(self.session.exec(statement).all())
