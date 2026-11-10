@@ -249,7 +249,6 @@ def product_farmer_read(**overrides) -> ProductFarmerRead:
         "farm_name": "Sítio Boa Vista",
         "short_name": "João S.",
         "picture_url": "https://example.com/joao.png",
-        "cellphone": "11957249062",
     }
     return ProductFarmerRead(**{**data, **overrides})
 
@@ -259,6 +258,7 @@ def test_product_farmer_read_exposes_only_public_data():
         email="joao@example.com",
         zip_code="01310200",
         cpf="52998224725",
+        cellphone="11957249062",
         homephone="1140028922",
         user_id=1,
     )
@@ -268,24 +268,22 @@ def test_product_farmer_read_exposes_only_public_data():
         "farm_name",
         "short_name",
         "picture_url",
-        "cellphone",
     }
 
 
 def test_product_farmer_read_accepts_null_for_optional_data():
-    farmer_read = product_farmer_read(farm_name=None, picture_url=None, cellphone=None)
+    farmer_read = product_farmer_read(farm_name=None, picture_url=None)
 
     assert farmer_read.model_dump(exclude={"public_id"}) == {
         "farm_name": None,
         "short_name": "João S.",
         "picture_url": None,
-        "cellphone": None,
     }
 
 
 @pytest.mark.parametrize(
     "field",
-    ["public_id", "farm_name", "short_name", "picture_url", "cellphone"],
+    ["public_id", "farm_name", "short_name", "picture_url"],
 )
 def test_product_farmer_read_requires_every_field(field: str):
     # sem default, o service não consegue esquecer um campo e devolver null sem querer
@@ -397,15 +395,19 @@ def test_product_catalog_read_carries_only_the_farmer_id_and_short_name():
 
 
 def test_product_catalog_read_requires_farmer_short_name():
+    data = product_read_data()
+
     with pytest.raises(ValidationError) as exc_info:
-        ProductCatalogRead(**product_read_data())
+        ProductCatalogRead(**data)
 
     assert exc_info.value.errors()[0]["loc"] == ("farmer_short_name",)
 
 
 @pytest.mark.parametrize("value", [None, 1])
 def test_product_catalog_read_rejects_invalid_farmer_short_name(value: object):
+    data = product_read_data()
+
     with pytest.raises(ValidationError) as exc_info:
-        ProductCatalogRead(**product_read_data(), farmer_short_name=value)
+        ProductCatalogRead(**data, farmer_short_name=value)
 
     assert exc_info.value.errors()[0]["loc"] == ("farmer_short_name",)

@@ -303,15 +303,14 @@ def test_get_product_shows_public_data_of_the_farmer(client: TestClient, session
     assert response.status_code == status.HTTP_200_OK
     assert body["public_id"] == str(lettuce.public_id)
     assert body["name"] == "Alface"
-    # só o celular é visível, porque a compra é combinada pelo WhatsApp; o fixo é privado
     # comparar os dicionários também garante que nenhuma informação a mais vaza
     assert body["farmer"] == {
         "public_id": str(farmer.public_id),
         "farm_name": "Sítio Boa Vista",
         "short_name": "João S.",
         "picture_url": "https://example.com/joao.png",
-        "cellphone": "11957249062",
     }
+    assert "11957249062" not in response.text
     assert "1140028922" not in response.text
 
 
@@ -395,7 +394,6 @@ def test_get_product_shows_farmer_without_optional_data(client: TestClient, sess
         "farm_name": None,
         "short_name": "João",
         "picture_url": None,
-        "cellphone": None,
     }
 
 
@@ -433,6 +431,24 @@ def test_get_product_rejects_invalid_id(client: TestClient, public_id: str):
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert response.json()["detail"][0]["loc"] == ["path", "public_id"]
+
+
+def test_get_product_requires_login(client: TestClient, session: Session, seller: Farmer):
+    lettuce = add_product(session, seller)
+
+    response = client.get(f"/api/products/{lettuce.public_id}")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "Alface" not in response.text
+
+
+def test_catalog_requires_login(client: TestClient, session: Session, seller: Farmer):
+    add_product(session, seller)
+
+    response = client.get("/api/products")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "Alface" not in response.text
 
 
 FIRST_DAY = datetime(2026, 1, 1, tzinfo=UTC)

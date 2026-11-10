@@ -42,22 +42,25 @@ class ProductService:
 
     def catalog_products(self, limit: int = 10, offset: int = 0) -> list[ProductCatalogRead]:
         today = datetime.now(BUSINESS_TZ).date()
-        
+
         products = self.products.catalog_products(today, limit, offset)
         catalog_products = []
         for product in products:
-            catalog_products.append(ProductCatalogRead.model_validate(
-                product, update={"farmer_short_name": short_name(product.farmer.user.name)}
-            ))
+            catalog_products.append(
+                ProductCatalogRead.model_validate(
+                    product, update={"farmer_short_name": short_name(product.farmer.user.name)}
+                )
+            )
         return catalog_products
 
-    def update_product(self, public_id: UUID, farmer: Farmer, 
-                       product_update: ProductUpdate) -> Product:
+    def update_product(
+        self, public_id: UUID, farmer: Farmer, product_update: ProductUpdate
+    ) -> Product:
         product = self.products.get_product_by_public_id(public_id)
         if product is None:
             raise ProductNotFoundError
         if product.farmer_id != farmer.id:
-            raise NotProductOwnerError 
+            raise NotProductOwnerError
         product.sqlmodel_update(product_update.model_dump(exclude_unset=True))
         return self.products.save(product)
 
@@ -78,12 +81,11 @@ class ProductService:
                 raise ProductHasPurchasesError from None
             raise
 
+
 def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
     return ProductFarmerRead(
         public_id=farmer.public_id,
         farm_name=farmer.farm_name,
         short_name=short_name(farmer.user.name),
         picture_url=farmer.user.picture_url,
-        cellphone=farmer.user.cellphone,
     )
-

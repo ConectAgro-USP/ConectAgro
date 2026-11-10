@@ -111,7 +111,6 @@ class ProductFarmerRead(SQLModel):
     farm_name: str | None
     short_name: str
     picture_url: str | None
-    cellphone: str | None
 
 
 class ProductDetailRead(ProductRead):
