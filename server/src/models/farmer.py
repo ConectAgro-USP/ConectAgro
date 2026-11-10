@@ -30,5 +30,9 @@ class FarmerSearchRead(SQLModel):
     name: str
     farm_name: str | None
     zip_code: str
-    distance_km: float
+    # None quando a busca não filtra por distância
+    distance_km: float | None
     available_products_count: int
+    average_rating: float | None
+    reviews_count: int
+    on_time_delivery_percentage: float | None

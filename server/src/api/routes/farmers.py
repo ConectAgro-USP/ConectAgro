@@ -2,45 +2,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.deps import FarmerSearchServiceDep
+from src.api.deps import BuildingZipCode, FarmerSearchServiceDep
 from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse
-from src.services.exceptions import InvalidDistanceError, MissingOriginCepError
+from src.services.exceptions import ExternalServiceError
 
 router = APIRouter(prefix="/farmers", tags=["farmers"])
 
 
 @router.get("")
 def search_farmers(
+    filters: Annotated[FarmerSearchFilters, Query()],
+    building_zip_code: BuildingZipCode,
     search_service: FarmerSearchServiceDep,
-    filters: Annotated[FarmerSearchFilters, Query()]
 ) -> FarmerSearchResponse:
-
-
-    if filters.max_distance_km is not None:
-        if filters.max_distance_km not in (5, 10, 15):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="A distância máxima deve ser 5, 10 ou 15 km",
-            )
-        if not filters.origin_cep or not filters.origin_cep.strip():
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="O CEP de origem é obrigatório para filtrar por distância",
-            )
-
+    # Executa a busca e retorna os agricultores filtrados e ordenados
     try:
-        filters = FarmerSearchFilters(
-            name=filters.name,
-            products=filters.products,
-            origin_cep=filters.origin_cep,
-            max_distance_km=filters.max_distance_km,
-            page=filters.page,
-            page_size=filters.page_size,
-        )
-        return search_service.search(filters)
-    
-    except (InvalidDistanceError, MissingOriginCepError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+        return search_service.search(filters, building_zip_code)
+    except ExternalServiceError:
+        message = "Não foi possível calcular as distâncias agora. Tente novamente mais tarde"
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, message) from None
