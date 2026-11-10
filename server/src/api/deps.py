@@ -15,6 +15,7 @@ from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.user import User
 from src.repository.farmer_search_repository import FarmerSearchRepository
+from src.repository.product_repository import ProductRepository
 from src.repository.profile_repository import ProfileRepository
 from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
@@ -23,6 +24,8 @@ from src.services.cnpj_service import CnpjService
 from src.services.company_cache import CompanyCache
 from src.services.distance_service import DistanceService
 from src.services.farmer_search_service import FarmerSearchService
+from src.services.product_search_service import ProductSearchService
+from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
@@ -111,6 +114,27 @@ def get_apartment_service(profiles: ProfileRepositoryDep) -> ApartmentService:
 
 
 ApartmentServiceDep = Annotated[ApartmentService, Depends(get_apartment_service)]
+
+
+def get_product_repository(session: SessionDep) -> ProductRepository:
+    return ProductRepository(session)
+
+
+ProductRepositoryDep = Annotated[ProductRepository, Depends(get_product_repository)]
+
+
+def get_product_service(products: ProductRepositoryDep) -> ProductService:
+    return ProductService(products)
+
+
+ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]
+
+
+def get_product_search_service(products: ProductRepositoryDep) -> ProductSearchService:
+    return ProductSearchService(products)
+
+
+ProductSearchServiceDep = Annotated[ProductSearchService, Depends(get_product_search_service)]
 
 
 def get_current_farmer(current_user: CurrentUser) -> Farmer:
