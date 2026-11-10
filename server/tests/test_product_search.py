@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -10,6 +11,9 @@ from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase
 from src.models.review import Review
 from tests.helpers import add_building, add_farmer, add_user
+
+# a busca exige login, então todos os testes rodam com a Ana logada
+pytestmark = pytest.mark.usefixtures("ana")
 
 
 def add_product(

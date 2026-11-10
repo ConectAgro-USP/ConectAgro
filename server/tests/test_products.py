@@ -496,9 +496,10 @@ def test_catalog_lists_products_of_every_farmer(
 
     body = response.json()
     assert response.status_code == status.HTTP_200_OK
-    for item in body:
+    assert body["total"] == 2
+    for item in body["items"]:
         assert item.pop("created_at") is not None
-    assert body == [
+    assert body["items"] == [
         {
             "public_id": str(lettuce.public_id),
             "name": "Alface",
@@ -529,7 +530,13 @@ def test_catalog_is_empty_without_products(client: TestClient):
     response = client.get("/api/products")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == []
+    assert response.json() == {
+        "items": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 20,
+        "total_pages": 0,
+    }
 
 
 @pytest.mark.usefixtures("ana")
@@ -543,7 +550,7 @@ def test_catalog_hides_expired_and_sold_out_products(
     response = client.get("/api/products")
 
     assert response.status_code == status.HTTP_200_OK
-    assert [product["name"] for product in response.json()] == ["Alface"]
+    assert [product["name"] for product in response.json()["items"]] == ["Alface"]
 
 
 @pytest.mark.parametrize(
@@ -560,7 +567,7 @@ def test_catalog_shows_products_at_the_limit(
 
     response = client.get("/api/products")
 
-    assert [item["public_id"] for item in response.json()] == [str(product.public_id)]
+    assert [item["public_id"] for item in response.json()["items"]] == [str(product.public_id)]
 
 
 @pytest.mark.usefixtures("ana")
@@ -571,7 +578,8 @@ def test_catalog_orders_by_creation_date(client: TestClient, session: Session, s
 
     response = client.get("/api/products")
 
-    assert [product["name"] for product in response.json()] == ["Alface", "Rúcula", "Couve"]
+    names = [product["name"] for product in response.json()["items"]]
+    assert names == ["Alface", "Rúcula", "Couve"]
 
 
 @pytest.mark.usefixtures("ana")
@@ -582,26 +590,22 @@ def test_catalog_breaks_ties_by_public_id(client: TestClient, session: Session, 
 
     response = client.get("/api/products")
 
-    assert [product["name"] for product in response.json()] == ["Alface", "Couve"]
+    assert [product["name"] for product in response.json()["items"]] == ["Alface", "Couve"]
 
 
 @pytest.mark.usefixtures("ana")
 def test_catalog_paginates_without_repeating_products(
     client: TestClient, session: Session, seller: Farmer
 ):
-    add_products_in_order(session, seller, "Alface", "Batata", "Couve", "Rúcula", "Tomate")
+    names = [f"Produto {number:02}" for number in range(21)]
+    add_products_in_order(session, seller, *names)
 
-    pages = [
-        [
-            product["name"]
-            for product in client.get(
-                "/api/products", params={"limit": 2, "offset": offset}
-            ).json()
-        ]
-        for offset in (0, 2, 4, 6)
-    ]
+    pages = []
+    for page in (1, 2, 3):
+        response = client.get("/api/products", params={"page": page})
+        pages.append([product["name"] for product in response.json()["items"]])
 
-    assert pages == [["Alface", "Batata"], ["Couve", "Rúcula"], ["Tomate"], []]
+    assert pages == [names[:20], names[20:], []]
 
 
 @pytest.mark.usefixtures("ana")
@@ -618,48 +622,26 @@ def test_catalog_pages_count_only_available_products(
     )
     add_product(session, seller, name="Batata", created_at=FIRST_DAY + timedelta(days=2))
 
-    response = client.get("/api/products", params={"limit": 2})
-
-    assert [product["name"] for product in response.json()] == ["Alface", "Batata"]
-
-
-@pytest.mark.usefixtures("ana")
-def test_catalog_returns_10_products_by_default(
-    client: TestClient, session: Session, seller: Farmer
-):
-    add_products_in_order(session, seller, *[f"Produto {number}" for number in range(12)])
-
     response = client.get("/api/products")
 
-    assert response.status_code == status.HTTP_200_OK
-    assert len(response.json()) == 10
-
-
-@pytest.mark.parametrize("limit", [1, 100])
-@pytest.mark.usefixtures("ana")
-def test_catalog_accepts_limit_from_1_to_100(
-    client: TestClient, session: Session, seller: Farmer, limit: int
-):
-    add_products_in_order(session, seller, "Alface", "Couve")
-
-    response = client.get("/api/products", params={"limit": limit})
-
-    assert response.status_code == status.HTTP_200_OK
-    assert len(response.json()) == min(limit, 2)
+    body = response.json()
+    assert [product["name"] for product in body["items"]] == ["Alface", "Batata"]
+    assert body["total"] == 2
 
 
 @pytest.mark.parametrize(
     "params, field",
     [
-        ({"limit": 0}, "limit"),
-        ({"limit": 101}, "limit"),
-        ({"limit": "dez"}, "limit"),
-        ({"offset": -1}, "offset"),
-        ({"offset": "zero"}, "offset"),
+        ({"page": 0}, "page"),
+        ({"page": "um"}, "page"),
+        ({"min_quantity": 0}, "min_quantity"),
+        ({"sort": "preco"}, "sort"),
+        ({"expiration_from": "ontem"}, "expiration_from"),
+        ({"q": "a" * 201}, "q"),
     ],
 )
 @pytest.mark.usefixtures("ana")
-def test_catalog_rejects_invalid_pagination(client: TestClient, params: dict, field: str):
+def test_catalog_rejects_invalid_filters(client: TestClient, params: dict, field: str):
     response = client.get("/api/products", params=params)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
@@ -675,7 +657,7 @@ def test_catalog_hides_email_saved_as_farmer_name(client: TestClient, session: S
     response = client.get("/api/products")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()[0]["farmer_short_name"] == ""
+    assert response.json()["items"][0]["farmer_short_name"] == ""
     assert "joao@example.com" not in response.text
 
 
@@ -695,7 +677,7 @@ def test_catalog_queries_do_not_grow_with_the_number_of_products(
     with recorded_queries(session) as six_products:
         response = client.get("/api/products")
 
-    assert len(response.json()) == 6
+    assert len(response.json()["items"]) == 6
     assert len(six_products) == len(one_product)
 
 
@@ -851,7 +833,7 @@ def test_owner_renews_an_expired_product(client: TestClient, session: Session, f
     )
 
     assert response.status_code == status.HTTP_200_OK
-    catalog = client.get("/api/products").json()
+    catalog = client.get("/api/products").json()["items"]
     assert [product["public_id"] for product in catalog] == [str(lettuce.public_id)]
 
 
@@ -1038,7 +1020,7 @@ def test_farmer_follows_the_409_message_to_hide_a_sold_product(
     response = client.patch(url, json={"quantity": 0})
 
     assert response.status_code == status.HTTP_200_OK
-    assert client.get("/api/products").json() == []
+    assert client.get("/api/products").json()["items"] == []
     # some do catálogo, mas continua com o agricultor e no histórico da compra
     assert [product["public_id"] for product in client.get("/api/products/me").json()] == [
         str(lettuce.public_id)
@@ -1059,7 +1041,7 @@ def test_owner_removes_product(client: TestClient, session: Session, farmer: Far
     assert session.get(Product, lettuce_id) is None
     assert session.get(Product, kale.id) is not None
     assert [product["name"] for product in client.get("/api/products/me").json()] == ["Couve"]
-    assert [product["name"] for product in client.get("/api/products").json()] == ["Couve"]
+    assert [product["name"] for product in client.get("/api/products").json()["items"]] == ["Couve"]
     assert client.get(lettuce_url).status_code == status.HTTP_404_NOT_FOUND
 
 

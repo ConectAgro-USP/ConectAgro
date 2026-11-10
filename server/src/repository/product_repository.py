@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import func
@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
-from src.models.product import BUSINESS_TZ, Product
+from src.models.product import Product
 from src.models.product_search import (
     PRODUCTS_PER_PAGE,
     ProductSearchFilters,
@@ -25,8 +25,7 @@ class ProductRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def search(self, filters: ProductSearchFilters) -> tuple[list[Product], int]:
-        today = datetime.now(BUSINESS_TZ).date()
+    def search(self, filters: ProductSearchFilters, today: date) -> tuple[list[Product], int]:
         conditions = [Product.expiration_date >= today, Product.quantity > 0]
         if filters.expiration_from is not None:
             conditions.append(Product.expiration_date >= filters.expiration_from)
@@ -40,7 +39,7 @@ class ProductRepository:
             select(Product, ratings.c.average_rating)
             .outerjoin(ratings, ratings.c.farmer_id == Product.farmer_id)
             .where(*conditions)
-            .options(selectinload(Product.farmer))
+            .options(selectinload(Product.farmer).selectinload(Farmer.user))
         )
         statement = self._order_statement(statement, filters.sort, filters.q, ratings)
         offset = (filters.page - 1) * PRODUCTS_PER_PAGE
@@ -67,18 +66,21 @@ class ProductRepository:
     def _order_statement(statement, sort: ProductSort, query: str | None, ratings):
         rating_order = ratings.c.average_rating.desc().nulls_last()
         if sort == ProductSort.LOWEST_PRICE:
-            return statement.order_by(Product.price, Product.id)
+            return statement.order_by(Product.price, Product.created_at, Product.public_id)
         if sort == ProductSort.LATEST_EXPIRATION:
-            return statement.order_by(Product.expiration_date.desc(), Product.id)
+            return statement.order_by(
+                Product.expiration_date.desc(), Product.created_at, Product.public_id
+            )
         if sort == ProductSort.HIGHEST_RATING:
-            return statement.order_by(rating_order, Product.id)
+            return statement.order_by(rating_order, Product.created_at, Product.public_id)
         if query is not None:
             return statement.order_by(
                 Product.name.istartswith(query, autoescape=True).desc(),
                 rating_order,
-                Product.id,
+                Product.created_at,
+                Product.public_id,
             )
-        return statement.order_by(rating_order, Product.id)
+        return statement.order_by(rating_order, Product.created_at, Product.public_id)
 
     def save(self, product: Product) -> Product:
         self.session.add(product)
@@ -95,14 +97,6 @@ class ProductRepository:
         statement = select(Product).where(Product.public_id == public_id)
         result = self.session.exec(statement).first()
         return result
-
-    def catalog_products(self, today: date, limit: int = 10, offset: int = 0) -> list[Product]:
-        statement = select(Product).where(Product.quantity > 0, Product.expiration_date >= today)
-        statement = statement.order_by(Product.created_at, Product.public_id)
-        statement = statement.offset(offset).limit(limit)
-        statement = statement.options(selectinload(Product.farmer).selectinload(Farmer.user))
-
-        return list(self.session.exec(statement).all())
 
     def has_purchases(self, product_id: int) -> bool:
         statement = select(PurchaseProduct.product_id).where(

@@ -1,11 +1,10 @@
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import date
 from enum import StrEnum
-from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
 from src.models.pagination import PaginatedResponse
+from src.models.product import ProductCatalogRead
 
 PRODUCTS_PER_PAGE = 20
 
@@ -32,16 +31,4 @@ class ProductSearchFilters(BaseModel):
         return value.strip() or None
 
 
-class ProductSearchItem(BaseModel):
-    public_id: UUID
-    name: str
-    description: str | None = None
-    picture_url: str | None = None
-    quantity: int
-    price: Decimal
-    expiration_date: date
-    created_at: datetime
-    farmer_public_id: UUID
-
-
-ProductSearchResponse = PaginatedResponse[ProductSearchItem]
+ProductSearchResponse = PaginatedResponse[ProductCatalogRead]

@@ -39,7 +39,7 @@ def get_farmer_products(farmer: CurrentFarmer, product_service: ProductServiceDe
     return product_service.get_current_farmer_products(farmer)
 
 
-@router.get("", response_model=ProductSearchResponse)
+@router.get("", response_model=ProductSearchResponse, dependencies=[Depends(get_current_user)])
 def search_products(
     filters: Annotated[ProductSearchFilters, Query()],
     product_search: ProductSearchServiceDep,
