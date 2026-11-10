@@ -23,3 +23,16 @@ class Farmer(SQLModel, table=True):
     user: "User" = Relationship(back_populates="farmer")
     products: list["Product"] = Relationship(back_populates="farmer")
     purchase_parts: list["PurchasePart"] = Relationship(back_populates="farmer")
+
+
+class FarmerSearchRead(SQLModel):
+    public_id: UUID
+    name: str
+    farm_name: str | None
+    zip_code: str
+    # None quando a busca não filtra por distância
+    distance_km: float | None
+    available_products_count: int
+    average_rating: float | None
+    reviews_count: int
+    on_time_delivery_percentage: float | None

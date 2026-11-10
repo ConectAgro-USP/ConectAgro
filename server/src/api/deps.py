@@ -7,12 +7,14 @@ from sqlmodel import Session
 
 from src.connectors.brasilapi import BrasilApiConnector
 from src.connectors.cnpja import CnpjaConnector
+from src.connectors.osrm import OsrmConnector
 from src.core.db import engine
 from src.core.security import decode_access_token
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.user import User
+from src.repository.farmer_search_repository import FarmerSearchRepository
 from src.repository.product_repository import ProductRepository
 from src.repository.profile_repository import ProfileRepository
 from src.repository.user_repository import UserRepository
@@ -20,6 +22,8 @@ from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
 from src.services.cnpj_service import CnpjService
 from src.services.company_cache import CompanyCache
+from src.services.distance_service import DistanceService
+from src.services.farmer_search_service import FarmerSearchService
 from src.services.product_search_service import ProductSearchService
 from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
@@ -165,3 +169,49 @@ def get_current_buyer(current_user: CurrentUser) -> Buyer:
 
 
 CurrentBuyer = Annotated[Buyer, Depends(get_current_buyer)]
+
+
+def get_osrm_connector() -> OsrmConnector:
+    return OsrmConnector(http_client)
+
+
+OsrmDep = Annotated[OsrmConnector, Depends(get_osrm_connector)]
+
+
+def get_distance_service(ceps: BrasilApiDep, routes: OsrmDep) -> DistanceService:
+    return DistanceService(ceps, routes)
+
+
+DistanceServiceDep = Annotated[DistanceService, Depends(get_distance_service)]
+
+
+def get_farmer_search_repository(session: SessionDep) -> FarmerSearchRepository:
+    return FarmerSearchRepository(session)
+
+
+FarmerSearchRepositoryDep = Annotated[
+    FarmerSearchRepository, Depends(get_farmer_search_repository)
+]
+
+
+def get_farmer_search_service(
+    repository: FarmerSearchRepositoryDep,
+    distance_service: DistanceServiceDep,
+) -> FarmerSearchService:
+    return FarmerSearchService(repository, distance_service)
+
+
+FarmerSearchServiceDep = Annotated[FarmerSearchService, Depends(get_farmer_search_service)]
+
+
+def get_current_building_zip_code(current_user: CurrentUser) -> str:
+    # o síndico usa o CEP do seu prédio, o morador usa o do prédio que o aprovou
+    if current_user.apartment is not None:
+        return current_user.apartment.zip_code
+    if current_user.buyer is None or current_user.buyer.apartment is None:
+        message = "Acesso permitido apenas para moradores e síndicos"
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+    return get_current_buyer(current_user).apartment.zip_code
+
+
+BuildingZipCode = Annotated[str, Depends(get_current_building_zip_code)]
