@@ -170,7 +170,7 @@ def test_list_farmers_counts_only_available_products(client, ana, building, sess
     session.flush()
 
     today = datetime.now(UTC)
-    expired_date = today - timedelta(days=1)
+    expired_date = today - timedelta(days=2)
     future_date = today + timedelta(days=10)
 
     # 1. Produto disponível (estoque > 0 e validade no futuro)
