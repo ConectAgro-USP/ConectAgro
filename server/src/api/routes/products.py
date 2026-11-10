@@ -15,7 +15,7 @@ from src.models.product import (
     ProductRead,
     ProductUpdate,
 )
-from src.schemas.product_search import ProductSearchFilters, ProductSearchResponse
+from src.models.product_search import ProductSearchFilters, ProductSearchResponse
 from src.services.exceptions import (
     NotProductOwnerError,
     ProductHasPurchasesError,

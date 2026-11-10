@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from src.schemas.pagination import PaginatedResponse
+from src.models.pagination import PaginatedResponse
 
 PRODUCTS_PER_PAGE = 20
 

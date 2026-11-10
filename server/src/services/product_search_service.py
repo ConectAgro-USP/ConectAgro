@@ -1,11 +1,11 @@
-from src.repository.product_repository import ProductRepository
-from src.schemas.pagination import PaginatedResponse
-from src.schemas.product_search import (
+from src.models.pagination import PaginatedResponse
+from src.models.product_search import (
     PRODUCTS_PER_PAGE,
     ProductSearchFilters,
     ProductSearchItem,
     ProductSearchResponse,
 )
+from src.repository.product_repository import ProductRepository
 
 
 class ProductSearchService:

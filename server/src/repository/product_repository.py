@@ -8,13 +8,13 @@ from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, Product
-from src.models.purchase import PurchaseProduct
-from src.models.review import Review
-from src.schemas.product_search import (
+from src.models.product_search import (
     PRODUCTS_PER_PAGE,
     ProductSearchFilters,
     ProductSort,
 )
+from src.models.purchase import PurchaseProduct
+from src.models.review import Review
 
 
 class ProductInUseError(Exception):
