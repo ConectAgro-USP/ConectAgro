@@ -32,8 +32,11 @@ def test_delete_product_turns_an_integrity_error_into_product_in_use_error():
     integrity_error = IntegrityError("DELETE FROM products", {}, Exception("foreign key"))
     session.commit.side_effect = integrity_error
 
+    repository = ProductRepository(session)
+    product = lettuce()
+
     with pytest.raises(ProductInUseError) as caught:
-        ProductRepository(session).delete_product(lettuce())
+        repository.delete_product(product)
 
     session.rollback.assert_called_once_with()
     assert caught.value.__cause__ is integrity_error

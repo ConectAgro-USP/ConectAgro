@@ -32,15 +32,17 @@ def test_purchase_saved_during_the_removal_is_explained_as_already_sold():
     # a compra ainda não existia na conferência, mas já existe quando o banco recusa
     products.has_purchases.side_effect = [False, True]
     products.delete_product.side_effect = ProductInUseError
+    service = ProductService(products)
 
     with pytest.raises(ProductHasPurchasesError):
-        ProductService(products).delete_product(uuid4(), farmer)
+        service.delete_product(uuid4(), farmer)
 
 
 def test_integrity_error_that_is_not_about_a_purchase_is_not_hidden():
     products, farmer = products_with_one_product()
     products.has_purchases.return_value = False
     products.delete_product.side_effect = ProductInUseError
+    service = ProductService(products)
 
     with pytest.raises(ProductInUseError):
-        ProductService(products).delete_product(uuid4(), farmer)
+        service.delete_product(uuid4(), farmer)

@@ -39,7 +39,7 @@ class ProductRepository:
         statement = statement.order_by(Product.created_at, Product.public_id)
         statement = statement.offset(offset).limit(limit)
         statement = statement.options(selectinload(Product.farmer).selectinload(Farmer.user))
-        
+
         return list(self.session.exec(statement).all())
 
     def has_purchases(self, product_id: int) -> bool:
