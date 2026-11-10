@@ -1,6 +1,6 @@
 from src.models.farmer import Farmer
+from src.models.farmer_search import FarmerSearchFilters, FarmerSearchItem, FarmerSearchResponse
 from src.repository.farmer_search_repository import FarmerSearchRepository
-from src.schemas.farmer_search import FarmerSearchFilters, FarmerSearchItem, FarmerSearchResponse
 from src.services.distance_service import DistanceService
 from src.services.exceptions import InvalidDistanceError, MissingOriginCepError
 

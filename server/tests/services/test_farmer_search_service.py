@@ -7,12 +7,12 @@ from sqlmodel import Session
 
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
+from src.models.farmer_search import FarmerSearchFilters
 from src.models.product import Product
 from src.models.purchase import Purchase, PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
 from src.repository.farmer_search_repository import FarmerSearchRepository
-from src.schemas.farmer_search import FarmerSearchFilters
 from src.services.distance_service import DistanceService
 from src.services.exceptions import InvalidDistanceError, MissingOriginCepError
 from src.services.farmer_search_service import FarmerSearchService

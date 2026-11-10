@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from src.api.deps import FarmerSearchServiceDep
-from src.schemas.farmer_search import FarmerSearchFilters, FarmerSearchResponse
+from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse
 from src.services.exceptions import InvalidDistanceError, MissingOriginCepError
 
 router = APIRouter(prefix="/farmers", tags=["farmers"])

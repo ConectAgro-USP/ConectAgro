@@ -3,8 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.models.pagination import PaginatedResponse
 from src.models.product import Product
-from src.schemas.pagination import PaginatedResponse
 
 AllowedDistance = Literal[5, 10, 15]
 
