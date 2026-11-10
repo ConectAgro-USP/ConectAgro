@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+from decimal import Decimal
+
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -5,6 +8,7 @@ from src.core.security import create_access_token
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
+from src.models.product import BUSINESS_TZ, Product
 from src.models.user import User
 
 # CNPJs reais com dígitos verificadores válidos
@@ -40,6 +44,23 @@ def add_farmer(session: Session, user: User) -> Farmer:
     session.commit()
     session.refresh(farmer)
     return farmer
+
+
+def add_product(session: Session, farmer: Farmer, name: str = "Alface", **overrides) -> Product:
+    # permite adicionar produtos inválidos (expirados, por exemplo) para testes,
+    # pois os dados não passam por ProductCreate
+    data = {
+        "name": name,
+        "quantity": 10,
+        "price": Decimal("2.50"),
+        "expiration_date": datetime.now(BUSINESS_TZ).date() + timedelta(days=30),
+        "farmer_id": farmer.id,
+    }
+    product = Product(**{**data, **overrides})
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+    return product
 
 
 def add_building(
