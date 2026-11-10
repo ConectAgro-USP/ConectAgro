@@ -635,10 +635,12 @@ def test_catalog_pages_count_only_available_products(
     [
         ({"page": 0}, "page"),
         ({"page": "um"}, "page"),
+        ({"page": 10**20}, "page"),
         ({"min_quantity": 0}, "min_quantity"),
         ({"sort": "preco"}, "sort"),
         ({"expiration_from": "ontem"}, "expiration_from"),
         ({"q": "a" * 201}, "q"),
+        ({"q": "alface\x00"}, "q"),
     ],
 )
 @pytest.mark.usefixtures("ana")
