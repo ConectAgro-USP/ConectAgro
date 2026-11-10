@@ -14,10 +14,11 @@ from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.farmer_search import FarmerSearchFilters
 from src.models.product import Product
-from src.models.purchase import Purchase, PurchaseStatus
+from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
 from src.services.distance_service import DistanceService
+from tests.helpers import login
 
 TODAY = date.today()
 FUTURE = TODAY + timedelta(days=60)
@@ -87,6 +88,12 @@ def apartment(session: Session) -> Apartment:
     return apartment
 
 
+# a busca exige morador ou síndico, então os testes rodam com o síndico logado
+@pytest.fixture(autouse=True)
+def logged_manager(client: TestClient, manager: User, building: Apartment) -> None:
+    login(client, manager)
+
+
 def test_api_search_by_farmer_name(client: TestClient, session: Session):
     f1 = create_farmer(session, name="Sebastião Pereira", email="sebastiao@example.com")
     create_farmer(session, name="Luciana Santos", email="luciana@example.com")
@@ -98,7 +105,7 @@ def test_api_search_by_farmer_name(client: TestClient, session: Session):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["total"] == 1
-    assert data["items"][0]["name"] == "Sebastião Pereira"
+    assert data["items"][0]["name"] == "Sebastião P."
     assert data["items"][0]["public_id"] == str(f1.public_id)
 
 
@@ -110,7 +117,7 @@ def test_api_search_by_farmer_name_case_insensitive(client: TestClient, session:
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["total"] == 1
-    assert data["items"][0]["name"] == "Mariana Lima"
+    assert data["items"][0]["name"] == "Mariana L."
 
 
 def test_api_search_by_farmer_name_not_found(client: TestClient, session: Session):
@@ -146,7 +153,7 @@ def test_api_filter_by_multiple_products(client: TestClient, session: Session):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["total"] == 1
-    assert data["items"][0]["name"] == "Horta Completa"
+    assert data["items"][0]["name"] == "Horta C."
 
 
 def test_api_filter_by_distance_allowed_values(client: TestClient, session: Session):
@@ -163,16 +170,16 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
 
     res_5km = client.get(
         "/api/farmers",
-        params=farmer_search_params(origin_cep="01000-000", max_distance_km=5),
+        params=farmer_search_params(max_distance_km=5),
     )
     assert res_5km.status_code == status.HTTP_200_OK
     data_5km = res_5km.json()
     assert data_5km["total"] == 1
-    assert data_5km["items"][0]["name"] == "Perto 4km"
+    assert data_5km["items"][0]["name"] == "Perto 4."
 
     res_15km = client.get(
         "/api/farmers",
-        params=farmer_search_params(origin_cep="01000-000", max_distance_km=15),
+        params=farmer_search_params(max_distance_km=15),
     )
     assert res_15km.status_code == status.HTTP_200_OK
     data_15km = res_15km.json()
@@ -182,47 +189,47 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
 def test_api_filter_by_distance_rejects_invalid_km(client: TestClient):
     response = client.get(
         "/api/farmers",
-        params=farmer_search_params(origin_cep="01000-000", max_distance_km=20),
+        params={"max_distance_km": 20},
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     response_negative = client.get(
         "/api/farmers",
-        params=farmer_search_params(origin_cep="01000-000", max_distance_km=-5),
+        params={"max_distance_km": -5},
     )
     assert response_negative.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-
-def test_api_filter_by_distance_without_origin_cep_returns_422(client: TestClient):
-    response = client.get(
-        "/api/farmers", params=farmer_search_params(max_distance_km=10)
-    )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
 
 
 def test_api_result_fields_schema(client: TestClient, session: Session, apartment: Apartment):
     farmer = create_farmer(session, name="Agricultor Avaliado", email="avaliado@example.com")
 
     product1 = Purchase(
-        farmer_id=farmer.id,
         apartment_id=apartment.id,
-        status=PurchaseStatus.ENTREGUE,
         expected_delivery_date=date(2026, 10, 10),
-        closed_at=datetime(2026, 10, 8, tzinfo=UTC),
     )
 
     product2 = Purchase(
-        farmer_id=farmer.id,
         apartment_id=apartment.id,
-        status=PurchaseStatus.ENTREGUE,
         expected_delivery_date=date(2026, 10, 10),
-        closed_at=datetime(2026, 10, 15, tzinfo=UTC),
     )
     session.add_all([product1, product2])
     session.commit()
     session.refresh(product1)
     session.refresh(product2)
+
+    part1 = PurchasePart(
+        purchase_id=product1.id,
+        farmer_id=farmer.id,
+        status=PurchaseStatus.ENTREGUE,
+        closed_at=datetime(2026, 10, 8, tzinfo=UTC),
+    )
+    part2 = PurchasePart(
+        purchase_id=product2.id,
+        farmer_id=farmer.id,
+        status=PurchaseStatus.ENTREGUE,
+        closed_at=datetime(2026, 10, 15, tzinfo=UTC),
+    )
+    session.add_all([part1, part2])
 
     review1 = Review(farmer_id=farmer.id, apartment_id=apartment.id, 
                      purchase_id=product1.id, rating=5)
@@ -237,7 +244,7 @@ def test_api_result_fields_schema(client: TestClient, session: Session, apartmen
     assert response.status_code == status.HTTP_200_OK
 
     item = response.json()["items"][0]
-    assert item["name"] == "Agricultor Avaliado"
+    assert item["name"] == "Agricultor A."
     assert item["average_rating"] == 4.0
     assert item["reviews_count"] == 2
     assert item["on_time_delivery_percentage"] == 50.0
@@ -334,3 +341,67 @@ def test_api_performance_with_10k_products(client: TestClient, session: Session)
         f"A API demorou {duration_s * 1000:.2f} ms com 10.000 produtos cadastrados, "
         "o critério de aceite exige resposta em menos de 500 ms."
     )
+
+
+def test_api_search_without_distance_filter_has_no_distance(client: TestClient, session: Session):
+    create_farmer(session, name="Carlos Silva", email="carlos@example.com")
+
+    response = client.get("/api/farmers")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["items"][0]["distance_km"] is None
+
+
+def test_api_search_by_name_ignores_email_saved_as_name(client: TestClient, session: Session):
+    create_farmer(session, name="carlos@example.com", email="carlos@example.com")
+
+    response = client.get("/api/farmers", params={"name": "carlos"})
+
+    assert response.json()["total"] == 0
+
+
+@pytest.mark.parametrize("wildcard", ["%", "_"])
+def test_api_search_treats_wildcards_as_text(client: TestClient, session: Session, wildcard: str):
+    farmer = create_farmer(session, name="Carlos Silva", email="carlos@example.com")
+    add_product(session, farmer, name="Morango")
+
+    by_name = client.get("/api/farmers", params={"name": wildcard})
+    by_product = client.get("/api/farmers", params={"products": [wildcard]})
+
+    assert by_name.json()["total"] == 0
+    assert by_product.json()["total"] == 0
+
+
+def test_api_filter_by_products_ignores_unavailable_products(client: TestClient, session: Session):
+    farmer = create_farmer(session, name="Sem Estoque", email="estoque@example.com")
+    add_product(session, farmer, name="Morango", quantity=0)
+    expired = add_product(session, farmer, name="Banana")
+    expired.expiration_date = TODAY - timedelta(days=2)
+    session.add(expired)
+    session.commit()
+
+    morango = client.get("/api/farmers", params={"products": ["morango"]})
+    banana = client.get("/api/farmers", params={"products": ["banana"]})
+    everyone = client.get("/api/farmers")
+
+    assert morango.json()["total"] == 0
+    assert banana.json()["total"] == 0
+    assert everyone.json()["items"][0]["available_products_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"name": "a" * 201},
+        {"name": "carlos\x00"},
+        {"products": ["morango\x00"]},
+        {"products": ["produto"] * 11},
+        {"products": ["a" * 201]},
+        {"page_size": 101},
+        {"page": 2**31},
+    ],
+)
+def test_api_rejects_invalid_filters(client: TestClient, params: dict[str, object]):
+    response = client.get("/api/farmers", params=params)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

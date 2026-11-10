@@ -151,7 +151,7 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
     response = client.get("/api/farmers?max_distance_km=10")
 
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = response.json()["items"]
     assert len(data) == 2
 
     # Carlos (2.5 km) deve vir antes de Ana (8.0 km)
@@ -219,7 +219,7 @@ def test_list_farmers_counts_only_available_products(client, ana, building, sess
     response = client.get("/api/farmers?max_distance_km=10")
 
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = response.json()["items"]
     assert len(data) == 1
 
     # Deve contar apenas os 2 produtos válidos e com estoque (prod1 e prod2)
@@ -244,7 +244,7 @@ def test_list_farmers_returns_expected_fields_and_values(
     response = client.get("/api/farmers?max_distance_km=10")
 
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = response.json()["items"]
     assert len(data) == 1
 
     farmer_result = data[0]
@@ -279,7 +279,7 @@ def test_list_farmers_excludes_farmer_outside_radius(client, ana, building, sess
     response = client.get("/api/farmers?max_distance_km=5")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_list_farmers_ignores_farmer_with_cep_without_coordinates(
@@ -300,7 +300,7 @@ def test_list_farmers_ignores_farmer_with_cep_without_coordinates(
     response = client.get("/api/farmers?max_distance_km=15")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 @pytest.mark.parametrize("valid_distance", [5, 10, 15])
@@ -320,7 +320,7 @@ def test_list_farmers_accepts_supported_max_distance_values(
     response = client.get(f"/api/farmers?max_distance_km={valid_distance}")
 
     assert response.status_code == status.HTTP_200_OK
-    assert isinstance(response.json(), list)
+    assert isinstance(response.json()["items"], list)
 
 
 @pytest.mark.parametrize("invalid_distance", [0, 1, 4, 6, 9, 11, 14, 16, 20, -5])
@@ -349,7 +349,7 @@ def test_manager_lists_farmers_near_the_building(client, manager, building, sess
     response = client.get("/api/farmers?max_distance_km=5")
 
     assert response.status_code == status.HTTP_200_OK
-    assert [item["name"] for item in response.json()] == ["Carlos S."]
+    assert [item["name"] for item in response.json()["items"]] == ["Carlos S."]
 
 
 def test_list_farmers_requires_login(client):
@@ -390,7 +390,7 @@ def test_list_farmers_hides_email_saved_as_farmer_name(
 
     response = client.get("/api/farmers?max_distance_km=5")
 
-    assert [item["name"] for item in response.json()] == [""]
+    assert [item["name"] for item in response.json()["items"]] == [""]
     assert email not in response.text
 
 
@@ -405,7 +405,7 @@ def test_list_farmers_ignores_farmer_with_invalid_cep(client, ana, building, ses
     response = client.get("/api/farmers?max_distance_km=15")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_list_farmers_fails_when_external_service_is_down(

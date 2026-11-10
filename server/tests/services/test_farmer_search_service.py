@@ -9,16 +9,16 @@ from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.farmer_search import FarmerSearchFilters
 from src.models.product import Product
-from src.models.purchase import Purchase, PurchaseStatus
+from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
 from src.repository.farmer_search_repository import FarmerSearchRepository
 from src.services.distance_service import DistanceService
-from src.services.exceptions import InvalidDistanceError, MissingOriginCepError
 from src.services.farmer_search_service import FarmerSearchService
 
 TODAY = date.today()
 FUTURE = TODAY + timedelta(days=30)
+BUILDING_CEP = "01000-000"
 
 
 def create_user_and_farmer(
@@ -95,15 +95,21 @@ def add_purchase(
     closed_at: datetime | None = None,
 ) -> Purchase:
     purchase = Purchase(
-        farmer_id=farmer.id,
         apartment_id=apartment.id,
-        status=status,
         expected_delivery_date=expected_delivery_date,
-        closed_at=closed_at,
     )
     session.add(purchase)
     session.commit()
     session.refresh(purchase)
+
+    part = PurchasePart(
+        purchase_id=purchase.id,
+        farmer_id=farmer.id,
+        status=status,
+        closed_at=closed_at,
+    )
+    session.add(part)
+    session.commit()
     return purchase
 
 
@@ -143,22 +149,22 @@ def test_search_by_farmer_name_exact(session: Session):
     farmer1 = create_user_and_farmer(session, name="João Silva", email="joao@example.com")
     create_user_and_farmer(session, name="Maria Oliveira", email="maria@example.com")
 
-    result = service.search(FarmerSearchFilters(name="João Silva"))
+    result = service.search(FarmerSearchFilters(name="João Silva"), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
-    assert result.items[0].name == farmer1.user.name
+    assert result.items[0].name == "João S."
 
 
 def test_search_by_farmer_name_case_insensitive_and_partial(session: Session, farmer01 : Farmer):
     service = FarmerSearchService(FarmerSearchRepository(session))
     farmer2 = create_user_and_farmer(session, name="Pedro Ribeiro", email="pedro@example.com")
 
-    result_lower = service.search(FarmerSearchFilters(name="carlos da costa"))
+    result_lower = service.search(FarmerSearchFilters(name="carlos da costa"), BUILDING_CEP)
     assert result_lower.total == 1
     assert result_lower.items[0].public_id == farmer01.public_id
 
-    result_partial = service.search(FarmerSearchFilters(name="Ribeiro"))
+    result_partial = service.search(FarmerSearchFilters(name="Ribeiro"), BUILDING_CEP)
     assert result_partial.total == 2
     assert result_partial.items[0].public_id == farmer01.public_id
     assert result_partial.items[1].public_id == farmer2.public_id
@@ -168,7 +174,7 @@ def test_search_by_farmer_name_whitespace_trimmed(session: Session):
     service = FarmerSearchService(FarmerSearchRepository(session))
     farmer1 = create_user_and_farmer(session, name="Carlos Mendes", email="carlos@example.com")
 
-    result = service.search(FarmerSearchFilters(name="   Carlos Mendes   "))
+    result = service.search(FarmerSearchFilters(name="   Carlos Mendes   "), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
@@ -178,7 +184,7 @@ def test_search_by_farmer_name_not_found_returns_empty(session: Session):
     service = FarmerSearchService(FarmerSearchRepository(session))
     create_user_and_farmer(session, name="João Silva", email="joao@example.com")
 
-    result = service.search(FarmerSearchFilters(name="Inexistente"))
+    result = service.search(FarmerSearchFilters(name="Inexistente"), BUILDING_CEP)
 
     assert result.total == 0
     assert result.items == []
@@ -189,7 +195,7 @@ def test_search_with_no_name_filter_returns_all(session: Session):
     create_user_and_farmer(session, name="Produtor 1", email="p1@example.com")
     create_user_and_farmer(session, name="Produtor 2", email="p2@example.com")
 
-    result = service.search(FarmerSearchFilters())
+    result = service.search(FarmerSearchFilters(), BUILDING_CEP)
 
     assert result.total == 2
 
@@ -201,7 +207,7 @@ def test_filter_by_single_product(session: Session):
     add_product(session, farmer1, name="Tomate Italiano")
     add_product(session, farmer2, name="Alface Crespa")
 
-    result = service.search(FarmerSearchFilters(products=["Tomate"]))
+    result = service.search(FarmerSearchFilters(products=["Tomate"]), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
@@ -223,11 +229,11 @@ def test_filter_by_multiple_products_requires_all_products(session: Session):
                                      email="alface@example.com")
     add_product(session, farmer3, name="Alface Lisa")
 
-    result = service.search(FarmerSearchFilters(products=["Tomate", "Alface"]))
+    result = service.search(FarmerSearchFilters(products=["Tomate", "Alface"]), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
-    assert result.items[0].name == "Agricultor Completo"
+    assert result.items[0].name == "Agricultor C."
 
 
 def test_filter_by_multiple_products_when_farmer_sells_superset(session: Session):
@@ -238,7 +244,8 @@ def test_filter_by_multiple_products_when_farmer_sells_superset(session: Session
     add_product(session, farmer1, name="Cenoura")
     add_product(session, farmer1, name="Batata")
 
-    result = service.search(FarmerSearchFilters(products=["Tomate", "Alface", "Cenoura"]))
+    filters = FarmerSearchFilters(products=["Tomate", "Alface", "Cenoura"])
+    result = service.search(filters, BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
@@ -250,7 +257,7 @@ def test_filter_by_products_case_insensitive(session: Session):
                                      email="org@example.com")
     add_product(session, farmer1, name="CENOURA AMARELA")
 
-    result = service.search(FarmerSearchFilters(products=["cenoura"]))
+    result = service.search(FarmerSearchFilters(products=["cenoura"]), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
@@ -262,7 +269,7 @@ def test_filter_by_products_no_match_returns_empty(session: Session):
                                      email="frutas@example.com")
     add_product(session, farmer1, name="Maçã")
 
-    result = service.search(FarmerSearchFilters(products=["Laranja"]))
+    result = service.search(FarmerSearchFilters(products=["Laranja"]), BUILDING_CEP)
 
     assert result.total == 0
     assert result.items == []
@@ -289,9 +296,7 @@ def test_filter_by_distance_5km(session: Session):
         FarmerSearchRepository(session), distance_service=mock_distance
     )
 
-    result = service.search(
-        FarmerSearchFilters(origin_cep="01000-000", max_distance_km=5)
-    )
+    result = service.search(FarmerSearchFilters(max_distance_km=5), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].public_id == farmer1.public_id
@@ -329,38 +334,25 @@ def test_filter_by_distance_10km_and_15km(session: Session):
     )
 
 
-    res_10km = service.search(
-        FarmerSearchFilters(origin_cep="01000-000", max_distance_km=10)
-    )
+    res_10km = service.search(FarmerSearchFilters(max_distance_km=10), BUILDING_CEP)
     assert res_10km.total == 2
     ids_10km = {item.public_id for item in res_10km.items}
     assert ids_10km == {farmer1.public_id, farmer2.public_id}
 
 
-    res_15km = service.search(
-        FarmerSearchFilters(origin_cep="01000-000", max_distance_km=15)
-    )
+    res_15km = service.search(FarmerSearchFilters(max_distance_km=15), BUILDING_CEP)
     assert res_15km.total == 3
     ids_15km = {item.public_id for item in res_15km.items}
     assert ids_15km == {farmer1.public_id, farmer2.public_id, farmer3.public_id}
     assert farmer4.public_id not in ids_15km
 
 
-def test_filter_by_distance_rejects_unsupported_radius(session: Session):
-    service = FarmerSearchService(FarmerSearchRepository(session))
+def test_filter_by_distance_rejects_unsupported_radius():
+    with pytest.raises(ValueError):
+        FarmerSearchFilters(max_distance_km=8)
 
-    with pytest.raises(InvalidDistanceError):
-        service.search(FarmerSearchFilters(origin_cep="01000-000", max_distance_km=8))
-
-    with pytest.raises(InvalidDistanceError):
-        service.search(FarmerSearchFilters(origin_cep="01000-000", max_distance_km=25))
-
-
-def test_filter_by_distance_requires_origin_cep(session: Session):
-    service = FarmerSearchService(FarmerSearchRepository(session))
-
-    with pytest.raises(MissingOriginCepError):
-        service.search(FarmerSearchFilters(max_distance_km=5))
+    with pytest.raises(ValueError):
+        FarmerSearchFilters(max_distance_km=25)
 
 
 def test_filter_by_distance_requires_configured_service(session: Session):
@@ -368,9 +360,7 @@ def test_filter_by_distance_requires_configured_service(session: Session):
     service = FarmerSearchService(FarmerSearchRepository(session))
 
     with pytest.raises(RuntimeError, match="serviço de distância não está disponível"):
-        service.search(
-            FarmerSearchFilters(origin_cep="01000-000", max_distance_km=5)
-        )
+        service.search(FarmerSearchFilters(max_distance_km=5), BUILDING_CEP)
 
 
 def test_filter_by_distance_surfaces_route_errors(session: Session):
@@ -382,9 +372,7 @@ def test_filter_by_distance_surfaces_route_errors(session: Session):
     )
 
     with pytest.raises(RuntimeError, match="falha no serviço de rotas"):
-        service.search(
-            FarmerSearchFilters(origin_cep="01000-000", max_distance_km=5)
-        )
+        service.search(FarmerSearchFilters(max_distance_km=5), BUILDING_CEP)
 
 
 def test_shows_average_rating_and_reviews_count(session: Session, apartment: Apartment):
@@ -399,7 +387,7 @@ def test_shows_average_rating_and_reviews_count(session: Session, apartment: Apa
     add_review(session, farmer1, rating=5, apartment=apartment, purchase=p1)
     add_review(session, farmer1, rating=4, apartment=apartment, purchase=p2)
 
-    result = service.search(FarmerSearchFilters(name="Agricultor Bem Avaliado"))
+    result = service.search(FarmerSearchFilters(name="Agricultor Bem Avaliado"), BUILDING_CEP)
 
     assert result.total == 1
     item = result.items[0]
@@ -411,7 +399,7 @@ def test_farmer_without_reviews_has_none_or_zero(session: Session):
     service = FarmerSearchService(FarmerSearchRepository(session))
     create_user_and_farmer(session, name="Novo Agricultor", email="novo@example.com")
 
-    result = service.search(FarmerSearchFilters(name="Novo Agricultor"))
+    result = service.search(FarmerSearchFilters(name="Novo Agricultor"), BUILDING_CEP)
 
     assert result.total == 1
     item = result.items[0]
@@ -460,7 +448,7 @@ def test_on_time_delivery_percentage_calculation(session: Session, apartment: Ap
         expected_delivery_date=date(2026, 10, 10),
     )
 
-    result = service.search(FarmerSearchFilters(name="Produtor Entregador"))
+    result = service.search(FarmerSearchFilters(name="Produtor Entregador"), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].on_time_delivery_percentage == 66.7
@@ -470,7 +458,7 @@ def test_farmer_without_delivered_purchases_has_none_percentage(session: Session
     service = FarmerSearchService(FarmerSearchRepository(session))
     create_user_and_farmer(session, name="Sem Entregas", email="sem@example.com")
 
-    result = service.search(FarmerSearchFilters(name="Sem Entregas"))
+    result = service.search(FarmerSearchFilters(name="Sem Entregas"), BUILDING_CEP)
 
     assert result.total == 1
     assert result.items[0].on_time_delivery_percentage is None
@@ -484,7 +472,7 @@ def test_pagination_defaults_to_20_per_page(session: Session):
         create_user_and_farmer(session, name=f"Agricultor {i:02d}", email=f"ag{i}@example.com")
 
     # Página 1
-    page1 = service.search(FarmerSearchFilters(page=1, page_size=20))
+    page1 = service.search(FarmerSearchFilters(page=1, page_size=20), BUILDING_CEP)
     assert page1.total == 25
     assert len(page1.items) == 20
     assert page1.page == 1
@@ -492,12 +480,12 @@ def test_pagination_defaults_to_20_per_page(session: Session):
     assert page1.total_pages == 2
 
     # Página 2
-    page2 = service.search(FarmerSearchFilters(page=2, page_size=20))
+    page2 = service.search(FarmerSearchFilters(page=2, page_size=20), BUILDING_CEP)
     assert len(page2.items) == 5
     assert page2.page == 2
 
     # Página 3 (além do total)
-    page3 = service.search(FarmerSearchFilters(page=3, page_size=20))
+    page3 = service.search(FarmerSearchFilters(page=3, page_size=20), BUILDING_CEP)
     assert len(page3.items) == 0
 
 
@@ -505,7 +493,75 @@ def test_pagination_rejects_invalid_page_or_size(session: Session):
     service = FarmerSearchService(FarmerSearchRepository(session))
 
     with pytest.raises(ValueError):
-        service.search(FarmerSearchFilters(page=0))
+        service.search(FarmerSearchFilters(page=0), BUILDING_CEP)
 
     with pytest.raises(ValueError):
-        service.search(FarmerSearchFilters(page_size=-1))
+        service.search(FarmerSearchFilters(page_size=-1), BUILDING_CEP)
+
+
+def test_sorts_by_rating_then_on_time_deliveries(session: Session, apartment: Apartment):
+    service = FarmerSearchService(FarmerSearchRepository(session))
+    unrated = create_user_and_farmer(session, name="Sem Nota", email="sem@example.com")
+    low = create_user_and_farmer(session, name="Nota Baixa", email="baixa@example.com")
+    late = create_user_and_farmer(session, name="Nota Alta Atrasado", email="atraso@example.com")
+    on_time = create_user_and_farmer(session, name="Nota Alta Pontual", email="prazo@example.com")
+
+    deliveries = [(low, 3, 9), (late, 5, 12), (on_time, 5, 9)]
+    for farmer, rating, closing_day in deliveries:
+        purchase = add_purchase(
+            session,
+            farmer,
+            apartment,
+            expected_delivery_date=date(2026, 10, 10),
+            closed_at=datetime(2026, 10, closing_day, tzinfo=UTC),
+        )
+        add_review(session, farmer, rating=rating, apartment=apartment, purchase=purchase)
+
+    result = service.search(FarmerSearchFilters(), BUILDING_CEP)
+
+    assert [item.public_id for item in result.items] == [
+        on_time.public_id,
+        late.public_id,
+        low.public_id,
+        unrated.public_id,
+    ]
+
+
+def test_on_time_delivery_uses_the_business_day(session: Session, apartment: Apartment):
+    service = FarmerSearchService(FarmerSearchRepository(session))
+    farmer = create_user_and_farmer(session, name="Entrega Noturna", email="noite@example.com")
+    # 01h em UTC ainda é 22h do dia 10 em Brasília, e 03h já é o dia 11
+    for closing_hour in (1, 3):
+        add_purchase(
+            session,
+            farmer,
+            apartment,
+            expected_delivery_date=date(2026, 10, 10),
+            closed_at=datetime(2026, 10, 11, closing_hour, tzinfo=UTC),
+        )
+
+    result = service.search(FarmerSearchFilters(), BUILDING_CEP)
+
+    assert result.items[0].on_time_delivery_percentage == 50.0
+
+
+def test_rating_comes_before_distance(session: Session, apartment: Apartment):
+    near = create_user_and_farmer(
+        session, name="Perto", email="perto@example.com", zip_code="01001-000"
+    )
+    far = create_user_and_farmer(
+        session, name="Longe", email="longe@example.com", zip_code="02002-000"
+    )
+    purchase = add_purchase(session, far, apartment)
+    add_review(session, far, rating=5, apartment=apartment, purchase=purchase)
+    distances = {"01001-000": 1000.0, "02002-000": 4000.0}
+    mock_distance = MagicMock(spec=DistanceService)
+    mock_distance.between_ceps.side_effect = lambda orig, dest: MagicMock(
+        distance_m=distances[dest]
+    )
+    service = FarmerSearchService(FarmerSearchRepository(session), distance_service=mock_distance)
+
+    result = service.search(FarmerSearchFilters(max_distance_km=5), BUILDING_CEP)
+
+    assert [item.public_id for item in result.items] == [far.public_id, near.public_id]
+    assert [item.distance_km for item in result.items] == [4.0, 1.0]
