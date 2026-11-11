@@ -6,7 +6,7 @@ from sqlmodel import Field, SQLModel
 
 from src.models.pagination import PaginatedResponse
 from src.models.product import INT4_MAX
-from src.models.purchase import PurchaseProductRead, PurchaseStatus
+from src.models.purchase import PurchasePartRead, PurchaseProductRead, PurchaseRead, PurchaseStatus
 
 
 class PurchaseHistoryFilters(SQLModel):
@@ -20,6 +20,10 @@ class PurchaseHistoryFilters(SQLModel):
 
 class SalesFilters(PurchaseHistoryFilters):
     apartment_public_id: UUID | None = None
+
+
+class BuildingPurchasesFilters(PurchaseHistoryFilters):
+    farmer_public_id: UUID | None = None
 
 
 class PurchaseItemRead(PurchaseProductRead):
@@ -38,9 +42,21 @@ class SaleRead(SQLModel):
     purchase_products: list[PurchaseItemRead]
 
 
+class PurchasePartHistoryRead(PurchasePartRead):
+    farmer_short_name: str
+    total: Decimal
+    purchase_products: list[PurchaseItemRead]
+
+
+class BuildingPurchaseRead(PurchaseRead):
+    total: Decimal
+    purchase_parts: list[PurchasePartHistoryRead]
+
+
 class HistoryPage[T](PaginatedResponse[T]):
     realized_total: Decimal
     expected_total: Decimal
 
 
 SalesHistory = HistoryPage[SaleRead]
+BuildingPurchasesHistory = HistoryPage[BuildingPurchaseRead]

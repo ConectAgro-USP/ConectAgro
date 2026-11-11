@@ -7,9 +7,14 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
+from src.models.farmer import Farmer
 from src.models.product import Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
-from src.models.purchase_history import PurchaseHistoryFilters, SalesFilters
+from src.models.purchase_history import (
+    BuildingPurchasesFilters,
+    PurchaseHistoryFilters,
+    SalesFilters,
+)
 
 
 class PurchaseRepository:
@@ -58,12 +63,45 @@ class PurchaseRepository:
         )
         return self._page(statement, filters), total
 
+    def list_building_purchases(
+        self,
+        apartment_id: int,
+        filters: BuildingPurchasesFilters,
+        since: datetime | None,
+        until: datetime | None,
+    ) -> tuple[list[Purchase], int]:
+        conditions = [Purchase.apartment_id == apartment_id, *_in_period(since, until)]
+        if filters.status is not None:
+            conditions.append(_has_status(filters.status))
+        if filters.farmer_public_id is not None:
+            of_farmer = PurchasePart.farmer.has(Farmer.public_id == filters.farmer_public_id)
+            conditions.append(Purchase.purchase_parts.any(of_farmer))
+        count = select(func.count(Purchase.id)).where(*conditions)
+        parts = selectinload(Purchase.purchase_parts)
+        items = parts.selectinload(PurchasePart.purchase_products)
+        statement = select(Purchase).where(*conditions)
+        statement = statement.options(
+            parts.selectinload(PurchasePart.farmer).selectinload(Farmer.user),
+            items.selectinload(PurchaseProduct.product),
+        )
+        return self._page(statement, filters), self.session.exec(count).one()
+
     def sales_totals(
         self, farmer_id: int, since: datetime | None, until: datetime | None
     ) -> dict[PurchaseStatus, Decimal]:
+        return self._totals(PurchasePart.farmer_id == farmer_id, since, until)
+
+    def building_totals(
+        self, apartment_id: int, since: datetime | None, until: datetime | None
+    ) -> dict[PurchaseStatus, Decimal]:
+        return self._totals(Purchase.apartment_id == apartment_id, since, until)
+
+    def _totals(
+        self, owner, since: datetime | None, until: datetime | None
+    ) -> dict[PurchaseStatus, Decimal]:
         value = func.sum(PurchaseProduct.quantity * PurchaseProduct.unit_price)
         statement = select(PurchasePart.status, value).join(Purchase).join(PurchaseProduct)
-        statement = statement.where(PurchasePart.farmer_id == farmer_id, *_in_period(since, until))
+        statement = statement.where(owner, *_in_period(since, until))
         return dict(self.session.exec(statement.group_by(PurchasePart.status)).all())
 
     def _page(self, statement, filters: PurchaseHistoryFilters) -> list:
@@ -85,3 +123,14 @@ def _in_period(since: datetime | None, until: datetime | None) -> list:
     if until is not None:
         conditions.append(Purchase.created_at < until)
     return conditions
+
+
+def _has_status(status: PurchaseStatus):
+    # mesma regra do status da compra, que só sai de em progresso com todas as partes iguais
+    all_delivered = ~Purchase.purchase_parts.any(PurchasePart.status != PurchaseStatus.ENTREGUE)
+    all_cancelled = ~Purchase.purchase_parts.any(PurchasePart.status != PurchaseStatus.CANCELADA)
+    if status == PurchaseStatus.ENTREGUE:
+        return all_delivered
+    if status == PurchaseStatus.CANCELADA:
+        return all_cancelled
+    return ~all_delivered & ~all_cancelled

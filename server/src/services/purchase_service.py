@@ -13,7 +13,16 @@ from src.models.purchase import (
     PurchaseRead,
     PurchaseStatus,
 )
-from src.models.purchase_history import PurchaseHistoryFilters, SaleRead, SalesFilters, SalesHistory
+from src.models.purchase_history import (
+    BuildingPurchaseRead,
+    BuildingPurchasesFilters,
+    BuildingPurchasesHistory,
+    HistoryPage,
+    PurchaseHistoryFilters,
+    SaleRead,
+    SalesFilters,
+    SalesHistory,
+)
 from src.models.user import User
 from src.repository.purchase_repository import PurchaseRepository
 from src.services.exceptions import (
@@ -106,14 +115,19 @@ class PurchaseService:
         since, until = _period(filters)
         parts, count = self.purchases.list_sales(farmer.id, filters, since, until)
         totals = self.purchases.sales_totals(farmer.id, since, until)
-        return SalesHistory.from_page(
-            [_sale_read(part) for part in parts],
-            filters.page,
-            filters.page_size,
-            count,
-            realized_total=totals.get(PurchaseStatus.ENTREGUE, ZERO),
-            expected_total=totals.get(PurchaseStatus.EM_PROGRESSO, ZERO),
+        sales = [_sale_read(part) for part in parts]
+        return _history_page(SalesHistory, sales, filters, count, totals)
+
+    def list_building_purchases(
+        self, apartment: Apartment, filters: BuildingPurchasesFilters
+    ) -> BuildingPurchasesHistory:
+        since, until = _period(filters)
+        purchases, count = self.purchases.list_building_purchases(
+            apartment.id, filters, since, until
         )
+        totals = self.purchases.building_totals(apartment.id, since, until)
+        items = [BuildingPurchaseRead.model_validate(purchase) for purchase in purchases]
+        return _history_page(BuildingPurchasesHistory, items, filters, count, totals)
 
     def _lock_purchase(self, public_id: UUID) -> Purchase:
         purchase = self.purchases.lock_by_public_id(public_id)
@@ -179,4 +193,17 @@ def _sale_read(part: PurchasePart) -> SaleRead:
             "building_name": purchase.apartment.building_name,
             "purchased_at": purchase.created_at,
         },
+    )
+
+
+def _history_page(
+    model: type[HistoryPage], items: list, filters: PurchaseHistoryFilters, count: int, totals: dict
+) -> HistoryPage:
+    return model.from_page(
+        items,
+        filters.page,
+        filters.page_size,
+        count,
+        realized_total=totals.get(PurchaseStatus.ENTREGUE, ZERO),
+        expected_total=totals.get(PurchaseStatus.EM_PROGRESSO, ZERO),
     )
