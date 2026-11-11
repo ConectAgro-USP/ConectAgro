@@ -8,6 +8,8 @@ from pydantic import field_validator
 from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
+from src.services.text_service import short_name
+
 from .product import BUSINESS_TZ, INT4_MAX
 
 if TYPE_CHECKING:
@@ -62,6 +64,12 @@ class Purchase(PurchaseBase, table=True):
     def apartment_public_id(self) -> UUID | None:
         return self.apartment.public_id if self.apartment else None
 
+    @property
+    def total(self) -> Decimal:
+        # a parte cancelada fica fora do valor da compra
+        parts = [part for part in self.purchase_parts if part.status != PurchaseStatus.CANCELADA]
+        return sum((part.total for part in parts), ZERO)
+
 
 class PurchasePart(SQLModel, table=True):
     __tablename__ = "purchase_parts"
@@ -89,6 +97,10 @@ class PurchasePart(SQLModel, table=True):
     @property
     def farmer_public_id(self) -> UUID | None:
         return self.farmer.public_id if self.farmer else None
+
+    @property
+    def farmer_short_name(self) -> str | None:
+        return short_name(self.farmer.user.name) if self.farmer else None
 
     @property
     def total(self) -> Decimal:
