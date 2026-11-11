@@ -1,18 +1,21 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 from uuid import UUID, uuid4
 
+from pydantic import field_validator
 from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from .product import INT4_MAX
+from .product import BUSINESS_TZ, INT4_MAX
 
 if TYPE_CHECKING:
     from .apartment import Apartment
     from .farmer import Farmer
     from .product import Product
+
+MAX_PURCHASE_ITEMS = 100
 
 
 class PurchaseStatus(StrEnum):
@@ -40,7 +43,9 @@ class Purchase(PurchaseBase, table=True):
 
     apartment: Optional["Apartment"] = Relationship(back_populates="purchases")
     purchase_parts: list["PurchasePart"] = Relationship(
-        back_populates="purchase", cascade_delete=True
+        back_populates="purchase",
+        cascade_delete=True,
+        sa_relationship_kwargs={"order_by": "PurchasePart.id"},
     )
 
     @property
@@ -75,7 +80,9 @@ class PurchasePart(SQLModel, table=True):
     purchase: Optional["Purchase"] = Relationship(back_populates="purchase_parts")
     farmer: Optional["Farmer"] = Relationship(back_populates="purchase_parts")
     purchase_products: list["PurchaseProduct"] = Relationship(
-        back_populates="purchase_part", cascade_delete=True
+        back_populates="purchase_part",
+        cascade_delete=True,
+        sa_relationship_kwargs={"order_by": "PurchaseProduct.product_id"},
     )
 
     @property
@@ -100,6 +107,38 @@ class PurchaseProduct(PurchaseProductBase, table=True):
     @property
     def product_public_id(self) -> UUID | None:
         return self.product.public_id if self.product else None
+
+
+class PurchaseItemCreate(SQLModel):
+    product_public_id: UUID
+    quantity: int = Field(gt=0, le=INT4_MAX)
+
+
+class PurchaseCreate(PurchaseBase):
+    items: list[PurchaseItemCreate] = Field(min_length=1, max_length=MAX_PURCHASE_ITEMS)
+
+    @field_validator("expected_delivery_date")
+    @classmethod
+    def expected_delivery_date_not_past(cls, value: date) -> date:
+        if value < datetime.now(BUSINESS_TZ).date():
+            raise ValueError("A data prevista de entrega não pode estar no passado")
+        return value
+
+    @field_validator("items")
+    @classmethod
+    def items_without_repeated_product(
+        cls, value: list[PurchaseItemCreate]
+    ) -> list[PurchaseItemCreate]:
+        seen_products = set()
+        for item in value:
+            if item.product_public_id in seen_products:
+                raise ValueError("O mesmo produto aparece mais de uma vez na compra")
+            seen_products.add(item.product_public_id)
+        return value
+
+
+class PurchasePartStatusUpdate(SQLModel):
+    status: Literal[PurchaseStatus.ENTREGUE, PurchaseStatus.CANCELADA]
 
 
 class PurchaseProductRead(PurchaseProductBase):

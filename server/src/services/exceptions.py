@@ -58,3 +58,27 @@ class NotProductOwnerError(Exception):
 
 class ProductHasPurchasesError(Exception):
     pass
+
+
+class ProductExpiredError(Exception):
+    pass
+
+
+class ProductOutOfStockError(Exception):
+    pass
+
+
+class PurchaseNotFoundError(Exception):
+    pass
+
+
+class PurchaseAccessDeniedError(Exception):
+    pass
+
+
+class PurchasePartClosedError(Exception):
+    pass
+
+
+class PurchaseAlreadyDeliveredError(Exception):
+    pass
