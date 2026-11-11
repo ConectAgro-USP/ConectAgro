@@ -1,10 +1,15 @@
+from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from src.models.apartment import Apartment
 from src.models.product import Product
-from src.models.purchase import Purchase, PurchasePart, PurchaseProduct
+from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
+from src.models.purchase_history import PurchaseHistoryFilters, SalesFilters
 
 
 class PurchaseRepository:
@@ -36,8 +41,47 @@ class PurchaseRepository:
         statement = statement.execution_options(populate_existing=True)
         return list(self.session.exec(statement).all())
 
+    def list_sales(
+        self, farmer_id: int, filters: SalesFilters, since: datetime | None, until: datetime | None
+    ) -> tuple[list[PurchasePart], int]:
+        conditions = [PurchasePart.farmer_id == farmer_id, *_in_period(since, until)]
+        if filters.status is not None:
+            conditions.append(PurchasePart.status == filters.status)
+        if filters.apartment_public_id is not None:
+            conditions.append(Apartment.public_id == filters.apartment_public_id)
+        count = select(func.count(PurchasePart.id)).join(Purchase).join(Apartment)
+        total = self.session.exec(count.where(*conditions)).one()
+        statement = select(PurchasePart).join(Purchase).join(Apartment).where(*conditions)
+        statement = statement.options(
+            selectinload(PurchasePart.purchase).selectinload(Purchase.apartment),
+            selectinload(PurchasePart.purchase_products).selectinload(PurchaseProduct.product),
+        )
+        return self._page(statement, filters), total
+
+    def sales_totals(
+        self, farmer_id: int, since: datetime | None, until: datetime | None
+    ) -> dict[PurchaseStatus, Decimal]:
+        value = func.sum(PurchaseProduct.quantity * PurchaseProduct.unit_price)
+        statement = select(PurchasePart.status, value).join(Purchase).join(PurchaseProduct)
+        statement = statement.where(PurchasePart.farmer_id == farmer_id, *_in_period(since, until))
+        return dict(self.session.exec(statement.group_by(PurchasePart.status)).all())
+
+    def _page(self, statement, filters: PurchaseHistoryFilters) -> list:
+        statement = statement.order_by(Purchase.created_at.desc(), Purchase.id.desc())
+        offset = (filters.page - 1) * filters.page_size
+        return list(self.session.exec(statement.offset(offset).limit(filters.page_size)).all())
+
     def add(self, purchase: Purchase) -> None:
         self.session.add(purchase)
 
     def commit(self) -> None:
         self.session.commit()
+
+
+def _in_period(since: datetime | None, until: datetime | None) -> list:
+    conditions = []
+    if since is not None:
+        conditions.append(Purchase.created_at >= since)
+    if until is not None:
+        conditions.append(Purchase.created_at < until)
+    return conditions

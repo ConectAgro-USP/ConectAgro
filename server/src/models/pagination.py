@@ -21,7 +21,7 @@ class PaginatedResponse[T](BaseModel):
 
     @classmethod
     def from_page(
-        cls, items: list[T], page: int, page_size: int, total: int
+        cls, items: list[T], page: int, page_size: int, total: int, **extra
     ) -> Self:
         total_pages = ceil(total / page_size) if total > 0 else 0
         return cls(
@@ -30,4 +30,5 @@ class PaginatedResponse[T](BaseModel):
             page=page,
             page_size=page_size,
             total_pages=total_pages,
+            **extra,
         )

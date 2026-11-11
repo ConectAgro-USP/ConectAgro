@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .product import Product
 
 MAX_PURCHASE_ITEMS = 100
+ZERO = Decimal("0.00")
 
 
 class PurchaseStatus(StrEnum):
@@ -89,6 +90,10 @@ class PurchasePart(SQLModel, table=True):
     def farmer_public_id(self) -> UUID | None:
         return self.farmer.public_id if self.farmer else None
 
+    @property
+    def total(self) -> Decimal:
+        return sum((item.subtotal for item in self.purchase_products), ZERO)
+
 
 class PurchaseProductBase(SQLModel):
     quantity: int = Field(gt=0, le=INT4_MAX)
@@ -107,6 +112,14 @@ class PurchaseProduct(PurchaseProductBase, table=True):
     @property
     def product_public_id(self) -> UUID | None:
         return self.product.public_id if self.product else None
+
+    @property
+    def product_name(self) -> str | None:
+        return self.product.name if self.product else None
+
+    @property
+    def subtotal(self) -> Decimal:
+        return self.quantity * self.unit_price
 
 
 class PurchaseItemCreate(SQLModel):

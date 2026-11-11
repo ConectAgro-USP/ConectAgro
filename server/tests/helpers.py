@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, Product
+from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
 from src.models.user import User
 
 # CNPJs reais com dígitos verificadores válidos
@@ -98,3 +99,27 @@ def add_resident(
     session.commit()
     session.refresh(resident)
     return resident
+
+
+def add_purchase(
+    session: Session,
+    building: Apartment,
+    *items: tuple[Product, int],
+    status: PurchaseStatus = PurchaseStatus.EM_PROGRESSO,
+    **overrides,
+) -> Purchase:
+    purchase = Purchase(
+        apartment_id=building.id, expected_delivery_date=date(2030, 1, 1), **overrides
+    )
+    parts = {}
+    for product, quantity in items:
+        if product.farmer_id not in parts:
+            parts[product.farmer_id] = PurchasePart(farmer_id=product.farmer_id, status=status)
+        parts[product.farmer_id].purchase_products.append(
+            PurchaseProduct(product=product, quantity=quantity, unit_price=product.price)
+        )
+    purchase.purchase_parts = list(parts.values())
+    session.add(purchase)
+    session.commit()
+    session.refresh(purchase)
+    return purchase
