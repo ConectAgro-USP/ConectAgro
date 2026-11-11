@@ -1,15 +1,20 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Annotated, NamedTuple, Optional
 from uuid import UUID, uuid4
 
+from pydantic import AfterValidator
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
+
+from src.services.text_service import reject_null_character
 
 if TYPE_CHECKING:
     from .apartment import Apartment
     from .buyer import Buyer
     from .farmer import Farmer
     from .purchase import Purchase
+
+Comment = Annotated[str, AfterValidator(reject_null_character)]
 
 
 class ReviewBase(SQLModel):
@@ -18,7 +23,7 @@ class ReviewBase(SQLModel):
         le=5,
     )
 
-    comment: str = Field(
+    comment: Comment = Field(
         default="",
         max_length=500,
         description="Comentário deixado pelo autor da avaliação",
@@ -117,7 +122,7 @@ class ReviewCreate(ReviewBase):
 class ReviewUpdate(SQLModel):
     # o default None marca campo não enviado, e o tipo sem None recusa null explícito
     rating: int = Field(default=None, ge=1, le=5)
-    comment: str = Field(default=None, max_length=500)
+    comment: Comment = Field(default=None, max_length=500)
 
 
 class ReviewRead(ReviewBase):
@@ -128,3 +133,29 @@ class ReviewRead(ReviewBase):
     buyer_public_id: UUID | None
     created_at: datetime
     updated_at: datetime | None
+
+
+class ReviewAuthor(NamedTuple):
+    building_id: int
+    # o síndico avalia pelo prédio e o morador pelo próprio cadastro, só um dos dois é preenchido
+    apartment_id: int | None = None
+    buyer_id: int | None = None
+
+
+class ReviewableRead(SQLModel):
+    purchase_public_id: UUID
+    farmer_public_id: UUID
+    farmer_short_name: str
+
+
+class FarmerReviewRead(ReviewBase):
+    # sem os ids da compra e do autor, para a lista não mostrar quem compra de cada agricultor
+    public_id: UUID
+    created_at: datetime
+    updated_at: datetime | None
+
+
+class FarmerReviewsRead(SQLModel):
+    average_rating: float | None
+    reviews_count: int
+    reviews: list[FarmerReviewRead]

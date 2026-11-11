@@ -82,3 +82,23 @@ class PurchasePartClosedError(Exception):
 
 class PurchaseAlreadyDeliveredError(Exception):
     pass
+
+
+class PurchasePartNotDeliveredError(Exception):
+    pass
+
+
+class FarmerNotFoundError(Exception):
+    pass
+
+
+class ReviewNotFoundError(Exception):
+    pass
+
+
+class NotReviewAuthorError(Exception):
+    pass
+
+
+class ReviewAlreadyExistsError(Exception):
+    pass
