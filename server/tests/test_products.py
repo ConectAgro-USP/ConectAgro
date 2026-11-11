@@ -637,6 +637,7 @@ def test_catalog_pages_count_only_available_products(
         ({"page": "um"}, "page"),
         ({"page": 10**20}, "page"),
         ({"min_quantity": 0}, "min_quantity"),
+        ({"min_quantity": 2**31}, "min_quantity"),
         ({"sort": "preco"}, "sort"),
         ({"expiration_from": "ontem"}, "expiration_from"),
         ({"q": "a" * 201}, "q"),

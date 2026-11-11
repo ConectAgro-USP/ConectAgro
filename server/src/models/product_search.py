@@ -20,7 +20,7 @@ class ProductSort(StrEnum):
 class ProductSearchFilters(BaseModel):
     q: str | None = Field(default=None, max_length=200)
     expiration_from: date | None = None
-    min_quantity: int | None = Field(default=None, ge=1)
+    min_quantity: int | None = Field(default=None, ge=1, le=INT4_MAX)
     sort: ProductSort = ProductSort.RELEVANCE
     page: int = Field(default=1, ge=1, le=INT4_MAX)
 

@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -33,6 +34,15 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+
+
+@app.exception_handler(RequestValidationError)
+async def hide_invalid_input(request: Request, error: RequestValidationError) -> JSONResponse:
+    # o valor enviado fica fora da resposta, ele pode ser uma senha ou não caber em JSON
+    detail = [
+        {"type": item["type"], "loc": item["loc"], "msg": item["msg"]} for item in error.errors()
+    ]
+    return JSONResponse({"detail": detail}, status.HTTP_422_UNPROCESSABLE_CONTENT)
 
 
 @app.get("/api/health")
