@@ -1,10 +1,11 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, INT4_MAX
 from src.models.purchase import (
+    ZERO,
     Purchase,
     PurchaseCreate,
     PurchasePart,
@@ -12,6 +13,7 @@ from src.models.purchase import (
     PurchaseRead,
     PurchaseStatus,
 )
+from src.models.purchase_history import PurchaseHistoryFilters, SaleRead, SalesFilters, SalesHistory
 from src.models.user import User
 from src.repository.purchase_repository import PurchaseRepository
 from src.services.exceptions import (
@@ -100,6 +102,19 @@ class PurchaseService:
         self._close_parts(purchase, open_parts, PurchaseStatus.CANCELADA)
         return purchase
 
+    def list_sales(self, farmer: Farmer, filters: SalesFilters) -> SalesHistory:
+        since, until = _period(filters)
+        parts, count = self.purchases.list_sales(farmer.id, filters, since, until)
+        totals = self.purchases.sales_totals(farmer.id, since, until)
+        return SalesHistory.from_page(
+            [_sale_read(part) for part in parts],
+            filters.page,
+            filters.page_size,
+            count,
+            realized_total=totals.get(PurchaseStatus.ENTREGUE, ZERO),
+            expected_total=totals.get(PurchaseStatus.EM_PROGRESSO, ZERO),
+        )
+
     def _lock_purchase(self, public_id: UUID) -> Purchase:
         purchase = self.purchases.lock_by_public_id(public_id)
         if purchase is None:
@@ -138,3 +153,30 @@ def _part_of_farmer(purchase: Purchase, farmer: Farmer | None) -> PurchasePart |
         if part.farmer_id == farmer.id:
             return part
     return None
+
+
+def _period(filters: PurchaseHistoryFilters) -> tuple[datetime | None, datetime | None]:
+    since = until = None
+    if filters.date_from is not None:
+        since = _day_start(filters.date_from)
+    if filters.date_to is not None:
+        until = _day_start(filters.date_to + timedelta(days=1))
+    return since, until
+
+
+def _day_start(day: date) -> datetime:
+    # o dia começa no fuso de Brasília, e o banco compara as datas em UTC
+    return datetime.combine(day, time.min, BUSINESS_TZ).astimezone(UTC)
+
+
+def _sale_read(part: PurchasePart) -> SaleRead:
+    purchase = part.purchase
+    return SaleRead.model_validate(
+        part,
+        update={
+            "purchase_public_id": purchase.public_id,
+            "apartment_public_id": purchase.apartment_public_id,
+            "building_name": purchase.apartment.building_name,
+            "purchased_at": purchase.created_at,
+        },
+    )
