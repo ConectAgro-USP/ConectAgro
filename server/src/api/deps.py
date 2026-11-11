@@ -13,11 +13,13 @@ from src.core.security import decode_access_token
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
+from src.models.review import ReviewAuthor
 from src.models.user import User
 from src.repository.farmer_search_repository import FarmerSearchRepository
 from src.repository.product_repository import ProductRepository
 from src.repository.profile_repository import ProfileRepository
 from src.repository.purchase_repository import PurchaseRepository
+from src.repository.review_repository import ReviewRepository
 from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
@@ -29,6 +31,7 @@ from src.services.product_search_service import ProductSearchService
 from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
 from src.services.purchase_service import PurchaseService
+from src.services.review_service import ReviewService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
 http_client = httpx.Client()
@@ -185,6 +188,27 @@ def get_current_buyer(current_user: CurrentUser) -> Buyer:
 
 
 CurrentBuyer = Annotated[Buyer, Depends(get_current_buyer)]
+
+
+def get_current_review_author(current_user: CurrentUser) -> ReviewAuthor:
+    apartment = current_user.apartment
+    if apartment is not None:
+        return ReviewAuthor(building_id=apartment.id, apartment_id=apartment.id)
+    if current_user.buyer is None:
+        message = "Acesso permitido apenas para moradores e síndicos"
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+    buyer = get_current_buyer(current_user)
+    return ReviewAuthor(building_id=buyer.apartment_id, buyer_id=buyer.id)
+
+
+CurrentReviewAuthor = Annotated[ReviewAuthor, Depends(get_current_review_author)]
+
+
+def get_review_service(session: SessionDep, purchases: PurchaseRepositoryDep) -> ReviewService:
+    return ReviewService(ReviewRepository(session), purchases)
+
+
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 
 
 def get_osrm_connector() -> OsrmConnector:
