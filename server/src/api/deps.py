@@ -17,6 +17,7 @@ from src.models.user import User
 from src.repository.farmer_search_repository import FarmerSearchRepository
 from src.repository.product_repository import ProductRepository
 from src.repository.profile_repository import ProfileRepository
+from src.repository.purchase_repository import PurchaseRepository
 from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
@@ -27,6 +28,7 @@ from src.services.farmer_search_service import FarmerSearchService
 from src.services.product_search_service import ProductSearchService
 from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
+from src.services.purchase_service import PurchaseService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
 http_client = httpx.Client()
@@ -135,6 +137,20 @@ def get_product_search_service(products: ProductRepositoryDep) -> ProductSearchS
 
 
 ProductSearchServiceDep = Annotated[ProductSearchService, Depends(get_product_search_service)]
+
+
+def get_purchase_repository(session: SessionDep) -> PurchaseRepository:
+    return PurchaseRepository(session)
+
+
+PurchaseRepositoryDep = Annotated[PurchaseRepository, Depends(get_purchase_repository)]
+
+
+def get_purchase_service(purchases: PurchaseRepositoryDep) -> PurchaseService:
+    return PurchaseService(purchases)
+
+
+PurchaseServiceDep = Annotated[PurchaseService, Depends(get_purchase_service)]
 
 
 def get_current_farmer(current_user: CurrentUser) -> Farmer:
