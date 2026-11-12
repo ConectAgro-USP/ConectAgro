@@ -1,4 +1,5 @@
 import {
+  HandCoinsIcon,
   HouseIcon,
   LogOutIcon,
   MessageCircleIcon,
@@ -29,7 +30,7 @@ function chooseNavLinkClasses({ isActive }: { isActive: boolean }): string {
 }
 
 export function AppHeader() {
-  const { logout } = useAuth();
+  const { logout, profileType } = useAuth();
   const { error, pending, run } = useAction();
 
   return (
@@ -70,6 +71,12 @@ export function AppHeader() {
               {/* no celular só cabe o ícone; o leitor de tela ainda lê o nome */}
               <span className="sr-only sm:not-sr-only">Perfil</span>
             </NavLink>
+            {profileType === "farmer" && (
+              <NavLink to="/vendas" className={chooseNavLinkClasses}>
+                <HandCoinsIcon />
+                <span className="sr-only lg:not-sr-only">Minhas vendas</span>
+              </NavLink>
+            )}
             <span
               aria-hidden="true"
               className="mx-2 hidden h-8 border-l border-stone-300 sm:block"
