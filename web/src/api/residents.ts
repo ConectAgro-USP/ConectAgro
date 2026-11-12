@@ -11,8 +11,8 @@ export interface Resident {
   user: { name: string; email: string | null };
 }
 
-export function listPendingResidents(): Promise<Resident[]> {
-  return apiFetch<Resident[]>("/apartments/me/buyers?status=PENDENTE");
+export function listResidents(status: LinkStatus): Promise<Resident[]> {
+  return apiFetch<Resident[]>(`/apartments/me/buyers?${new URLSearchParams({ status })}`);
 }
 
 export function approveResident(publicId: string): Promise<Resident> {
