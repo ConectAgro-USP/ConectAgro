@@ -1,13 +1,11 @@
 import { Navigate, Outlet, Route, Routes } from "react-router";
 import { AppHeader } from "./components/AppHeader";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { BuildingPurchases } from "./pages/BuildingPurchases";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MyProfile } from "./pages/MyProfile";
-import { MySales } from "./pages/MySales";
-import { Residents } from "./pages/Residents";
 import { SignUp } from "./pages/SignUp";
+import { RESTRICTED_PAGES } from "./restrictedPages";
 
 export default function App() {
   return (
@@ -23,31 +21,14 @@ export default function App() {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        <Route
-          path="/compras"
-          element={
-            <ProtectedRoute allowedProfile="apartment">
-              <BuildingPurchases />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/moradores"
-          element={
-            <ProtectedRoute allowedProfile="apartment">
-              <Residents />
-            </ProtectedRoute>
-          }
-        />
         <Route path="/perfil" element={<MyProfile />} />
-        <Route
-          path="/vendas"
-          element={
-            <ProtectedRoute allowedProfile="farmer">
-              <MySales />
-            </ProtectedRoute>
-          }
-        />
+        {RESTRICTED_PAGES.map((page) => (
+          <Route
+            key={page.path}
+            path={page.path}
+            element={<ProtectedRoute allowedProfile={page.profile}>{page.element}</ProtectedRoute>}
+          />
+        ))}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

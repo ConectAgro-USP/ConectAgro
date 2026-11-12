@@ -1,17 +1,15 @@
 import {
-  HandCoinsIcon,
   HouseIcon,
   LogOutIcon,
   MessageCircleIcon,
-  ReceiptTextIcon,
   SearchIcon,
   ShoppingBasketIcon,
   UserIcon,
-  UsersIcon,
 } from "lucide-react";
 import { Link, NavLink } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { useAction } from "../hooks/useAction";
+import { RESTRICTED_PAGES } from "../restrictedPages";
 import { FormError } from "./FormError";
 import { Logo } from "./Logo";
 
@@ -76,29 +74,17 @@ export function AppHeader() {
             >
               <MessageCircleIcon />
             </button>
-            {profileType === "apartment" && (
-              <>
-                <NavLink to="/moradores" className={chooseNavLinkClasses}>
-                  <UsersIcon />
-                  <span className="sr-only xl:not-sr-only">Moradores</span>
-                </NavLink>
-                <NavLink to="/compras" className={chooseNavLinkClasses}>
-                  <ReceiptTextIcon />
-                  <span className="sr-only xl:not-sr-only">Compras do prédio</span>
-                </NavLink>
-              </>
-            )}
+            {RESTRICTED_PAGES.filter((page) => page.profile === profileType).map((page) => (
+              <NavLink key={page.path} to={page.path} className={chooseNavLinkClasses}>
+                <page.icon />
+                <span className="sr-only xl:not-sr-only">{page.label}</span>
+              </NavLink>
+            ))}
             <NavLink to="/perfil" className={chooseNavLinkClasses}>
               <UserIcon />
               {/* no celular só cabe o ícone; o leitor de tela ainda lê o nome */}
               <span className="sr-only sm:not-sr-only">Perfil</span>
             </NavLink>
-            {profileType === "farmer" && (
-              <NavLink to="/vendas" className={chooseNavLinkClasses}>
-                <HandCoinsIcon />
-                <span className="sr-only lg:not-sr-only">Minhas vendas</span>
-              </NavLink>
-            )}
             <span
               aria-hidden="true"
               className="mx-2 hidden h-8 border-l border-stone-300 sm:block"

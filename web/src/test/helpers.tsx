@@ -34,6 +34,18 @@ export function anaAsBuyer(linkStatus: LinkStatus): ProfileRead {
   return { ...ana, profile_type: "buyer", buyer };
 }
 
+export const anaAsFarmer: ProfileRead = {
+  ...ana,
+  profile_type: "farmer",
+  farmer: { farm_name: "Sítio Boa Vista", zip_code: "01310200" },
+};
+
+export const anaAsManager: ProfileRead = {
+  ...ana,
+  profile_type: "apartment",
+  apartment: villageVilaVerde,
+};
+
 export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   const user = overrides.user ?? null;
   return {
