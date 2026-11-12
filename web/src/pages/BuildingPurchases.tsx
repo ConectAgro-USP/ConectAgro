@@ -57,7 +57,7 @@ function PurchaseCard({ purchase }: Readonly<{ purchase: BuildingPurchase }>) {
             {/* com um produto só, o subtotal repetiria a linha de cima */}
             {part.purchase_products.length > 1 && (
               <p className="flex justify-between gap-6 border-t border-stone-400 pt-2 font-bold">
-                Subtotal
+                <span>Subtotal</span>
                 <span className="tabular-nums">{formatMoney(part.total)}</span>
               </p>
             )}
