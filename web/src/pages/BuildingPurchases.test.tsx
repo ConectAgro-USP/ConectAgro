@@ -60,6 +60,7 @@ const purchase: BuildingPurchase = {
   public_id: "compra-1",
   status: "EM PROGRESSO",
   created_at: "2026-11-10T14:00:00Z",
+  expected_delivery_date: "2026-11-20",
   closed_at: null,
   total: "48.00",
   purchase_parts: [osvaldoPart, mariaPart],
@@ -163,6 +164,14 @@ describe("BuildingPurchases", () => {
     expect(await findCard("Agricultor")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Filtrar" }));
     expect(screen.getByRole("option", { name: "Agricultor" })).toHaveValue("agricultor-3");
+  });
+
+  it("shows when the purchase is expected to arrive", async () => {
+    renderPurchases(pageOf(purchase));
+
+    const card = await findCard("Osvaldo S. e Maria F.");
+
+    expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
   });
 
   it("says when the building has no purchase yet", async () => {

@@ -20,6 +20,7 @@ function SaleCard({ sale }: Readonly<{ sale: Sale }>) {
       status={sale.status}
       statusLabel={STATUS_LABELS[sale.status]}
       orderedAt={sale.purchased_at}
+      expectedOn={sale.expected_delivery_date}
       closedAt={sale.closed_at}
       total={sale.total}
     >

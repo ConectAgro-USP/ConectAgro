@@ -21,6 +21,12 @@ export function formatDay(moment: string): string {
   return DAY.format(new Date(moment));
 }
 
+// a entrega prevista chega só com o dia, sem horário para converter
+export function formatDate(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${day}/${month}`;
+}
+
 export function formatNames(names: string[]): string {
   return NAMES.format(names);
 }

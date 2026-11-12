@@ -20,6 +20,7 @@ export interface BuildingPurchase {
   public_id: string;
   status: PurchaseStatus;
   created_at: string;
+  expected_delivery_date: string;
   closed_at: string | null;
   total: string;
   purchase_parts: PurchasePart[];

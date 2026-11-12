@@ -40,6 +40,7 @@ const sale: Sale = {
   apartment_public_id: "predio-1",
   building_name: "Cond. Village Vila Verde",
   purchased_at: "2026-11-10T14:00:00Z",
+  expected_delivery_date: "2026-11-20",
   status: "EM PROGRESSO",
   closed_at: null,
   total: "39.00",
@@ -126,6 +127,14 @@ describe("MySales", () => {
     expect(fetchMock.mock.calls[1][0]).toBe(
       "/api/farmers/me/sales?page=1&apartment_public_id=predio-2",
     );
+  });
+
+  it("shows when the sale is expected to be delivered", async () => {
+    renderSales(pageOf(sale));
+
+    const card = await findCard("Cond. Village Vila Verde");
+
+    expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
   });
 
   it("says when the farmer has no sale yet", async () => {

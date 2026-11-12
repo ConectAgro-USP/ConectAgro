@@ -38,6 +38,7 @@ function PurchaseCard({ purchase }: Readonly<{ purchase: BuildingPurchase }>) {
       status={purchase.status}
       statusLabel={STATUS_LABELS[purchase.status]}
       orderedAt={purchase.created_at}
+      expectedOn={purchase.expected_delivery_date}
       closedAt={purchase.closed_at}
       total={purchase.total}
     >

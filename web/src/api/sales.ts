@@ -11,6 +11,7 @@ export interface Sale {
   apartment_public_id: string;
   building_name: string;
   purchased_at: string;
+  expected_delivery_date: string;
   status: PurchaseStatus;
   closed_at: string | null;
   total: string;

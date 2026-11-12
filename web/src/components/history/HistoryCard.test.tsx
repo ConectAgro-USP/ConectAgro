@@ -30,6 +30,7 @@ function renderCard(props: Partial<ComponentProps<typeof HistoryCard>> = {}) {
         status="ENTREGUE"
         statusLabel="Entregue"
         orderedAt="2026-11-03T14:00:00Z"
+        expectedOn="2026-11-20"
         closedAt="2026-11-07T15:00:00Z"
         total="40.00"
         {...props}
@@ -64,12 +65,14 @@ describe("HistoryCard", () => {
     expect(card).toHaveTextContent(/Data do pedido:\s*03\/11/);
     expect(card).toHaveTextContent(/Data de entrega:\s*07\/11/);
     expect(card).toHaveTextContent(/Valor\s*R\$ 40,00/);
+    expect(card).not.toHaveTextContent("Entrega prevista");
   });
 
-  it("shows the agreed value and no closing date while the order is open", () => {
+  it("shows the agreed value and the expected delivery while the order is open", () => {
     const card = renderCard({ status: "EM PROGRESSO", statusLabel: "A caminho", closedAt: null });
 
     expect(card).toHaveTextContent(/Valor combinado\s*R\$ 40,00/);
+    expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
     expect(card).not.toHaveTextContent("Data de entrega");
   });
 

@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { PurchaseItem, PurchaseStatus } from "../../api/history";
-import { formatDay, formatMoney, formatNames } from "./format";
+import { formatDate, formatDay, formatMoney, formatNames } from "./format";
 
 const STATUS_CLASSES: Record<PurchaseStatus, string> = {
   "EM PROGRESSO": "bg-amber-700",
@@ -23,6 +23,7 @@ interface HistoryCardProps {
   status: PurchaseStatus;
   statusLabel: string;
   orderedAt: string;
+  expectedOn: string;
   closedAt: string | null;
   total: string;
   children: ReactNode;
@@ -34,6 +35,7 @@ export function HistoryCard({
   status,
   statusLabel,
   orderedAt,
+  expectedOn,
   closedAt,
   total,
   children,
@@ -66,6 +68,12 @@ export function HistoryCard({
             <dt>Data do pedido:</dt>
             <dd className="tabular-nums">{formatDay(orderedAt)}</dd>
           </div>
+          {status === "EM PROGRESSO" && (
+            <div className="flex gap-2 sm:justify-end">
+              <dt>Entrega prevista:</dt>
+              <dd className="tabular-nums">{formatDate(expectedOn)}</dd>
+            </div>
+          )}
           {closedAt && (
             <div className="flex gap-2 sm:justify-end">
               <dt>{status === "CANCELADA" ? "Data do cancelamento:" : "Data de entrega:"}</dt>
