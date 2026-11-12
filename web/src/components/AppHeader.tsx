@@ -17,15 +17,15 @@ const SEARCH_BOX_CLASSES =
 const ICON_BUTTON_CLASSES =
   "flex size-12 items-center justify-center rounded-full focus-visible:outline-2 " +
   "focus-visible:outline-lime-800 disabled:cursor-not-allowed";
-const PROFILE_LINK_CLASSES =
-  "flex h-12 items-center gap-2 rounded-full px-5 focus-visible:outline-2 " +
+const NAV_LINK_CLASSES =
+  "flex h-12 items-center gap-2 rounded-full px-3 focus-visible:outline-2 sm:px-5 " +
   "focus-visible:outline-lime-800";
 
-function chooseProfileLinkClasses({ isActive }: { isActive: boolean }): string {
+function chooseNavLinkClasses({ isActive }: { isActive: boolean }): string {
   if (isActive) {
-    return `${PROFILE_LINK_CLASSES} bg-lime-100 text-lime-800`;
+    return `${NAV_LINK_CLASSES} bg-lime-100 text-lime-800`;
   }
-  return PROFILE_LINK_CLASSES;
+  return NAV_LINK_CLASSES;
 }
 
 export function AppHeader() {
@@ -65,7 +65,7 @@ export function AppHeader() {
             >
               <MessageCircleIcon />
             </button>
-            <NavLink to="/perfil" className={chooseProfileLinkClasses}>
+            <NavLink to="/perfil" className={chooseNavLinkClasses}>
               <UserIcon />
               {/* no celular só cabe o ícone; o leitor de tela ainda lê o nome */}
               <span className="sr-only sm:not-sr-only">Perfil</span>
