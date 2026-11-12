@@ -115,7 +115,7 @@ def test_manager_sees_purchase_with_parts_items_and_totals(
     ids=["tudo", "entregue", "em-progresso", "cancelada", "desde", "depois", "ate", "pagina"],
 )
 @pytest.mark.usefixtures("purchases")
-def test_filters_change_the_list_and_only_period_changes_totals(
+def test_filters_change_the_list_and_status_and_page_keep_the_totals(
     client: TestClient, params: dict, purchase_totals: list[str], realized: str, expected: str
 ):
     body = client.get(URL, params=params).json()
@@ -125,13 +125,17 @@ def test_filters_change_the_list_and_only_period_changes_totals(
 
 
 @pytest.mark.usefixtures("purchases")
-def test_filter_by_farmer_keeps_the_whole_purchase(client: TestClient, lettuce: Product):
+def test_filter_by_farmer_keeps_the_whole_purchase_and_sums_only_that_farmer(
+    client: TestClient, lettuce: Product, potato: Product
+):
     body = client.get(URL, params={"farmer_public_id": str(lettuce.farmer.public_id)}).json()
+    of_maria = client.get(URL, params={"farmer_public_id": str(potato.farmer.public_id)}).json()
     invalid = client.get(URL, params={"farmer_public_id": "joao"})
 
     assert [purchase["total"] for purchase in body["items"]] == ["5.00", "7.50", "6.50"]
     assert [len(purchase["purchase_parts"]) for purchase in body["items"]] == [2, 2, 2]
-    assert (body["total"], body["realized_total"], body["expected_total"]) == (3, "14.00", "5.00")
+    assert (body["total"], body["realized_total"], body["expected_total"]) == (3, "10.00", "5.00")
+    assert (of_maria["realized_total"], of_maria["expected_total"]) == ("4.00", "0.00")
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 

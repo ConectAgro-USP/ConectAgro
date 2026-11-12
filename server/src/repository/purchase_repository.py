@@ -87,21 +87,32 @@ class PurchaseRepository:
         return self._page(statement, filters), self.session.exec(count).one()
 
     def sales_totals(
-        self, farmer_id: int, since: datetime | None, until: datetime | None
+        self, farmer_id: int, filters: SalesFilters, since: datetime | None, until: datetime | None
     ) -> dict[PurchaseStatus, Decimal]:
-        return self._totals(PurchasePart.farmer_id == farmer_id, since, until)
+        conditions = [PurchasePart.farmer_id == farmer_id, *_in_period(since, until)]
+        if filters.apartment_public_id is not None:
+            of_building = Apartment.public_id == filters.apartment_public_id
+            conditions.append(Purchase.apartment.has(of_building))
+        return self._totals(conditions)
 
     def building_totals(
-        self, apartment_id: int, since: datetime | None, until: datetime | None
+        self,
+        apartment_id: int,
+        filters: BuildingPurchasesFilters,
+        since: datetime | None,
+        until: datetime | None,
     ) -> dict[PurchaseStatus, Decimal]:
-        return self._totals(Purchase.apartment_id == apartment_id, since, until)
+        conditions = [Purchase.apartment_id == apartment_id, *_in_period(since, until)]
+        if filters.farmer_public_id is not None:
+            # com o filtro, o total soma só as partes daquele agricultor
+            of_farmer = Farmer.public_id == filters.farmer_public_id
+            conditions.append(PurchasePart.farmer.has(of_farmer))
+        return self._totals(conditions)
 
-    def _totals(
-        self, owner, since: datetime | None, until: datetime | None
-    ) -> dict[PurchaseStatus, Decimal]:
+    def _totals(self, conditions: list) -> dict[PurchaseStatus, Decimal]:
         value = func.sum(PurchaseProduct.quantity * PurchaseProduct.unit_price)
         statement = select(PurchasePart.status, value).join(Purchase).join(PurchaseProduct)
-        statement = statement.where(owner, *_in_period(since, until))
+        statement = statement.where(*conditions)
         return dict(self.session.exec(statement.group_by(PurchasePart.status)).all())
 
     def _page(self, statement, filters: PurchaseHistoryFilters) -> list:

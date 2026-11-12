@@ -110,7 +110,7 @@ def test_farmer_sees_only_own_part_with_items_and_total(
     ids=["tudo", "entregue", "desde", "depois", "ate", "vazio"],
 )
 @pytest.mark.usefixtures("sales")
-def test_sales_filters_change_the_list_and_only_period_changes_totals(
+def test_sales_filters_change_the_list_and_status_keeps_the_totals(
     client: TestClient, params: dict, sale_totals: list[str], realized: str, expected: str
 ):
     body = client.get(URL, params=params).json()
@@ -125,7 +125,9 @@ def test_sales_filter_by_building_and_pagination(client: TestClient, other_build
     second_page = client.get(URL, params={"page": 2, "page_size": 1}).json()
 
     assert [sale["building_name"] for sale in by_building.json()["items"]] == ["Edifício Bauru"]
-    assert (by_building.json()["total"], by_building.json()["realized_total"]) == (1, "2.50")
+    # os totais somam só as vendas para o prédio do filtro
+    assert (by_building.json()["total"], by_building.json()["realized_total"]) == (1, "0.00")
+    assert by_building.json()["expected_total"] == "5.00"
     assert [sale["total"] for sale in second_page["items"]] == ["5.00"]
     assert (second_page["total"], second_page["total_pages"]) == (3, 3)
 

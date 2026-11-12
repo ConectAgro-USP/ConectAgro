@@ -114,7 +114,7 @@ class PurchaseService:
     def list_sales(self, farmer: Farmer, filters: SalesFilters) -> SalesHistory:
         since, until = _period(filters)
         parts, count = self.purchases.list_sales(farmer.id, filters, since, until)
-        totals = self.purchases.sales_totals(farmer.id, since, until)
+        totals = self.purchases.sales_totals(farmer.id, filters, since, until)
         sales = [_sale_read(part) for part in parts]
         return _history_page(SalesHistory, sales, filters, count, totals)
 
@@ -125,7 +125,7 @@ class PurchaseService:
         purchases, count = self.purchases.list_building_purchases(
             apartment.id, filters, since, until
         )
-        totals = self.purchases.building_totals(apartment.id, since, until)
+        totals = self.purchases.building_totals(apartment.id, filters, since, until)
         items = [BuildingPurchaseRead.model_validate(purchase) for purchase in purchases]
         return _history_page(BuildingPurchasesHistory, items, filters, count, totals)
 
