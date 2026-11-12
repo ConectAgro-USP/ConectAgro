@@ -5,7 +5,7 @@ import { NO_FILTERS, type HistoryFilters, type PurchaseStatus } from "../../api/
 import type { History } from "../../hooks/useHistory";
 import { SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
-import { formatMoney } from "./format";
+import { formatMoney } from "../../format";
 import { HistoryFilterFields } from "./HistoryFilterFields";
 
 const TITLE_BAR_CLASSES =

@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { PurchaseItem, PurchaseStatus } from "../../api/history";
-import { formatDate, formatDay, formatMoney, formatNames } from "./format";
+import { formatDate, formatDay, formatMoney, formatNames } from "../../format";
 
 const STATUS_CLASSES: Record<PurchaseStatus, string> = {
   "EM PROGRESSO": "bg-amber-700",

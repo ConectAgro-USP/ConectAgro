@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { groupByMonth } from "./format";
+import { groupByMonth } from "../../format";
 
 interface HistoryMonthsProps<Item> {
   items: Item[];

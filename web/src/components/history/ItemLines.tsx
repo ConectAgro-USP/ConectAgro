@@ -1,5 +1,5 @@
 import type { PurchaseItem } from "../../api/history";
-import { formatMoney } from "./format";
+import { formatMoney } from "../../format";
 
 export function ItemLines({ items }: Readonly<{ items: PurchaseItem[] }>) {
   return (

@@ -4,7 +4,7 @@ import {
   type BuildingPurchase,
   type PurchasePart,
 } from "../api/purchases";
-import { formatDay, formatMoney } from "../components/history/format";
+import { formatDay, formatMoney } from "../format";
 import { HistoryCard } from "../components/history/HistoryCard";
 import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
