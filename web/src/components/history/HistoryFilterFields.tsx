@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import type { HistoryFilters, PurchaseStatus } from "../../api/history";
+import type { Counterpart, HistoryFilters, PurchaseStatus } from "../../api/history";
 import { TextField } from "../TextField";
 
 const SELECT_CLASSES =
@@ -39,7 +39,7 @@ interface HistoryFilterFieldsProps {
   onChange: (filters: HistoryFilters) => void;
   statusLabels: Record<PurchaseStatus, string>;
   counterpartLabel: string;
-  counterparts: Map<string, string>;
+  counterparts: Counterpart[];
 }
 
 export function HistoryFilterFields({
@@ -87,9 +87,10 @@ export function HistoryFilterFields({
         value={filters.counterpartId}
         onChange={(counterpartId) => change({ counterpartId })}
       >
-        {[...counterparts].map(([id, name]) => (
-          <option key={id} value={id}>
-            {name}
+        {counterparts.map((counterpart) => (
+          <option key={counterpart.public_id} value={counterpart.public_id}>
+            {/* quem entrou sem o nome do Google chega sem nome da API */}
+            {counterpart.name || counterpartLabel}
           </option>
         ))}
       </SelectField>

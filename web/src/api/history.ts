@@ -11,12 +11,19 @@ export interface PurchaseItem {
   subtotal: string;
 }
 
+// o agricultor ou o prédio do outro lado do pedido
+export interface Counterpart {
+  public_id: string;
+  name: string;
+}
+
 export interface HistoryPage<Item> {
   items: Item[];
   page: number;
   total_pages: number;
   realized_total: string;
   expected_total: string;
+  counterparts: Counterpart[];
 }
 
 // o que a pessoa escolheu nos filtros, vazio quer dizer sem filtro

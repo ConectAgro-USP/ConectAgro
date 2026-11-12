@@ -22,11 +22,6 @@ function farmerName(part: PurchasePart): string {
   return part.farmer_short_name || "Agricultor";
 }
 
-function farmersOf(purchases: BuildingPurchase[]): [id: string, name: string][] {
-  const parts = purchases.flatMap((purchase) => purchase.purchase_parts);
-  return parts.map((part) => [part.farmer_public_id, farmerName(part)]);
-}
-
 function partStatus(part: PurchasePart): string {
   const label = STATUS_LABELS[part.status];
   if (part.closed_at === null) {
@@ -69,7 +64,7 @@ function PurchaseCard({ purchase }: Readonly<{ purchase: BuildingPurchase }>) {
 }
 
 export function BuildingPurchases() {
-  const history = useHistory(listBuildingPurchases, farmersOf);
+  const history = useHistory(listBuildingPurchases);
 
   return (
     <HistoryLayout

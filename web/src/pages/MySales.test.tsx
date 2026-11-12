@@ -51,6 +51,10 @@ const otherBuildingSale: Sale = {
   apartment_public_id: "predio-2",
   building_name: "Edifício Jardim das Acácias",
 };
+const buildings = [
+  { public_id: "predio-1", name: "Cond. Village Vila Verde" },
+  { public_id: "predio-2", name: "Edifício Jardim das Acácias" },
+];
 
 function pageOf(...sales: Sale[]): Response {
   return jsonResponse({
@@ -59,6 +63,7 @@ function pageOf(...sales: Sale[]): Response {
     total_pages: 1,
     realized_total: "21.00",
     expected_total: "39.00",
+    counterparts: buildings,
   });
 }
 

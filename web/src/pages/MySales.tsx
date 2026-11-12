@@ -12,10 +12,6 @@ const STATUS_LABELS: Record<PurchaseStatus, string> = {
   CANCELADA: "Cancelada",
 };
 
-function buildingsOf(sales: Sale[]): [id: string, name: string][] {
-  return sales.map((sale) => [sale.apartment_public_id, sale.building_name]);
-}
-
 function SaleCard({ sale }: Readonly<{ sale: Sale }>) {
   return (
     <HistoryCard
@@ -33,7 +29,7 @@ function SaleCard({ sale }: Readonly<{ sale: Sale }>) {
 }
 
 export function MySales() {
-  const history = useHistory(listSales, buildingsOf);
+  const history = useHistory(listSales);
 
   return (
     <HistoryLayout

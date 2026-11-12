@@ -64,6 +64,12 @@ const purchase: BuildingPurchase = {
   total: "48.00",
   purchase_parts: [osvaldoPart, mariaPart],
 };
+// a API lista todos os agricultores do prédio, e um deles entrou sem nome
+const farmers = [
+  { public_id: "agricultor-3", name: "" },
+  { public_id: "agricultor-2", name: "Maria F." },
+  { public_id: "agricultor-1", name: "Osvaldo S." },
+];
 
 function pageOf(...purchases: BuildingPurchase[]): Response {
   return jsonResponse({
@@ -72,6 +78,7 @@ function pageOf(...purchases: BuildingPurchase[]): Response {
     total_pages: 1,
     realized_total: "18.00",
     expected_total: "30.00",
+    counterparts: farmers,
   });
 }
 
@@ -154,6 +161,8 @@ describe("BuildingPurchases", () => {
     renderPurchases(pageOf({ ...purchase, purchase_parts: [nameless] }));
 
     expect(await findCard("Agricultor")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Filtrar" }));
+    expect(screen.getByRole("option", { name: "Agricultor" })).toHaveValue("agricultor-3");
   });
 
   it("says when the building has no purchase yet", async () => {

@@ -14,17 +14,17 @@ const STATUS_LABELS = { "EM PROGRESSO": "A caminho", ENTREGUE: "Entregue", CANCE
 const LOAD_MORE = "Mostrar pedidos mais antigos";
 const feira: Order = { store_id: "loja-1", store: "Feira da Vila" };
 const horta: Order = { store_id: "loja-2", store: "Horta do Bairro" };
+const STORES = [
+  { public_id: "loja-1", name: "Feira da Vila" },
+  { public_id: "loja-2", name: "Horta do Bairro" },
+];
 
 function loadOrders(filters: HistoryFilters, page: number) {
   return fetchHistory<Order>("/orders", "store_id", filters, page);
 }
 
-function storesOf(orders: Order[]): [id: string, name: string][] {
-  return orders.map((order) => [order.store_id, order.store]);
-}
-
 function Orders() {
-  const history = useHistory(loadOrders, storesOf);
+  const history = useHistory(loadOrders);
 
   return (
     <HistoryLayout
@@ -44,8 +44,8 @@ function Orders() {
 }
 
 function pageOf(items: Order[], extra: Partial<HistoryPage<Order>> = {}): Response {
-  const page = { items, page: 1, total_pages: 1, realized_total: "0.00", expected_total: "0.00" };
-  return jsonResponse({ ...page, ...extra });
+  const totals = { realized_total: "0.00", expected_total: "0.00" };
+  return jsonResponse({ items, page: 1, total_pages: 1, ...totals, counterparts: STORES, ...extra });
 }
 
 function renderOrders(...responses: Response[]) {
@@ -140,14 +140,19 @@ describe("HistoryLayout", () => {
     expect(lastUrl(fetchMock)).toBe("/api/orders?page=1&store_id=loja-2");
   });
 
-  it("still offers in the filter who left the list", async () => {
-    renderOrders(pageOf([feira, horta]), pageOf([horta]));
+  it("offers in the filter everyone the API lists, even out of the page", async () => {
+    renderOrders(pageOf([feira]));
     await openFilters();
 
-    await userEvent.selectOptions(screen.getByLabelText("Loja"), "Horta do Bairro");
-
-    await expectOrders("Horta do Bairro");
     expect(screen.getByRole("option", { name: "Feira da Vila" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Horta do Bairro" })).toBeInTheDocument();
+  });
+
+  it("names after the field who comes without a name", async () => {
+    renderOrders(pageOf([feira], { counterparts: [{ public_id: "loja-3", name: "" }] }));
+    await openFilters();
+
+    expect(screen.getByRole("option", { name: "Loja" })).toHaveValue("loja-3");
   });
 
   it("counts the filters in use and clears them", async () => {
@@ -295,6 +300,7 @@ describe("HistoryLayout", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     await expectOrders();
+    expect(screen.getByRole("option", { name: "Horta do Bairro" })).toBeInTheDocument();
   });
 
   it.each([401, 403])("reloads the user when the API answers %i", async (status) => {

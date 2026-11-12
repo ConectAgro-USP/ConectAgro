@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { ApiError, errorMessage } from "../api/client";
-import { NO_FILTERS, type HistoryFilters, type HistoryPage } from "../api/history";
+import {
+  NO_FILTERS,
+  type Counterpart,
+  type HistoryFilters,
+  type HistoryPage,
+} from "../api/history";
 import { useAuth } from "../auth/AuthContext";
 
 interface Query {
@@ -15,13 +20,12 @@ interface Loaded<Item> {
 }
 
 type LoadPage<Item> = (filters: HistoryFilters, page: number) => Promise<HistoryPage<Item>>;
-type CounterpartsOf<Item> = (items: Item[]) => [id: string, name: string][];
 
 export interface History<Item> {
   filters: HistoryFilters;
   changeFilters: (filters: HistoryFilters) => void;
   items: Item[];
-  counterparts: Map<string, string>;
+  counterparts: Counterpart[];
   lastPage: HistoryPage<Item> | undefined;
   hasMore: boolean;
   loading: boolean;
@@ -33,15 +37,12 @@ export interface History<Item> {
 
 const NO_ACCESS = new Set([401, 403]);
 
-export function useHistory<Item>(
-  loadPage: LoadPage<Item>,
-  counterpartsOf: CounterpartsOf<Item>,
-): History<Item> {
+export function useHistory<Item>(loadPage: LoadPage<Item>): History<Item> {
   const { refreshUser } = useAuth();
   const [query, setQuery] = useState<Query>({ filters: NO_FILTERS, page: 1 });
   const [loaded, setLoaded] = useState<Loaded<Item>>({ query: null, pages: [] });
-  // guarda quem já apareceu, para o filtro lembrar de quem saiu da lista
-  const [counterparts, setCounterparts] = useState(new Map<string, string>());
+  // fica fora das páginas, para o filtro não esvaziar quando um pedido falha
+  const [counterparts, setCounterparts] = useState<Counterpart[]>([]);
   const [error, setError] = useState("");
   const lastPage = loaded.pages.at(-1);
   const loading = loaded.query !== query;
@@ -77,7 +78,7 @@ export function useHistory<Item>(
         const result = await loadPage(query.filters, query.page);
         if (outdated) return;
         replaceFromThisPage([result]);
-        setCounterparts((known) => new Map([...known, ...counterpartsOf(result.items)]));
+        setCounterparts(result.counterparts);
       } catch (loadError) {
         if (outdated) return;
         replaceFromThisPage([]);
@@ -93,7 +94,7 @@ export function useHistory<Item>(
     return () => {
       outdated = true;
     };
-  }, [loadPage, counterpartsOf, query, refreshUser]);
+  }, [loadPage, query, refreshUser]);
 
   return {
     filters: query.filters,
