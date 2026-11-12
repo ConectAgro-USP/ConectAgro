@@ -137,10 +137,15 @@ describe("MySales", () => {
     expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
   });
 
-  it("says when the farmer has no sale yet", async () => {
+  it("invites the farmer without sales to the home", async () => {
     renderSales(pageOf());
 
-    expect(await screen.findByText("Você ainda não fez nenhuma venda")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Você ainda não fez vendas, confira a página inicial e ofereça os seus produtos hoje",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ir para a página inicial" })).toBeInTheDocument();
   });
 
   it("opens at /vendas for the farmer", async () => {

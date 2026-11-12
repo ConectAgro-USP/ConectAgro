@@ -174,10 +174,15 @@ describe("BuildingPurchases", () => {
     expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
   });
 
-  it("says when the building has no purchase yet", async () => {
+  it("invites the manager without purchases to the home", async () => {
     renderPurchases(pageOf());
 
-    expect(await screen.findByText("O prédio ainda não fez nenhuma compra")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Você ainda não fez compras, confira a página inicial e faça a sua primeira compra hoje",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ir para a página inicial" })).toBeInTheDocument();
   });
 
   it("opens at /compras for the manager", async () => {

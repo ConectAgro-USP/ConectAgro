@@ -73,7 +73,9 @@ export function BuildingPurchases() {
       history={history}
       statusLabels={STATUS_LABELS}
       counterpartLabel="Agricultor"
-      emptyMessage="O prédio ainda não fez nenhuma compra"
+      emptyMessage={
+        "Você ainda não fez compras, confira a página inicial e faça a sua primeira compra hoje"
+      }
     >
       <HistoryMonths items={history.items} dateOf={(purchase) => purchase.created_at}>
         {(purchase) => <PurchaseCard key={purchase.public_id} purchase={purchase} />}

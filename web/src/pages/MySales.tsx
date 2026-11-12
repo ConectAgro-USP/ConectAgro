@@ -38,7 +38,9 @@ export function MySales() {
       history={history}
       statusLabels={STATUS_LABELS}
       counterpartLabel="Prédio"
-      emptyMessage="Você ainda não fez nenhuma venda"
+      emptyMessage={
+        "Você ainda não fez vendas, confira a página inicial e ofereça os seus produtos hoje"
+      }
     >
       <HistoryMonths items={history.items} dateOf={(sale) => sale.purchased_at}>
         {(sale) => <SaleCard key={sale.purchase_public_id} sale={sale} />}

@@ -21,6 +21,10 @@ const FILTER_BUTTON_CLASSES =
 const CLEAR_BUTTON_CLASSES =
   "mt-2 rounded py-2 font-bold text-lime-800 underline focus-visible:outline-2 " +
   "focus-visible:outline-lime-800";
+const HOME_LINK_CLASSES =
+  "flex h-14 items-center rounded-full bg-lime-800 px-8 text-base font-bold text-white " +
+  "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "focus-visible:outline-lime-800";
 
 function countActive(filters: HistoryFilters): number {
   return Object.values(filters).filter((value) => value !== "").length;
@@ -109,9 +113,16 @@ export function HistoryLayout({
           {children}
         </div>
         {empty && (
-          <p className="pt-12 text-center text-xl">
-            {activeFilters === 0 ? emptyMessage : "Nenhum pedido com esses filtros"}
-          </p>
+          <div className="flex flex-col items-center gap-6 pt-12 text-center text-xl">
+            <p className="max-w-xl">
+              {activeFilters === 0 ? emptyMessage : "Nenhum pedido com esses filtros"}
+            </p>
+            {activeFilters === 0 && (
+              <Link to="/" className={HOME_LINK_CLASSES}>
+                Ir para a página inicial
+              </Link>
+            )}
+          </div>
         )}
         <div className="flex flex-col items-center gap-4 pt-10">
           {/* fica sempre no HTML para o leitor de tela anunciar a mudança */}

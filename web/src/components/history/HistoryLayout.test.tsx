@@ -194,10 +194,14 @@ describe("HistoryLayout", () => {
     expect(screen.getByRole("list").parentElement).toHaveAttribute("aria-busy", "false");
   });
 
-  it("says when there is no order yet, without totals", async () => {
+  it("invites to the home when there is no order yet, without totals", async () => {
     renderOrders(pageOf([], { total_pages: 0 }));
 
     expect(await screen.findByText("Nenhum pedido ainda")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ir para a página inicial" })).toHaveAttribute(
+      "href",
+      "/",
+    );
     expect(screen.queryByText("Total entregue")).not.toBeInTheDocument();
   });
 
@@ -209,6 +213,7 @@ describe("HistoryLayout", () => {
 
     expect(await screen.findByText("Nenhum pedido com esses filtros")).toBeInTheDocument();
     expect(screen.queryByText("Nenhum pedido ainda")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ir para a página inicial" })).not.toBeInTheDocument();
   });
 
   it("adds the older orders below the ones on screen", async () => {
