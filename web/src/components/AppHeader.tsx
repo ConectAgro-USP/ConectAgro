@@ -2,6 +2,7 @@ import {
   HouseIcon,
   LogOutIcon,
   MessageCircleIcon,
+  ReceiptTextIcon,
   SearchIcon,
   ShoppingBasketIcon,
   UserIcon,
@@ -29,7 +30,7 @@ function chooseNavLinkClasses({ isActive }: { isActive: boolean }): string {
 }
 
 export function AppHeader() {
-  const { logout } = useAuth();
+  const { logout, profileType } = useAuth();
   const { error, pending, run } = useAction();
 
   return (
@@ -65,6 +66,12 @@ export function AppHeader() {
             >
               <MessageCircleIcon />
             </button>
+            {profileType === "apartment" && (
+              <NavLink to="/compras" className={chooseNavLinkClasses}>
+                <ReceiptTextIcon />
+                <span className="sr-only lg:not-sr-only">Compras do prédio</span>
+              </NavLink>
+            )}
             <NavLink to="/perfil" className={chooseNavLinkClasses}>
               <UserIcon />
               {/* no celular só cabe o ícone; o leitor de tela ainda lê o nome */}

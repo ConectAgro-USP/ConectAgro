@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from "react-router";
 import { AppHeader } from "./components/AppHeader";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { BuildingPurchases } from "./pages/BuildingPurchases";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MyProfile } from "./pages/MyProfile";
@@ -20,6 +21,14 @@ export default function App() {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route
+          path="/compras"
+          element={
+            <ProtectedRoute allowedProfile="apartment">
+              <BuildingPurchases />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/perfil" element={<MyProfile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
