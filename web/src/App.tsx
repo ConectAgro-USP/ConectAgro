@@ -6,6 +6,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MyProfile } from "./pages/MyProfile";
 import { MySales } from "./pages/MySales";
+import { Residents } from "./pages/Residents";
 import { SignUp } from "./pages/SignUp";
 
 export default function App() {
@@ -27,6 +28,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedProfile="apartment">
               <BuildingPurchases />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/moradores"
+          element={
+            <ProtectedRoute allowedProfile="apartment">
+              <Residents />
             </ProtectedRoute>
           }
         />

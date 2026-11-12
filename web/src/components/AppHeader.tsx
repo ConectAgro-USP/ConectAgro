@@ -7,6 +7,7 @@ import {
   SearchIcon,
   ShoppingBasketIcon,
   UserIcon,
+  UsersIcon,
 } from "lucide-react";
 import { Link, NavLink } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -19,6 +20,9 @@ const SEARCH_BOX_CLASSES =
 const ICON_BUTTON_CLASSES =
   "flex size-12 items-center justify-center rounded-full focus-visible:outline-2 " +
   "focus-visible:outline-lime-800 disabled:cursor-not-allowed";
+// no celular o que ainda não funciona sai, para os links do síndico caberem na tela
+const PLACEHOLDER_BUTTON_CLASSES =
+  "hidden size-12 items-center justify-center rounded-full disabled:cursor-not-allowed sm:flex";
 const NAV_LINK_CLASSES =
   "flex h-12 items-center gap-2 rounded-full px-3 focus-visible:outline-2 sm:px-5 " +
   "focus-visible:outline-lime-800";
@@ -35,7 +39,7 @@ export function AppHeader() {
   const { error, pending, run } = useAction();
 
   return (
-    <header className="border-b border-stone-200 bg-white px-6 text-stone-900">
+    <header className="border-b border-stone-200 bg-white px-4 text-stone-900 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-2 py-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <Link to="/" className="text-3xl">
@@ -56,22 +60,33 @@ export function AppHeader() {
             <Link to="/" aria-label="Início" className={ICON_BUTTON_CLASSES}>
               <HouseIcon />
             </Link>
-            <button type="button" disabled aria-label="Carrinho" className={ICON_BUTTON_CLASSES}>
+            <button
+              type="button"
+              disabled
+              aria-label="Carrinho"
+              className={PLACEHOLDER_BUTTON_CLASSES}
+            >
               <ShoppingBasketIcon />
             </button>
             <button
               type="button"
               disabled
               aria-label="Notificações"
-              className={ICON_BUTTON_CLASSES}
+              className={PLACEHOLDER_BUTTON_CLASSES}
             >
               <MessageCircleIcon />
             </button>
             {profileType === "apartment" && (
-              <NavLink to="/compras" className={chooseNavLinkClasses}>
-                <ReceiptTextIcon />
-                <span className="sr-only lg:not-sr-only">Compras do prédio</span>
-              </NavLink>
+              <>
+                <NavLink to="/moradores" className={chooseNavLinkClasses}>
+                  <UsersIcon />
+                  <span className="sr-only xl:not-sr-only">Moradores</span>
+                </NavLink>
+                <NavLink to="/compras" className={chooseNavLinkClasses}>
+                  <ReceiptTextIcon />
+                  <span className="sr-only xl:not-sr-only">Compras do prédio</span>
+                </NavLink>
+              </>
             )}
             <NavLink to="/perfil" className={chooseNavLinkClasses}>
               <UserIcon />

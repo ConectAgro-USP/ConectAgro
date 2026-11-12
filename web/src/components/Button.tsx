@@ -7,6 +7,7 @@ const BUTTON_CLASSES =
   "focus-visible:outline-lime-800 disabled:cursor-not-allowed disabled:opacity-60";
 const PRIMARY_CLASSES = "bg-lime-800 text-white hover:bg-lime-900";
 const SECONDARY_CLASSES = "border border-stone-400 bg-white hover:bg-stone-50";
+const DANGER_CLASSES = "bg-red-700 text-white hover:bg-red-800";
 
 export function PrimaryButton({
   className = "",
@@ -33,6 +34,13 @@ export function SecondaryButton({
       className={`${BUTTON_CLASSES} ${SECONDARY_CLASSES} ${className}`}
       {...props}
     />
+  );
+}
+
+// para o que nega alguma coisa, como recusar um pedido
+export function DangerButton({ className = "", type = "button", ...props }: Readonly<ButtonProps>) {
+  return (
+    <button type={type} className={`${BUTTON_CLASSES} ${DANGER_CLASSES} ${className}`} {...props} />
   );
 }
 
