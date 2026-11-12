@@ -76,6 +76,7 @@ def test_farmer_sees_only_own_part_with_items_and_total(
         "purchase_public_id": str(purchase.public_id),
         "apartment_public_id": str(building.public_id),
         "building_name": "Edifício Araraquara",
+        "expected_delivery_date": "2030-01-01",
         "status": "ENTREGUE",
         "total": "14.00",
         "purchase_products": [

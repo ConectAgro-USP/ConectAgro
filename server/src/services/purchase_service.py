@@ -203,6 +203,7 @@ def _sale_read(part: PurchasePart) -> SaleRead:
             "apartment_public_id": purchase.apartment_public_id,
             "building_name": purchase.apartment.building_name,
             "purchased_at": purchase.created_at,
+            "expected_delivery_date": purchase.expected_delivery_date,
         },
     )
 

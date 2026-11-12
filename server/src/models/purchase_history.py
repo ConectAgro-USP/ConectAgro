@@ -36,6 +36,7 @@ class SaleRead(SQLModel):
     apartment_public_id: UUID
     building_name: str
     purchased_at: datetime
+    expected_delivery_date: date
     status: PurchaseStatus
     closed_at: datetime | None
     total: Decimal
