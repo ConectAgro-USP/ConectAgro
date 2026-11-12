@@ -86,3 +86,8 @@ export function errorMessage(error: unknown): string {
   }
   return CONNECTION_ERROR;
 }
+
+// 401 é sessão encerrada e 403 é outro perfil, nos dois a tela não serve mais
+export function lostAccess(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}

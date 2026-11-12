@@ -106,7 +106,7 @@ def test_manager_lists_residents_by_status(
     assert response.status_code == status.HTTP_200_OK
     assert len(residents) == 1
     assert residents[0]["public_id"] == str(pending.public_id)
-    assert residents[0]["user"] == {"name": "Bia Lima"}
+    assert residents[0]["user"] == {"name": "Bia Lima", "email": "bia@example.com"}
     assert residents[0]["unit"] == "11"
     assert residents[0]["link_status"] == "PENDENTE"
     assert residents[0]["link_requested_at"] is not None

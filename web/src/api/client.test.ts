@@ -1,5 +1,5 @@
 import { jsonResponse, stubFetch } from "../test/helpers";
-import { ApiError, apiFetch, errorMessage } from "./client";
+import { ApiError, apiFetch, errorMessage, lostAccess } from "./client";
 
 describe("apiFetch", () => {
   it("sends JSON with the session cookie and returns the body", async () => {
@@ -62,5 +62,16 @@ describe("errorMessage", () => {
     expect(errorMessage(new TypeError("Failed to fetch"))).toBe(
       "Não foi possível falar com o servidor. Tente novamente",
     );
+  });
+});
+
+describe("lostAccess", () => {
+  it.each([401, 403])("is true when the API answers %i", (status) => {
+    expect(lostAccess(new ApiError(status, "Sem acesso"))).toBe(true);
+  });
+
+  it("is false for other failures", () => {
+    expect(lostAccess(new ApiError(404, "Não encontrado"))).toBe(false);
+    expect(lostAccess(new TypeError("Failed to fetch"))).toBe(false);
   });
 });
