@@ -132,6 +132,19 @@ def test_sales_filter_by_building_and_pagination(client: TestClient, other_build
     assert (second_page["total"], second_page["total_pages"]) == (3, 3)
 
 
+@pytest.mark.usefixtures("sales")
+def test_sales_list_every_building_of_the_farmer_for_the_filter(
+    client: TestClient, building: Apartment, other_building: Apartment
+):
+    filtered = client.get(URL, params={"status": "ENTREGUE"}).json()
+
+    assert [sale["building_name"] for sale in filtered["items"]] == ["Edifício Araraquara"]
+    assert filtered["counterparts"] == [
+        {"public_id": str(building.public_id), "name": "Edifício Araraquara"},
+        {"public_id": str(other_building.public_id), "name": "Edifício Bauru"},
+    ]
+
+
 @pytest.mark.parametrize(
     "params",
     [{"page": 0}, {"page_size": 101}, {"status": "ABERTA"}, {"date_to": "9999-12-31"}],
@@ -154,6 +167,7 @@ def test_only_farmers_reach_their_own_sales(client: TestClient, session: Session
     logged_out = client.get(URL)
 
     assert (other_farmer["items"], other_farmer["total"]) == ([], 0)
+    assert other_farmer["counterparts"] == []
     assert (other_farmer["realized_total"], other_farmer["expected_total"]) == ("0.00", "0.00")
     assert as_manager.status_code == status.HTTP_403_FORBIDDEN
     assert logged_out.status_code == status.HTTP_401_UNAUTHORIZED

@@ -17,6 +17,7 @@ from src.models.purchase_history import (
     BuildingPurchaseRead,
     BuildingPurchasesFilters,
     BuildingPurchasesHistory,
+    CounterpartRead,
     HistoryPage,
     PurchaseHistoryFilters,
     SaleRead,
@@ -34,6 +35,7 @@ from src.services.exceptions import (
     PurchaseNotFoundError,
     PurchasePartClosedError,
 )
+from src.services.text_service import short_name
 
 
 class PurchaseService:
@@ -116,7 +118,11 @@ class PurchaseService:
         parts, count = self.purchases.list_sales(farmer.id, filters, since, until)
         totals = self.purchases.sales_totals(farmer.id, filters, since, until)
         sales = [_sale_read(part) for part in parts]
-        return _history_page(SalesHistory, sales, filters, count, totals)
+        buildings = [
+            CounterpartRead(public_id=building.public_id, name=building.building_name)
+            for building in self.purchases.list_sale_buildings(farmer.id)
+        ]
+        return _history_page(SalesHistory, sales, filters, count, totals, buildings)
 
     def list_building_purchases(
         self, apartment: Apartment, filters: BuildingPurchasesFilters
@@ -127,7 +133,12 @@ class PurchaseService:
         )
         totals = self.purchases.building_totals(apartment.id, filters, since, until)
         items = [BuildingPurchaseRead.model_validate(purchase) for purchase in purchases]
-        return _history_page(BuildingPurchasesHistory, items, filters, count, totals)
+        farmers = [
+            CounterpartRead(public_id=farmer.public_id, name=short_name(farmer.user.name))
+            for farmer in self.purchases.list_purchase_farmers(apartment.id)
+        ]
+        farmers.sort(key=lambda farmer: farmer.name)
+        return _history_page(BuildingPurchasesHistory, items, filters, count, totals, farmers)
 
     def _lock_purchase(self, public_id: UUID) -> Purchase:
         purchase = self.purchases.lock_by_public_id(public_id)
@@ -197,7 +208,12 @@ def _sale_read(part: PurchasePart) -> SaleRead:
 
 
 def _history_page(
-    model: type[HistoryPage], items: list, filters: PurchaseHistoryFilters, count: int, totals: dict
+    model: type[HistoryPage],
+    items: list,
+    filters: PurchaseHistoryFilters,
+    count: int,
+    totals: dict,
+    counterparts: list[CounterpartRead],
 ) -> HistoryPage:
     return model.from_page(
         items,
@@ -206,4 +222,5 @@ def _history_page(
         count,
         realized_total=totals.get(PurchaseStatus.ENTREGUE, ZERO),
         expected_total=totals.get(PurchaseStatus.EM_PROGRESSO, ZERO),
+        counterparts=counterparts,
     )

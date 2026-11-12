@@ -140,6 +140,27 @@ def test_filter_by_farmer_keeps_the_whole_purchase_and_sums_only_that_farmer(
 
 
 @pytest.mark.usefixtures("purchases")
+def test_history_lists_every_farmer_of_the_building_for_the_filter(
+    client: TestClient,
+    session: Session,
+    other_building: Apartment,
+    lettuce: Product,
+    potato: Product,
+):
+    # o Pedro só vendeu para outro prédio, e fica fora da lista
+    pedro = add_farmer(session, add_user(session, "pedro@example.com", name="Pedro Alves"))
+    add_purchase(session, other_building, (add_product(session, pedro, name="Couve"), 1))
+
+    filtered = client.get(URL, params={"status": "CANCELADA", "page_size": 1}).json()
+
+    assert len(filtered["items"]) == 1
+    assert filtered["counterparts"] == [
+        {"public_id": str(potato.farmer.public_id), "name": "Ana S."},
+        {"public_id": str(lettuce.farmer.public_id), "name": "João L."},
+    ]
+
+
+@pytest.mark.usefixtures("purchases")
 def test_only_the_manager_reaches_the_purchases_of_the_own_building(
     client: TestClient,
     session: Session,
@@ -162,4 +183,5 @@ def test_only_the_manager_reaches_the_purchases_of_the_own_building(
     assert as_farmer.status_code == status.HTTP_403_FORBIDDEN
     assert [purchase["total"] for purchase in other_manager["items"]] == ["10.00"]
     assert (other_manager["realized_total"], other_manager["expected_total"]) == ("10.00", "0.00")
+    assert [farmer["name"] for farmer in other_manager["counterparts"]] == ["João L."]
     assert logged_out.status_code == status.HTTP_401_UNAUTHORIZED

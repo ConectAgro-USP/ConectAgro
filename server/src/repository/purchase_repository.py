@@ -109,6 +109,16 @@ class PurchaseRepository:
             conditions.append(PurchasePart.farmer.has(of_farmer))
         return self._totals(conditions)
 
+    def list_sale_buildings(self, farmer_id: int) -> list[Apartment]:
+        of_farmer = Purchase.purchase_parts.any(PurchasePart.farmer_id == farmer_id)
+        statement = select(Apartment).where(Apartment.purchases.any(of_farmer))
+        return list(self.session.exec(statement.order_by(Apartment.building_name)).all())
+
+    def list_purchase_farmers(self, apartment_id: int) -> list[Farmer]:
+        of_building = PurchasePart.purchase.has(Purchase.apartment_id == apartment_id)
+        statement = select(Farmer).where(Farmer.purchase_parts.any(of_building))
+        return list(self.session.exec(statement.options(selectinload(Farmer.user))).all())
+
     def _totals(self, conditions: list) -> dict[PurchaseStatus, Decimal]:
         value = func.sum(PurchaseProduct.quantity * PurchaseProduct.unit_price)
         statement = select(PurchasePart.status, value).join(Purchase).join(PurchaseProduct)

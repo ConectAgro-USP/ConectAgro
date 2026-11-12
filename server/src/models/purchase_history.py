@@ -53,9 +53,16 @@ class BuildingPurchaseRead(PurchaseRead):
     purchase_parts: list[PurchasePartHistoryRead]
 
 
+class CounterpartRead(SQLModel):
+    public_id: UUID
+    name: str
+
+
 class HistoryPage[T](PaginatedResponse[T]):
     realized_total: Decimal
     expected_total: Decimal
+    # todos com quem já houve pedido, para a tela montar o filtro
+    counterparts: list[CounterpartRead]
 
 
 SalesHistory = HistoryPage[SaleRead]
