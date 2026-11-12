@@ -11,6 +11,19 @@ describe("AppHeader", () => {
     expect(screen.getByRole("link", { name: "Perfil" })).toHaveAttribute("href", "/perfil");
   });
 
+  it("links the manager to the purchases of the building", () => {
+    renderWithAuth(<AppHeader />, fakeAuth({ profileType: "apartment" }));
+
+    const link = screen.getByRole("link", { name: "Compras do prédio" });
+    expect(link).toHaveAttribute("href", "/compras");
+  });
+
+  it("hides the purchases of the building from the other profiles", () => {
+    renderWithAuth(<AppHeader />, fakeAuth({ profileType: "buyer" }));
+
+    expect(screen.queryByRole("link", { name: "Compras do prédio" })).not.toBeInTheDocument();
+  });
+
   it("logs out", async () => {
     const auth = fakeAuth();
     renderWithAuth(<AppHeader />, auth);

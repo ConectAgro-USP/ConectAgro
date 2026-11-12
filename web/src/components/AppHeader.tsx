@@ -3,6 +3,7 @@ import {
   HouseIcon,
   LogOutIcon,
   MessageCircleIcon,
+  ReceiptTextIcon,
   SearchIcon,
   ShoppingBasketIcon,
   UserIcon,
@@ -66,6 +67,12 @@ export function AppHeader() {
             >
               <MessageCircleIcon />
             </button>
+            {profileType === "apartment" && (
+              <NavLink to="/compras" className={chooseNavLinkClasses}>
+                <ReceiptTextIcon />
+                <span className="sr-only lg:not-sr-only">Compras do prédio</span>
+              </NavLink>
+            )}
             <NavLink to="/perfil" className={chooseNavLinkClasses}>
               <UserIcon />
               {/* no celular só cabe o ícone; o leitor de tela ainda lê o nome */}
