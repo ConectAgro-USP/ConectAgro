@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError, errorMessage } from "../api/client";
+import { errorMessage, lostAccess } from "../api/client";
 import {
   NO_FILTERS,
   type Counterpart,
@@ -34,8 +34,6 @@ export interface History<Item> {
   loadMore: () => void;
   retry: () => void;
 }
-
-const NO_ACCESS = new Set([401, 403]);
 
 export function useHistory<Item>(loadPage: LoadPage<Item>): History<Item> {
   const { refreshUser } = useAuth();
@@ -83,7 +81,7 @@ export function useHistory<Item>(loadPage: LoadPage<Item>): History<Item> {
         if (outdated) return;
         replaceFromThisPage([]);
         setError(errorMessage(loadError));
-        if (loadError instanceof ApiError && NO_ACCESS.has(loadError.status)) {
+        if (lostAccess(loadError)) {
           // sem sessão ou com outra conta, recarregar o usuário tira a pessoa da tela
           await refreshUser();
         }
