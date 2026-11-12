@@ -54,11 +54,12 @@ class Purchase(PurchaseBase, table=True):
     @property
     def status(self) -> PurchaseStatus:
         statuses = {part.status for part in self.purchase_parts}
-        if statuses == {PurchaseStatus.ENTREGUE}:
+        if not statuses or PurchaseStatus.EM_PROGRESSO in statuses:
+            return PurchaseStatus.EM_PROGRESSO
+        # sem parte em aberto, uma entrega basta para a compra contar como entregue
+        if PurchaseStatus.ENTREGUE in statuses:
             return PurchaseStatus.ENTREGUE
-        if statuses == {PurchaseStatus.CANCELADA}:
-            return PurchaseStatus.CANCELADA
-        return PurchaseStatus.EM_PROGRESSO
+        return PurchaseStatus.CANCELADA
 
     @property
     def apartment_public_id(self) -> UUID | None:

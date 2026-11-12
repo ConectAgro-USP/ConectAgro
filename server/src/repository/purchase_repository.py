@@ -126,11 +126,11 @@ def _in_period(since: datetime | None, until: datetime | None) -> list:
 
 
 def _has_status(status: PurchaseStatus):
-    # mesma regra do status da compra, que só sai de em progresso com todas as partes iguais
-    all_delivered = ~Purchase.purchase_parts.any(PurchasePart.status != PurchaseStatus.ENTREGUE)
-    all_cancelled = ~Purchase.purchase_parts.any(PurchasePart.status != PurchaseStatus.CANCELADA)
+    # mesma regra do status da compra, que fecha quando nenhuma parte está em progresso
+    has_open = Purchase.purchase_parts.any(PurchasePart.status == PurchaseStatus.EM_PROGRESSO)
+    has_delivered = Purchase.purchase_parts.any(PurchasePart.status == PurchaseStatus.ENTREGUE)
+    if status == PurchaseStatus.EM_PROGRESSO:
+        return has_open
     if status == PurchaseStatus.ENTREGUE:
-        return all_delivered
-    if status == PurchaseStatus.CANCELADA:
-        return all_cancelled
-    return ~all_delivered & ~all_cancelled
+        return ~has_open & has_delivered
+    return ~has_open & ~has_delivered

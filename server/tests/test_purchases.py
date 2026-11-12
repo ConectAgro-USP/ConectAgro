@@ -160,9 +160,9 @@ def test_farmer_cancelling_own_part_returns_only_its_stock(
     assert response.json()["status"] == "CANCELADA"
     assert stock_of(session, lettuce) == 10
     assert stock_of(session, potato) == 7
-    # com uma parte cancelada e outra entregue, a compra não fecha
-    assert purchase["status"] == "EM PROGRESSO"
-    assert purchase["closed_at"] is None
+    # sem parte em aberto a compra fecha, e a entrega da outra parte vale
+    assert purchase["status"] == "ENTREGUE"
+    assert purchase["closed_at"] is not None
 
 
 def test_manager_cancels_purchase_and_returns_the_stock_once(

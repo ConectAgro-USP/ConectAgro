@@ -144,7 +144,7 @@ class PurchaseService:
         for part in parts:
             part.status = new_status
             part.closed_at = now
-        # a compra só fecha com todas as partes no mesmo status
+        # a compra fecha junto com a última parte que estava em progresso
         if purchase.closed_at is None and purchase.status != PurchaseStatus.EM_PROGRESSO:
             purchase.closed_at = now
         self.purchases.commit()

@@ -104,8 +104,8 @@ def test_manager_sees_purchase_with_parts_items_and_totals(
     "params, purchase_totals, realized, expected",
     [
         ({}, ["0.00", "5.00", "7.50", "6.50"], "14.00", "5.00"),
-        ({"status": "ENTREGUE"}, ["6.50"], "14.00", "5.00"),
-        ({"status": "EM PROGRESSO"}, ["5.00", "7.50"], "14.00", "5.00"),
+        ({"status": "ENTREGUE"}, ["7.50", "6.50"], "14.00", "5.00"),
+        ({"status": "EM PROGRESSO"}, ["5.00"], "14.00", "5.00"),
         ({"status": "CANCELADA"}, ["0.00"], "14.00", "5.00"),
         ({"date_from": "2026-02-10"}, ["0.00", "5.00"], "0.00", "5.00"),
         ({"date_from": "2026-02-11"}, ["0.00"], "0.00", "0.00"),

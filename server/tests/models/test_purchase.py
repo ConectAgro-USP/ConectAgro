@@ -231,8 +231,9 @@ def test_purchase_product_model_validate_rejects_invalid_field(field: str, value
     [
         ([PurchaseStatus.ENTREGUE, PurchaseStatus.ENTREGUE], PurchaseStatus.ENTREGUE),
         ([PurchaseStatus.CANCELADA, PurchaseStatus.CANCELADA], PurchaseStatus.CANCELADA),
-        ([PurchaseStatus.ENTREGUE, PurchaseStatus.CANCELADA], PurchaseStatus.EM_PROGRESSO),
+        ([PurchaseStatus.ENTREGUE, PurchaseStatus.CANCELADA], PurchaseStatus.ENTREGUE),
         ([PurchaseStatus.EM_PROGRESSO, PurchaseStatus.ENTREGUE], PurchaseStatus.EM_PROGRESSO),
+        ([PurchaseStatus.EM_PROGRESSO, PurchaseStatus.CANCELADA], PurchaseStatus.EM_PROGRESSO),
     ],
 )
 def test_purchase_status_comes_from_its_parts(
