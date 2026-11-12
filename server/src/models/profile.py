@@ -1,9 +1,9 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
-from pydantic import AfterValidator, ConfigDict, StringConstraints
+from pydantic import AfterValidator, ConfigDict, StringConstraints, model_validator
 from sqlmodel import Field, SQLModel
 
 from src.services.text_service import reject_null_character
@@ -129,7 +129,15 @@ class ProfileUpdate(SQLModel):
 
 class ResidentUser(SQLModel):
     name: str
+    email: str | None
 
 
 class ResidentRead(BuyerSummary):
     user: ResidentUser
+
+    @model_validator(mode="after")
+    def keep_email_only_while_pending(self) -> Self:
+        # o e-mail serve para o síndico conferir o pedido, depois da resposta ele some
+        if self.link_status != LinkStatus.PENDENTE:
+            self.user = self.user.model_copy(update={"email": None})
+        return self
