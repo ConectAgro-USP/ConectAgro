@@ -16,10 +16,15 @@ const INVALID_FIELD_MESSAGES = new Map([
   ["building_cnpj", "CNPJ inválido"],
   ["block", "O bloco pode ter até 10 caracteres"],
   ["unit", "Informe o número do apartamento, com até 10 caracteres"],
+  ["quantity", "A quantidade deve ser um número não negativo"],
+  ["price", "O preço deve ser não negativo e ter até 2 casas decimais"],
+  ["expiration_date", "Informe uma data de validade válida"],
+  ["picture_url", "Informe uma URL de imagem válida"],
 ]);
 
 interface InvalidField {
   loc: (string | number)[];
+  msg?: string;
 }
 
 interface ErrorBody {
@@ -51,7 +56,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response));
+    throw new ApiError(response.status, await readErrorMessage(response, path));
   }
 
   if (response.status === 204) {
@@ -61,7 +66,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return response.json() as Promise<T>;
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readErrorMessage(response: Response, path: string): Promise<string> {
   let detail: string | InvalidField[] | undefined;
   try {
     const body: ErrorBody = await response.json();
@@ -76,7 +81,23 @@ async function readErrorMessage(response: Response): Promise<string> {
   if (!Array.isArray(detail) || detail.length === 0) {
     return UNEXPECTED_ERROR;
   }
-  const field = String(detail[0].loc.at(-1));
+  const invalidField = detail[0];
+  const field = String(invalidField.loc.at(-1));
+  if (field === "name" && (path === "/products" || path.startsWith("/products/"))) {
+    return "Informe o nome do produto, com até 100 caracteres";
+  }
+  if (
+    field === "expiration_date" &&
+    invalidField.msg?.includes("Não é possível cadastrar produto vencido")
+  ) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
+  if (
+    field === "expiration_date" &&
+    invalidField.msg?.includes("Atualização faz com que o produto esteja fora da validade")
+  ) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
   return INVALID_FIELD_MESSAGES.get(field) ?? UNEXPECTED_ERROR;
 }
 
