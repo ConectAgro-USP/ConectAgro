@@ -1,8 +1,15 @@
-import { HandCoinsIcon, ReceiptTextIcon, UsersIcon, type LucideIcon } from "lucide-react";
+import {
+  HandCoinsIcon,
+  PackageIcon,
+  ReceiptTextIcon,
+  UsersIcon,
+  type LucideIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { ProfileType } from "./api/profiles";
 import { BuildingPurchases } from "./pages/BuildingPurchases";
 import { MySales } from "./pages/MySales";
+import { MyProducts } from "./pages/MyProducts";
 import { Residents } from "./pages/Residents";
 
 interface RestrictedPage {
@@ -28,6 +35,13 @@ export const RESTRICTED_PAGES: RestrictedPage[] = [
     icon: ReceiptTextIcon,
     profile: "apartment",
     element: <BuildingPurchases />,
+  },
+  {
+    path: "/meus-produtos",
+    label: "Meus produtos",
+    icon: PackageIcon,
+    profile: "farmer",
+    element: <MyProducts />,
   },
   {
     path: "/vendas",
