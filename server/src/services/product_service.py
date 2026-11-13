@@ -1,13 +1,16 @@
 from uuid import UUID
 
+from src.models.buyer import LinkStatus
 from src.models.farmer import Farmer
 from src.models.product import (
     Product,
+    ProductContactRead,
     ProductCreate,
     ProductDetailRead,
     ProductFarmerRead,
     ProductUpdate,
 )
+from src.models.user import User
 from src.repository.product_repository import ProductInUseError, ProductRepository
 from src.services.exceptions import (
     NotProductOwnerError,
@@ -65,6 +68,44 @@ class ProductService:
                 raise ProductHasPurchasesError from None
             raise
 
+    def get_product_contact(self, public_id: UUID, current_user: User) -> ProductContactRead:
+        if current_user.apartment is not None:
+            product = self._get_existing_product(public_id)
+            farmer_user = product.farmer.user
+            return ProductContactRead(
+                recipient_name=farmer_user.name,
+                cellphone=farmer_user.cellphone or None,
+                message=(
+                    f"Olá, {farmer_user.name}! Tenho interesse no produto "
+                    f"{product.name} do agricultor {farmer_user.name}."
+                ),
+            )
+
+        buyer = current_user.buyer
+        if (
+            buyer is not None
+            and buyer.link_status == LinkStatus.APROVADO
+            and buyer.apartment is not None
+        ):
+            product = self._get_existing_product(public_id)
+            manager = buyer.apartment.manager
+            farmer_name = product.farmer.user.name
+            return ProductContactRead(
+                recipient_name=manager.name,
+                cellphone=manager.cellphone or None,
+                message=(
+                    f"Olá, {manager.name}! Tenho interesse no produto "
+                    f"{product.name} do agricultor {farmer_name}."
+                ),
+            )
+
+        raise PermissionError
+
+    def _get_existing_product(self, public_id: UUID) -> Product:
+        product = self.products.get_product_by_public_id(public_id)
+        if product is None:
+            raise ProductNotFoundError
+        return product
 
 def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
     return ProductFarmerRead(
