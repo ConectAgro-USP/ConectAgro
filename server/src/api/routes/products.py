@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.deps import (
     CurrentFarmer,
+    CurrentUser,
     ProductSearchServiceDep,
     ProductServiceDep,
     get_current_user,
 )
 from src.models.product import (
+    ProductContactRead,
     ProductCreate,
     ProductDetailRead,
     ProductRead,
@@ -88,3 +90,18 @@ def delete_product(public_id: UUID, farmer: CurrentFarmer, product_service: Prod
             "Zere a quantidade para tirá-lo do catálogo"
         )
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
+
+
+@router.get("/{public_id}/contact", response_model=ProductContactRead)
+def get_product_contact(
+    public_id: UUID,
+    current_user: CurrentUser,
+    product_service: ProductServiceDep,
+):
+    try:
+        return product_service.get_product_contact(public_id, current_user)
+    except PermissionError:
+        message = "Acesso permitido apenas para moradores e síndicos"
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
+    except ProductNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, PRODUCT_NOT_FOUND) from None
