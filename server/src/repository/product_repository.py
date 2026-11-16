@@ -33,6 +33,8 @@ class ProductRepository:
             conditions.append(Product.quantity >= filters.min_quantity)
         if filters.q is not None:
             conditions.append(Product.name.icontains(filters.q, autoescape=True))
+        if filters.farmer_public_id is not None:
+            conditions.append(Product.farmer.has(Farmer.public_id == filters.farmer_public_id))
 
         ratings = self._farmer_ratings()
         statement = (
