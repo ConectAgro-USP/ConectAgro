@@ -12,7 +12,7 @@ import {
 } from "../test/helpers";
 import { ProtectedRoute } from "./ProtectedRoute";
 
-function renderRoute(user: ProfileRead | null, allowedProfile?: ProfileType) {
+function renderRoute(user: ProfileRead | null, allowedProfiles?: ProfileType[]) {
   return renderWithAuth(
     <Routes>
       <Route path="/login" element={<p>Tela de entrada</p>} />
@@ -20,7 +20,7 @@ function renderRoute(user: ProfileRead | null, allowedProfile?: ProfileType) {
       <Route
         path="/restrita"
         element={
-          <ProtectedRoute allowedProfile={allowedProfile}>
+          <ProtectedRoute allowedProfiles={allowedProfiles}>
             <p>Área restrita</p>
           </ProtectedRoute>
         }
@@ -90,14 +90,17 @@ describe("ProtectedRoute", () => {
   });
 
   it("sends another profile to the dashboard when the route is restricted", () => {
-    renderRoute({ ...ana, profile_type: "farmer" }, "apartment");
+    renderRoute({ ...ana, profile_type: "farmer" }, ["apartment", "buyer"]);
 
     expect(screen.getByText("Painel")).toBeInTheDocument();
   });
 
-  it("lets the allowed profile in when the route is restricted", () => {
-    renderRoute({ ...ana, profile_type: "apartment" }, "apartment");
+  it.each<ProfileType>(["apartment", "buyer"])(
+    "lets the allowed %s profile in when the route is restricted",
+    (profile) => {
+      renderRoute({ ...anaAsBuyer("APROVADO"), profile_type: profile }, ["apartment", "buyer"]);
 
-    expect(screen.getByText("Área restrita")).toBeInTheDocument();
-  });
+      expect(screen.getByText("Área restrita")).toBeInTheDocument();
+    },
+  );
 });
