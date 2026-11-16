@@ -20,10 +20,10 @@ function stubSilentApi() {
 }
 
 describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
-  const outsiders = PROFILES.filter((profile) => profile !== page.profile);
+  const outsiders = PROFILES.filter((profile) => !page.profiles.includes(profile));
 
-  it("shows its link in the header to the profile that can open it", () => {
-    renderWithAuth(<AppHeader />, fakeAuth({ profileType: page.profile }));
+  it.each(page.profiles)("shows its link in the header to the %s profile", (profile) => {
+    renderWithAuth(<AppHeader />, fakeAuth({ profileType: profile }));
 
     expect(screen.getByRole("link", { name: page.label })).toHaveAttribute("href", page.path);
   });
@@ -34,9 +34,9 @@ describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
     expect(screen.queryByRole("link", { name: page.label })).not.toBeInTheDocument();
   });
 
-  it("opens for the profile that can use it", () => {
+  it.each(page.profiles)("opens for the %s profile", (profile) => {
     stubSilentApi();
-    renderWithAuth(<App />, fakeAuth({ user: USERS[page.profile] }), page.path);
+    renderWithAuth(<App />, fakeAuth({ user: USERS[profile] }), page.path);
 
     expect(screen.getByRole("heading", { level: 1, name: page.label })).toBeInTheDocument();
   });
@@ -54,7 +54,7 @@ describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
 describe("header links", () => {
   it("shows each profile only the links of its own pages", () => {
     for (const profile of PROFILES) {
-      const allowed = RESTRICTED_PAGES.filter((page) => page.profile === profile);
+      const allowed = RESTRICTED_PAGES.filter((page) => page.profiles.includes(profile));
       const { unmount } = renderWithAuth(<AppHeader />, fakeAuth({ profileType: profile }));
 
       const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
