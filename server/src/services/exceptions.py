@@ -58,3 +58,18 @@ class NotProductOwnerError(Exception):
 
 class ProductHasPurchasesError(Exception):
     pass
+
+
+class InterestAlreadyExistsError(Exception):
+    pass
+
+
+class InterestNotFoundError(Exception):
+    pass
+
+
+class NotInterestOwnerDeleteError(Exception):
+    pass
+
+class NotInterestOwnerUpdateError(Exception):
+    pass

@@ -358,6 +358,7 @@ def test_get_product_returns_every_product_field(
         "description": "Alface crespa",
         "picture_url": "https://example.com/alface.png",
         "quantity": 7,
+        "is_available": True,
         "price": "3.20",
         "expiration_date": FUTURE.isoformat(),
         "farmer_public_id": str(seller.public_id),
@@ -506,6 +507,7 @@ def test_catalog_lists_products_of_every_farmer(
             "description": None,
             "picture_url": None,
             "quantity": 10,
+            "is_available": True,
             "price": "2.50",
             "expiration_date": FUTURE.isoformat(),
             "farmer_public_id": str(seller.public_id),
@@ -517,6 +519,7 @@ def test_catalog_lists_products_of_every_farmer(
             "description": "Batata inglesa",
             "picture_url": None,
             "quantity": 3,
+            "is_available": True,
             "price": "4.90",
             "expiration_date": FUTURE.isoformat(),
             "farmer_public_id": str(maria.public_id),
@@ -702,6 +705,7 @@ def test_owner_updates_only_the_fields_sent(
         "description": "Alface crespa",
         "picture_url": None,
         "quantity": 4,
+        "is_available": True,
         "price": "3.00",
         "expiration_date": FUTURE.isoformat(),
         "farmer_public_id": str(farmer.public_id),
@@ -719,6 +723,7 @@ def test_owner_updates_every_field(client: TestClient, session: Session, farmer:
         "description": "Alface roxa orgânica",
         "picture_url": "https://example.com/alface-roxa.png",
         "quantity": 3,
+        "is_available": False,
         "price": "4.75",
         "expiration_date": (TODAY + timedelta(days=5)).isoformat(),
     }
@@ -1048,22 +1053,42 @@ def test_owner_removes_product(client: TestClient, session: Session, farmer: Far
     assert client.get(lettuce_url).status_code == status.HTTP_404_NOT_FOUND
 
 
-def test_removing_a_product_removes_only_its_interests(
+def test_removing_a_product_preserves_its_interest_as_unavailable(
     client: TestClient, session: Session, farmer: Farmer, building: Apartment
 ):
     lettuce = add_product(session, farmer, name="Alface")
     kale = add_product(session, farmer, name="Couve")
     resident = add_resident(session, building, add_user(session, "bia@example.com"))
-    session.add(Interest(buyer_id=resident.id, product_id=lettuce.id, quantity=2))
+    lettuce_public_id = lettuce.public_id
+    lettuce_name = lettuce.name
+    session.add(
+        Interest(
+            buyer_id=resident.id,
+            product_id=lettuce.id,
+            product_public_id_snapshot=lettuce.public_id,
+            product_name_snapshot=lettuce.name,
+            quantity=2,
+        )
+    )
     session.add(Interest(buyer_id=resident.id, product_id=kale.id, quantity=1))
     session.commit()
 
-    response = client.delete(f"/api/products/{lettuce.public_id}")
+    response = client.delete(f"/api/products/{lettuce_public_id}")
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
     session.expire_all()
     interests = session.exec(select(Interest)).all()
-    assert [interest.product_id for interest in interests] == [kale.id]
+    removed_product_interest = next(
+        interest for interest in interests if interest.product_id is None
+    )
+    remaining_product_interest = next(
+        interest for interest in interests if interest.product_id == kale.id
+    )
+    assert len(interests) == 2
+    assert removed_product_interest.product_public_id == lettuce_public_id
+    assert removed_product_interest.product_name == lettuce_name
+    assert removed_product_interest.product_status == "Indisponível"
+    assert remaining_product_interest.product_name == "Couve"
 
 
 def test_remove_product_requires_login(client: TestClient, session: Session, seller: Farmer):
