@@ -191,13 +191,13 @@ def test_api_filter_by_distance_rejects_invalid_km(client: TestClient):
         "/api/farmers",
         params={"max_distance_km": 20},
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     response_negative = client.get(
         "/api/farmers",
         params={"max_distance_km": -5},
     )
-    assert response_negative.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response_negative.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_api_result_fields_schema(client: TestClient, session: Session, apartment: Apartment):
@@ -281,7 +281,7 @@ def test_api_pagination_20_per_page(client: TestClient, session: Session):
 
 def test_api_pagination_rejects_invalid_page(client: TestClient):
     response = client.get("/api/farmers", params={"page": 0})
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 
