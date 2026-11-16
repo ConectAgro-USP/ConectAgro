@@ -12,6 +12,12 @@ const MONTH = new Intl.DateTimeFormat("pt-BR", {
   timeZone: BUSINESS_TZ,
 });
 const NAMES = new Intl.ListFormat("pt-BR", { type: "conjunction" });
+const DISTANCE = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+const RATING = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+const PERCENT = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 
 export function formatMoney(value: string): string {
   return MONEY.format(Number(value));
@@ -29,6 +35,23 @@ export function formatDate(date: string): string {
 
 export function formatNames(names: string[]): string {
   return NAMES.format(names);
+}
+
+export function formatCount(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+export function formatDistance(kilometers: number): string {
+  return `${DISTANCE.format(kilometers)} km`;
+}
+
+export function formatRating(rating: number): string {
+  return RATING.format(rating);
+}
+
+// a API manda a porcentagem de 0 a 100, e o Intl espera de 0 a 1
+export function formatPercent(percentage: number): string {
+  return PERCENT.format(percentage / 100);
 }
 
 // a lista já vem da mais nova para a mais antiga, então os meses saem em ordem
