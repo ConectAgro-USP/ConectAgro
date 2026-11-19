@@ -1,4 +1,4 @@
-# reexportadas para as rotas tratarem os erros dos connectors sem importá-los
+# Reexportadas para as rotas tratarem os erros dos connectors sem importá-los
 from src.connectors.exceptions import CepNotFoundError as CepNotFoundError
 from src.connectors.exceptions import CnpjNotFoundError as CnpjNotFoundError
 from src.connectors.exceptions import ExternalServiceError as ExternalServiceError
@@ -101,4 +101,20 @@ class NotReviewAuthorError(Exception):
 
 
 class ReviewAlreadyExistsError(Exception):
+    pass
+
+
+class InterestAlreadyExistsError(Exception):
+    pass
+
+
+class InterestNotFoundError(Exception):
+    pass
+
+
+class NotInterestOwnerDeleteError(Exception):
+    pass
+
+
+class NotInterestOwnerUpdateError(Exception):
     pass

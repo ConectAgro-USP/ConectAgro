@@ -388,6 +388,7 @@ def test_product_catalog_read_carries_only_the_farmer_id_and_short_name():
         "price",
         "expiration_date",
         "public_id",
+        "is_available",
         "created_at",
         "farmer_public_id",
         "farmer_short_name",
