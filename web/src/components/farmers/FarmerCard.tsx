@@ -93,22 +93,21 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
         <p className={count === 0 ? "text-lg text-stone-600" : "text-xl font-bold"}>
           {productsText(count)}
         </p>
-        {count > 0 && (
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={productsId}
-            aria-describedby={nameId}
-            onClick={toggleProducts}
-            className={PRODUCTS_BUTTON_CLASSES}
-          >
-            {open ? "Ocultar produtos" : "Ver produtos"}
-            <ChevronDownIcon aria-hidden="true" className={open ? "rotate-180" : ""} />
-          </button>
-        )}
+        {/* a contagem é de quando a lista carregou, então o botão aparece mesmo com zero */}
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={productsId}
+          aria-describedby={nameId}
+          onClick={toggleProducts}
+          className={PRODUCTS_BUTTON_CLASSES}
+        >
+          {open ? "Ocultar produtos" : "Ver produtos"}
+          <ChevronDownIcon aria-hidden="true" className={open ? "rotate-180" : ""} />
+        </button>
       </div>
       <div id={productsId} hidden={!open} className="mt-2 border-t border-stone-400 py-4">
-        {opened && <FarmerProducts farmerPublicId={farmer.public_id} />}
+        {opened && <FarmerProducts key={farmer.public_id} farmerPublicId={farmer.public_id} />}
       </div>
     </li>
   );

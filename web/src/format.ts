@@ -33,6 +33,12 @@ export function formatDate(date: string): string {
   return `${day}/${month}`;
 }
 
+// com o ano, para a data não ficar ambígua quando cai em outro ano
+export function formatFullDate(date: string): string {
+  const [year, month, day] = date.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 export function formatNames(names: string[]): string {
   return NAMES.format(names);
 }

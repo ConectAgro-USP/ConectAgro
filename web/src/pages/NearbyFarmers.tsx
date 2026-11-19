@@ -43,8 +43,11 @@ function DistanceFilter({ value, onChange }: Readonly<DistanceFilterProps>) {
 }
 
 export function NearbyFarmers() {
-  const farmers = usePages(searchNearbyFarmers, FIRST_DISTANCE);
+  const farmers = usePages(searchNearbyFarmers, FIRST_DISTANCE, {
+    keyOf: (farmer) => farmer.public_id,
+  });
   const distance = farmers.search;
+  const total = farmers.lastPage?.total ?? 0;
   const empty = !farmers.loading && farmers.error === "" && farmers.items.length === 0;
   const largerDistance = DISTANCES.find((option) => option > distance);
 
@@ -56,12 +59,12 @@ export function NearbyFarmers() {
           <DistanceFilter value={distance} onChange={farmers.changeSearch} />
           {/* a BrasilAPI dá o centro da cidade para muitos CEPs, então a conta é aproximada */}
           <p className="text-stone-600">
-            Distância de carro entre o centro da sua cidade e o centro da cidade do agricultor, aproximada.
+            Distância em linha reta entre o centro da sua cidade e o centro da cidade do agricultor, aproximada.
           </p>
         </div>
-        {farmers.total !== null && farmers.total > 0 && (
+        {total > 0 && (
           <p className="pt-8 text-lg text-stone-600">
-            {formatCount(farmers.total, "agricultor", "agricultores")} a até {distance} km do seu
+            {formatCount(total, "agricultor", "agricultores")} a até {distance} km do seu
             prédio
           </p>
         )}

@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { errorMessage, lostAccess } from "../api/client";
-import type { Page } from "../api/pagination";
 import { useAuth } from "../auth/AuthContext";
+
+// o que toda página da API tem, seja qual for o resto
+interface PageOf {
+  items: unknown[];
+  page: number;
+  total_pages: number;
+}
+
+type ItemOf<P extends PageOf> = P["items"][number];
 
 interface Query<Search> {
   search: Search;
@@ -9,38 +17,51 @@ interface Query<Search> {
 }
 
 // as páginas na tela e o pedido que elas respondem
-interface Loaded<Search, Item> {
+interface Loaded<Search, P> {
   query: Query<Search> | null;
-  pages: Page<Item>[];
+  pages: P[];
 }
 
-type LoadPage<Search, Item> = (search: Search, page: number) => Promise<Page<Item>>;
+type LoadPage<Search, P> = (search: Search, page: number) => Promise<P>;
 
-export interface Pages<Search, Item> {
+interface Options<P extends PageOf> {
+  // a lista da busca anterior fica na tela até a resposta da nova chegar
+  keepPrevious?: boolean;
+  // a lista pode mudar entre um pedido e outro, então a página seguinte pode repetir um item
+  keyOf?: (item: ItemOf<P>) => string;
+}
+
+export interface Pages<Search, P extends PageOf> {
   search: Search;
   changeSearch: (search: Search) => void;
-  items: Item[];
-  // null até chegar a primeira página da busca atual
-  total: number | null;
+  items: ItemOf<P>[];
+  lastPage: P | undefined;
   hasMore: boolean;
   loading: boolean;
+  // a primeira página carregando, que vai trocar a lista inteira
+  replacing: boolean;
   error: string;
   loadMore: () => void;
   retry: () => void;
 }
 
 // a busca é o que muda a lista inteira, como a distância; as páginas só a continuam
-export function usePages<Search, Item>(
-  loadPage: LoadPage<Search, Item>,
+export function usePages<Search, P extends PageOf>(
+  loadPage: LoadPage<Search, P>,
+  // só é lida ao montar, como o valor inicial do useState: para trocar de busca, chame
+  // changeSearch ou monte de novo com outra key
   firstSearch: Search,
-): Pages<Search, Item> {
+  { keepPrevious = false, keyOf }: Options<P> = {},
+): Pages<Search, P> {
   const { refreshUser } = useAuth();
   const [query, setQuery] = useState<Query<Search>>({ search: firstSearch, page: 1 });
-  const [loaded, setLoaded] = useState<Loaded<Search, Item>>({ query: null, pages: [] });
+  const [loaded, setLoaded] = useState<Loaded<Search, P>>({ query: null, pages: [] });
   const [error, setError] = useState("");
-  // a lista de outra busca sai da tela, para ninguém achar que ela responde à nova
-  const pages = loaded.query?.search === query.search ? loaded.pages : [];
+  // sem keepPrevious a lista de outra busca sai da tela, para ninguém achar que ela responde à nova
+  const pages = keepPrevious || loaded.query?.search === query.search ? loaded.pages : [];
   const lastPage = pages.at(-1);
+  const items: ItemOf<P>[] = pages.flatMap((page) => page.items);
+  const loading = loaded.query !== query;
 
   function changeSearch(search: Search) {
     if (search === query.search) return;
@@ -62,7 +83,7 @@ export function usePages<Search, Item>(
     let outdated = false;
 
     // as páginas antes desta ficam na tela, as outras dão lugar à resposta
-    function replaceFromThisPage(newPages: Page<Item>[]) {
+    function replaceFromThisPage(newPages: P[]) {
       setLoaded((previous) => ({
         query,
         pages: [...previous.pages.slice(0, query.page - 1), ...newPages],
@@ -94,10 +115,12 @@ export function usePages<Search, Item>(
   return {
     search: query.search,
     changeSearch,
-    items: pages.flatMap((page) => page.items),
-    total: lastPage?.total ?? null,
+    // o Map deixa cada chave no lugar em que ela apareceu primeiro
+    items: keyOf ? [...new Map(items.map((item) => [keyOf(item), item])).values()] : items,
+    lastPage,
     hasMore: lastPage !== undefined && lastPage.page < lastPage.total_pages,
-    loading: loaded.query !== query,
+    loading,
+    replacing: loading && query.page === 1,
     error,
     loadMore,
     retry,

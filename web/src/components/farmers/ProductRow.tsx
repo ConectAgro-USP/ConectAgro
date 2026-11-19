@@ -1,7 +1,7 @@
 import { SproutIcon } from "lucide-react";
 import { useState } from "react";
 import type { FarmerProduct } from "../../api/farmers";
-import { formatDate, formatMoney } from "../../format";
+import { formatCount, formatFullDate, formatMoney } from "../../format";
 
 const PICTURE_CLASSES = "min-h-24 w-24 shrink-0 self-stretch sm:w-40";
 const NO_PICTURE_CLASSES = `${PICTURE_CLASSES} flex items-center justify-center bg-stone-300`;
@@ -32,8 +32,6 @@ function ProductPicture({ url }: Readonly<{ url: string | null }>) {
 }
 
 export function ProductRow({ product }: Readonly<{ product: FarmerProduct }>) {
-  const available = product.quantity === 1 ? "disponível" : "disponíveis";
-
   return (
     <li className="flex overflow-hidden rounded-3xl bg-stone-50 text-left">
       <ProductPicture url={product.picture_url} />
@@ -44,8 +42,8 @@ export function ProductRow({ product }: Readonly<{ product: FarmerProduct }>) {
             <p className="line-clamp-2 break-words text-stone-600">{product.description}</p>
           )}
           <p className="text-stone-600">
-            {product.quantity} kg {available} · Vence{" "}
-            <span className="tabular-nums">{formatDate(product.expiration_date)}</span>
+            {formatCount(product.quantity, "kg disponível", "kg disponíveis")} · Vence{" "}
+            <span className="tabular-nums">{formatFullDate(product.expiration_date)}</span>
           </p>
         </div>
         <p className={PRICE_CLASSES}>

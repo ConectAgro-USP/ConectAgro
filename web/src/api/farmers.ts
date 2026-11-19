@@ -25,8 +25,8 @@ export interface FarmerProduct {
   expiration_date: string;
 }
 
-// o servidor calcula a distância até todos os agricultores em cada pedido, seja qual for a
-// página, então páginas grandes pedem menos vezes às APIs de CEP e de rotas
+// o servidor monta e ordena a lista inteira de novo a cada pedido, seja qual for a página,
+// então páginas grandes fazem menos pedidos e dão menos chance de a lista mudar entre elas
 const FARMERS_PER_PAGE = 100;
 
 export function searchNearbyFarmers(distance: Distance, page: number): Promise<Page<NearbyFarmer>> {

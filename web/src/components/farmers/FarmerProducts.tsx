@@ -5,8 +5,10 @@ import { FormError } from "../FormError";
 import { ProductRow } from "./ProductRow";
 
 export function FarmerProducts({ farmerPublicId }: Readonly<{ farmerPublicId: string }>) {
-  const products = usePages(listFarmerProducts, farmerPublicId);
-  // a contagem do cartão pode estar velha: produtos acabam ou vencem com a tela aberta
+  const products = usePages(listFarmerProducts, farmerPublicId, {
+    keyOf: (product) => product.public_id,
+  });
+  // a contagem do cartão pode estar velha: produtos chegam, acabam ou vencem com a tela aberta
   const empty = !products.loading && products.error === "" && products.items.length === 0;
 
   return (
@@ -18,7 +20,7 @@ export function FarmerProducts({ farmerPublicId }: Readonly<{ farmerPublicId: st
           ))}
         </ul>
       )}
-      {empty && <p className="text-lg">Os produtos deste agricultor acabaram ou venceram.</p>}
+      {empty && <p className="text-lg">Nenhum produto disponível agora.</p>}
       <div className="flex flex-col items-center gap-3 pt-3">
         {/* fica sempre no HTML para o leitor de tela anunciar a mudança */}
         <output className="text-stone-600">
