@@ -25,8 +25,9 @@ class ProductRepository:
     def __init__(self, session: Session):
         self.session = session
 
+
     def search(self, filters: ProductSearchFilters, today: date) -> tuple[list[Product], int]:
-        conditions = [Product.expiration_date >= today, Product.quantity > 0]
+        conditions = [Product.expiration_date >= today, Product.quantity > 0, Product.is_available]
         if filters.expiration_from is not None:
             conditions.append(Product.expiration_date >= filters.expiration_from)
         if filters.min_quantity is not None:
@@ -53,6 +54,7 @@ class ProductRepository:
         ).one()
         return [product for product, _ in rows], total
 
+
     @staticmethod
     def _farmer_ratings():
         return (
@@ -63,6 +65,7 @@ class ProductRepository:
             .group_by(Review.farmer_id)
             .subquery()
         )
+
 
     @staticmethod
     def _order_statement(statement, sort: ProductSort, query: str | None, ratings):
@@ -84,27 +87,32 @@ class ProductRepository:
             )
         return statement.order_by(rating_order, Product.created_at, Product.public_id)
 
+
     def save(self, product: Product) -> Product:
         self.session.add(product)
         self.session.commit()
         self.session.refresh(product)
         return product
 
+
     def list_products_by_farmer_id(self, farmer_id: int) -> list[Product]:
         statement = select(Product).where(Product.farmer_id == farmer_id)
         statement = statement.order_by(Product.created_at, Product.public_id)
         return list(self.session.exec(statement).all())
+
 
     def get_product_by_public_id(self, public_id: UUID) -> Product | None:
         statement = select(Product).where(Product.public_id == public_id)
         result = self.session.exec(statement).first()
         return result
 
+
     def has_purchases(self, product_id: int) -> bool:
         statement = select(PurchaseProduct.product_id).where(
             PurchaseProduct.product_id == product_id
         )
         return self.session.exec(statement.limit(1)).first() is not None
+
 
     def delete_product(self, product: Product) -> None:
         self.session.delete(product)

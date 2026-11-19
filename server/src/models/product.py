@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 INT4_MAX = 2_147_483_647
 BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
+AVAILABLE = "Disponível"
+UNAVAILABLE = "Indisponível"
 
 ProductName = Annotated[
     str,
@@ -43,6 +45,7 @@ class ProductBase(SQLModel):
     description: str | None = None
     picture_url: str | None = None
     quantity: int = Field(ge=0, le=INT4_MAX)
+    is_available: bool = Field(default=True)
     price: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
     expiration_date: date
 
@@ -63,7 +66,7 @@ class Product(ProductBase, table=True):
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
 
     farmer: Optional["Farmer"] = Relationship(back_populates="products")
-    interests: list["Interest"] = Relationship(back_populates="product", cascade_delete=True)
+    interests: list["Interest"] = Relationship(back_populates="product")
 
     @property
     def farmer_public_id(self) -> UUID | None:
@@ -89,6 +92,7 @@ class ProductUpdate(SQLModel):
     description: ProductDescription | None = None
     picture_url: PictureUrl | None = None
     quantity: int = Field(default=None, ge=0, le=INT4_MAX)
+    is_available: bool = Field(default=None)
     price: Decimal = Field(default=None, ge=0, max_digits=8, decimal_places=2)
     expiration_date: date = Field(default=None)
 
@@ -119,3 +123,9 @@ class ProductDetailRead(ProductRead):
 
 class ProductCatalogRead(ProductRead):
     farmer_short_name: str
+
+
+class ProductContactRead(SQLModel):
+    recipient_name: str
+    cellphone: str | None = None
+    message: str

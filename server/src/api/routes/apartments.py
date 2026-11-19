@@ -3,8 +3,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.api.deps import ApartmentServiceDep, CurrentApartment, PurchaseServiceDep, get_current_user
+from src.api.deps import (
+    ApartmentServiceDep,
+    CurrentApartment,
+    InterestServiceDep,
+    PurchaseServiceDep,
+    get_current_user,
+)
 from src.models.buyer import LinkStatus
+from src.models.interest import ApartmentNeedRead
 from src.models.profile import ApartmentMatch, Cnpj, ResidentRead
 from src.models.purchase_history import BuildingPurchasesFilters, BuildingPurchasesHistory
 from src.services.exceptions import InvalidCnpjError, ResidentNotFoundError
@@ -56,3 +63,12 @@ def list_my_purchases(
     purchase_service: PurchaseServiceDep,
 ):
     return purchase_service.list_building_purchases(apartment, filters)
+    
+
+@router.get("/me/needs", response_model=list[ApartmentNeedRead])
+def list_apartment_needs(
+    apartment: CurrentApartment,
+    interest_service: InterestServiceDep,
+    descending: bool = Query(default=True),
+):
+    return interest_service.list_apartment_needs(apartment, descending=descending)
