@@ -5,7 +5,6 @@ from src.connectors.exceptions import ExternalServiceError as ExternalServiceErr
 from src.connectors.exceptions import InvalidCepError as InvalidCepError
 from src.connectors.exceptions import InvalidCnpjError as InvalidCnpjError
 from src.connectors.exceptions import RateLimitedError as RateLimitedError
-from src.connectors.exceptions import RouteNotFoundError as RouteNotFoundError
 
 
 class EmailAlreadyRegisteredError(Exception):

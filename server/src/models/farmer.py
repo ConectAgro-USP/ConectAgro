@@ -15,6 +15,9 @@ class Farmer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
     zip_code: str
+    # None nos cadastros anteriores às coordenadas, que a busca por distância preenche
+    latitude: float | None = None
+    longitude: float | None = None
     # None só nos cadastros feitos antes de o nome ser pedido
     farm_name: str | None = None
 

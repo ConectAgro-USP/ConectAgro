@@ -1,26 +1,28 @@
+from haversine import haversine
+
 from src.connectors.brasilapi import BrasilApiConnector
-from src.connectors.models import Address, Coordinates, Route
-from src.connectors.osrm import OsrmConnector
+from src.connectors.models import Address, Coordinates
+from src.models.apartment import Apartment
+from src.models.farmer import Farmer
 from src.services.exceptions import CepWithoutCoordinatesError
 
 
-class CepDistance(Route):
-    origin: Address
-    destination: Address
-
-
 class DistanceService:
-    def __init__(self, ceps: BrasilApiConnector, routes: OsrmConnector):
+    def __init__(self, ceps: BrasilApiConnector):
         self.ceps = ceps
-        self.routes = routes
 
-    def between_ceps(self, origin_cep: str, destination_cep: str) -> CepDistance:
-        origin = self.ceps.get_address(origin_cep)
-        start = _require_coordinates(origin)
-        destination = self.ceps.get_address(destination_cep)
-        # para muitos CEPs a BrasilAPI dá o centro da cidade, não a rua
-        route = self.routes.get_route(start, _require_coordinates(destination))
-        return CepDistance(origin=origin, destination=destination, **route.model_dump())
+    def km_between(self, origin: Apartment | Farmer, destination: Apartment | Farmer) -> float:
+        # em linha reta, e para muitos CEPs a BrasilAPI dá o centro da cidade, não a rua
+        return round(haversine(self._point(origin), self._point(destination)), 2)
+
+    def _point(self, profile: Apartment | Farmer) -> tuple[float, float]:
+        if profile.latitude is None or profile.longitude is None:
+            # cadastro anterior às coordenadas: a busca consulta o CEP e as salva, sem conferir
+            # se ele mudou nesse meio-tempo, risco que só existe até os antigos serem salvos
+            coordinates = _require_coordinates(self.ceps.get_address(profile.zip_code))
+            profile.latitude = coordinates.latitude
+            profile.longitude = coordinates.longitude
+        return profile.latitude, profile.longitude
 
 
 def _require_coordinates(address: Address) -> Coordinates:

@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from src.api.deps import (
-    BuildingZipCode,
+    CurrentBuilding,
     CurrentFarmer,
     FarmerSearchServiceDep,
     PurchaseServiceDep,
@@ -18,12 +18,12 @@ router = APIRouter(prefix="/farmers", tags=["farmers"])
 @router.get("")
 def search_farmers(
     filters: Annotated[FarmerSearchFilters, Query()],
-    building_zip_code: BuildingZipCode,
+    building: CurrentBuilding,
     search_service: FarmerSearchServiceDep,
 ) -> FarmerSearchResponse:
     # Executa a busca e retorna os agricultores filtrados e ordenados
     try:
-        return search_service.search(filters, building_zip_code)
+        return search_service.search(filters, building)
     except ExternalServiceError:
         message = "Não foi possível calcular as distâncias agora. Tente novamente mais tarde"
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, message) from None

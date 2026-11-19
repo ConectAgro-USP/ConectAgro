@@ -161,10 +161,8 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
     create_farmer(session, name="Perto 4km", email="perto@example.com", zip_code="01001-000")
     create_farmer(session, name="Longe 12km", email="longe@example.com", zip_code="02002-000")
 
-    distances = {"01001-000": 4000.0, "02002-000": 12000.0}
-    mock_distance.between_ceps.side_effect = lambda orig, dest: MagicMock(
-        distance_m=distances[dest]
-    )
+    distances = {"01001-000": 4.0, "02002-000": 12.0}
+    mock_distance.km_between.side_effect = lambda orig, dest: distances[dest.zip_code]
 
     app.dependency_overrides[get_distance_service] = lambda: mock_distance
 
@@ -191,13 +189,13 @@ def test_api_filter_by_distance_rejects_invalid_km(client: TestClient):
         "/api/farmers",
         params={"max_distance_km": 20},
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     response_negative = client.get(
         "/api/farmers",
         params={"max_distance_km": -5},
     )
-    assert response_negative.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response_negative.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_api_result_fields_schema(client: TestClient, session: Session, apartment: Apartment):
@@ -281,7 +279,7 @@ def test_api_pagination_20_per_page(client: TestClient, session: Session):
 
 def test_api_pagination_rejects_invalid_page(client: TestClient):
     response = client.get("/api/farmers", params={"page": 0})
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 

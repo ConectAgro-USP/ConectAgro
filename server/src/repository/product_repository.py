@@ -34,6 +34,9 @@ class ProductRepository:
             conditions.append(Product.quantity >= filters.min_quantity)
         if filters.q is not None:
             conditions.append(Product.name.icontains(filters.q, autoescape=True))
+        if filters.farmer_public_id is not None:
+            farmer_id = select(Farmer.id).where(Farmer.public_id == filters.farmer_public_id)
+            conditions.append(Product.farmer_id == farmer_id.scalar_subquery())
 
         ratings = self._farmer_ratings()
         statement = (

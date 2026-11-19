@@ -64,23 +64,23 @@ class ProfileService:
     def create_farmer(self, user: User, farmer_in: FarmerCreate) -> ProfileRead:
         self._check_user_has_no_profile(user)
         self._check_cpf_is_new(farmer_in.cpf)
-        zip_code = self._check_zip_code(farmer_in.zip_code)
+        location = self._check_zip_code(farmer_in.zip_code)
 
-        farmer = Farmer(user_id=user.id, farm_name=farmer_in.farm_name, zip_code=zip_code)
+        farmer = Farmer(user_id=user.id, farm_name=farmer_in.farm_name, **location)
         return self._save_new_profile(user, farmer_in, farmer)
 
     def create_apartment(self, user: User, apartment_in: ApartmentCreate) -> ProfileRead:
         self._check_user_has_no_profile(user)
         self._check_cpf_is_new(apartment_in.cpf)
         cnpj = normalize_cnpj(apartment_in.building_cnpj)
-        zip_code = self._check_zip_code(apartment_in.zip_code)
+        location = self._check_zip_code(apartment_in.zip_code)
         # a CNPJá fica por último porque aceita poucas consultas por minuto
         company = self.cnpjs.get_active_company(cnpj)
 
         apartment = Apartment(
             manager_id=user.id,
             building_name=_building_name(company),
-            zip_code=zip_code,
+            **location,
             building_cnpj=cnpj,
             address=company.address,
         )
@@ -138,7 +138,7 @@ class ProfileService:
         if "zip_code" in new_values:
             zip_code = normalize_cep(new_values["zip_code"])
             if zip_code != profile.zip_code:
-                profile.zip_code = self._check_zip_code(zip_code)
+                profile.sqlmodel_update(self._check_zip_code(zip_code))
 
     def _update_apartment(self, apartment: Apartment, new_values: dict) -> None:
         new_cnpj = None
@@ -205,11 +205,12 @@ class ProfileService:
             raise
         return self.get_profile(user)
 
-    def _check_zip_code(self, zip_code: str) -> str:
+    def _check_zip_code(self, zip_code: str) -> dict:
         address = self.ceps.get_address(zip_code)
         if address.coordinates is None:
             raise CepWithoutCoordinatesError(address.cep)
-        return address.cep
+        # as coordenadas ficam salvas para a busca por distância não depender da BrasilAPI
+        return {"zip_code": address.cep, **address.coordinates.model_dump()}
 
     def _find_apartment(self, public_id: UUID) -> Apartment:
         apartment = self.profiles.get_apartment_by_public_id(public_id)

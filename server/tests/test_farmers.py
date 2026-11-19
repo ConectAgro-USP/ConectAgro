@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 from fastapi import status
+from haversine import haversine
 
 from src.core.security import create_access_token
 from src.models.buyer import Buyer, LinkStatus
@@ -12,7 +13,11 @@ from src.models.user import User
 from tests.connectors.fakes import fake_client
 from tests.helpers import add_farmer, add_resident, add_user, login
 
-# --- Helper de Mock para BrasilAPI e OSRM ---
+# --- Helper de Mock para BrasilAPI ---
+
+# km de um grau de latitude, para pôr cada agricultor na distância pedida
+KM_PER_DEGREE = haversine((0, 0), (1, 0))
+
 
 def setup_fake_http_connectors(
     monkeypatch,
@@ -20,7 +25,7 @@ def setup_fake_http_connectors(
     farmer_ceps_distances: dict[str, float],
 ):
     """
-    Substitui BrasilAPI e OSRM por respostas determinísticas.
+    Substitui a BrasilAPI por respostas determinísticas.
     `farmer_ceps_distances` é um dicionário {cep_agricultor: distancia_em_metros}.
     """
     clean_building_cep = building_cep.replace("-", "")
@@ -34,8 +39,8 @@ def setup_fake_http_connectors(
             cep_in_url = url_str.rstrip("/").split("/")[-1].replace("-", "")
 
             if cep_in_url == clean_building_cep or cep_in_url in clean_farmer_ceps:
-                # Gera uma latitude diferente por CEP para diferenciar no OSRM se necessário
-                lat_offset = sum(ord(c) for c in cep_in_url) % 100 / 1000.0
+                # o agricultor fica ao norte do prédio, na distância pedida em linha reta
+                lat_offset = clean_farmer_ceps.get(cep_in_url, 0.0) / 1000.0 / KM_PER_DEGREE
                 return httpx.Response(
                     200,
                     json={
@@ -44,8 +49,8 @@ def setup_fake_http_connectors(
                         "city": "São Paulo",
                         "location": {
                             "coordinates": {
-                                "latitude": str(-23.5505 - lat_offset),
-                                "longitude": str(-46.6333 - lat_offset),
+                                "latitude": str(-23.5505 + lat_offset),
+                                "longitude": "-46.6333",
                             }
                         },
                     },
@@ -53,21 +58,6 @@ def setup_fake_http_connectors(
 
             # Simula CEP inexistente / sem coordenadas
             return httpx.Response(404, json={"message": "CEP não encontrado"})
-
-        # Intercepção OSRM (Cálculo de Distância + Duração)
-        if "router.project-osrm.org" in url_str:
-            distance_m = 3500.0
-            for _cep_clean, dist in clean_farmer_ceps.items():
-                distance_m = dist
-                break
-
-            return httpx.Response(
-                200,
-                json={
-                    "code": "Ok",
-                    "routes": [{"distance": distance_m, "duration": 300.0}],
-                },
-            )
 
         return httpx.Response(404)
 
@@ -117,18 +107,18 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
 
     authenticate_user(client, ana)
 
-    # Coordenadas distintas para identificar qual agricultor está sendo consultado no OSRM
-    # CEP Ana (05508-020) -> lat -23.5600
-    # CEP Carlos (01311-000) -> lat -23.5100
+    # Coordenadas distintas para cada agricultor ficar a uma distância do prédio (lat -23.5505)
+    # CEP Ana (05508-020) -> lat -23.62245, 8 km em linha reta
+    # CEP Carlos (01311-000) -> lat -23.52802, 2,5 km em linha reta
     def handler(request: httpx.Request) -> httpx.Response:
         url_str = str(request.url)
         if "brasilapi.com.br" in url_str:
             cep_in_url = url_str.rstrip("/").split("/")[-1].replace("-", "")
             lat = "-23.5505"
             if cep_in_url == "05508020":
-                lat = "-23.5600"
+                lat = "-23.62245"
             elif cep_in_url == "01311000":
-                lat = "-23.5100"
+                lat = "-23.52802"
 
             return httpx.Response(
                 200,
@@ -139,10 +129,6 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
                     "location": {"coordinates": {"latitude": lat, "longitude": "-46.6333"}},
                 },
             )
-        if "router.project-osrm.org" in url_str:
-            dist = 8000.0 if "-23.56" in url_str else 2500.0
-            payload = {"code": "Ok", "routes": [{"distance": dist, "duration": 300.0}]}
-            return httpx.Response(200, json=payload)
         return httpx.Response(404)
 
     fake_httpx, _ = fake_client(handler)
@@ -343,7 +329,7 @@ def test_manager_lists_farmers_near_the_building(client, manager, building, sess
     setup_fake_http_connectors(
         monkeypatch,
         building_cep=building.zip_code,
-        farmer_ceps_distances={farmer.zip_code: 3500.0},
+        farmer_ceps_distances={farmer.zip_code: 0.0},
     )
 
     response = client.get("/api/farmers?max_distance_km=5")
@@ -385,7 +371,7 @@ def test_list_farmers_hides_email_saved_as_farmer_name(
     setup_fake_http_connectors(
         monkeypatch,
         building_cep=building.zip_code,
-        farmer_ceps_distances={farmer.zip_code: 3500.0},
+        farmer_ceps_distances={farmer.zip_code: 0.0},
     )
 
     response = client.get("/api/farmers?max_distance_km=5")

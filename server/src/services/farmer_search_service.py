@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from src.models.apartment import Apartment
 from src.models.farmer import Farmer, FarmerSearchRead
 from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse
 from src.models.product import BUSINESS_TZ
@@ -9,7 +10,6 @@ from src.services.exceptions import (
     CepNotFoundError,
     CepWithoutCoordinatesError,
     InvalidCepError,
-    RouteNotFoundError,
 )
 from src.services.text_service import short_name
 
@@ -18,7 +18,6 @@ SKIPPED_CEP_ERRORS = (
     CepNotFoundError,
     CepWithoutCoordinatesError,
     InvalidCepError,
-    RouteNotFoundError,
 )
 
 
@@ -29,12 +28,12 @@ class FarmerSearchService:
         self.repository = repository
         self.distance_service = distance_service
 
-    def search(self, filters: FarmerSearchFilters, building_cep: str) -> FarmerSearchResponse:
+    def search(self, filters: FarmerSearchFilters, building: Apartment) -> FarmerSearchResponse:
         today = datetime.now(BUSINESS_TZ).date()
         farmers = self.repository.search(filters.name, filters.products, today)
 
         farmers, distances = self._filter_by_distance(
-            farmers, building_cep, filters.max_distance_km
+            farmers, building, filters.max_distance_km
         )
 
         farmer_ids = [farmer.id for farmer in farmers]
@@ -46,6 +45,8 @@ class FarmerSearchService:
             reviews=self.repository.get_review_summaries_by_id(farmer_ids),
             delivery_rates=self._get_on_time_delivery_rates(farmer_ids),
         )
+        # salva as coordenadas dos perfis antigos só agora, porque o commit expira os agricultores
+        self.repository.commit()
 
         return FarmerSearchResponse.paginate(
             self._sort_by_reputation(items),
@@ -84,7 +85,7 @@ class FarmerSearchService:
     def _filter_by_distance(
         self,
         farmers: list[Farmer],
-        building_cep: str,
+        building: Apartment,
         max_distance_km: int | None,
     ) -> tuple[list[Farmer], dict[int, float]]:
         if max_distance_km is None:
@@ -97,11 +98,10 @@ class FarmerSearchService:
 
         for farmer in farmers:
             try:
-                route = self.distance_service.between_ceps(building_cep, farmer.zip_code)
+                distance_km = self.distance_service.km_between(building, farmer)
             except SKIPPED_CEP_ERRORS:
                 continue
             # Filtra pelo raio
-            distance_km = round(route.distance_m / 1000.0, 2)
             if distance_km <= max_distance_km:
                 farmer_distances[farmer.id] = distance_km
                 close_farmers.append(farmer)

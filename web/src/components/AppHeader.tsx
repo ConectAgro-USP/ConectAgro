@@ -9,7 +9,7 @@ import {
 import { Link, NavLink } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { useAction } from "../hooks/useAction";
-import { RESTRICTED_PAGES } from "../restrictedPages";
+import { pagesOf } from "../restrictedPages";
 import { FormError } from "./FormError";
 import { Logo } from "./Logo";
 
@@ -74,7 +74,7 @@ export function AppHeader() {
             >
               <MessageCircleIcon />
             </button>
-            {RESTRICTED_PAGES.filter((page) => page.profile === profileType).map((page) => (
+            {pagesOf(profileType).map((page) => (
               <NavLink key={page.path} to={page.path} className={chooseNavLinkClasses}>
                 <page.icon />
                 <span className="sr-only xl:not-sr-only">{page.label}</span>
