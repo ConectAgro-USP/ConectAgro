@@ -35,11 +35,11 @@ def test_approved_resident_gets_own_building_manager_contact(
     body = response.json()
     assert response.status_code == status.HTTP_200_OK
     assert body == {
-        "recipient_name": "Carlos Almeida",
+        "recipient_name": "Carlos A.",
         "cellphone": "11988887777",
         "message": (
-            "Olá, Carlos Almeida! Tenho interesse no produto "
-            "Alface Crespa do agricultor João Silva."
+            "Olá, Carlos A.! Tenho interesse no produto "
+            "Alface Crespa do agricultor João S."
         ),
     }
     assert "11966665555" not in response.text
@@ -62,8 +62,8 @@ def test_different_residents_get_their_own_building_manager_contact(
     lettuce = add_product(session, seller, name="Alface Crespa")
 
     residents = [
-        (building, "bia@example.com", "Carlos Almeida", "11988887777"),
-        (other_building, "ana@example.com", "Roberto Lima", "11966665555"),
+        (building, "bia@example.com", "Carlos A.", "11988887777"),
+        (other_building, "ana@example.com", "Roberto L.", "11966665555"),
     ]
 
     for apartment, email, expected_name, expected_cellphone in residents:
@@ -95,12 +95,9 @@ def test_manager_gets_product_farmer_contact(
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {
-        "recipient_name": "Maria Souza",
+        "recipient_name": "Maria S.",
         "cellphone": "11977776666",
-        "message": (
-            "Olá, Maria Souza! Tenho interesse no produto Batata Orgânica "
-            "do agricultor Maria Souza."
-        ),
+        "message": "Olá, Maria S.! Tenho interesse no seu produto Batata Orgânica.",
     }
 
 
@@ -111,19 +108,19 @@ def test_manager_gets_contact_of_correct_farmer_for_each_product(
     manager: User,
 ):
     farmers = [
-        ("maria@example.com", "Maria Souza", "11977776666", "Batata Orgânica"),
-        ("joao@example.com", "João Santos", "11955554444", "Tomate"),
+        ("maria@example.com", "Maria Souza", "Maria S.", "11977776666", "Batata Orgânica"),
+        ("joao@example.com", "João Santos", "João S.", "11955554444", "Tomate"),
     ]
 
     products = []
-    for email, name, cellphone, product_name in farmers:
+    for email, name, shown_name, cellphone, product_name in farmers:
         farmer_user = add_user(session, email, name=name)
         farmer_user.cellphone = cellphone
         session.commit()
 
         farmer = add_farmer(session, farmer_user)
         products.append(
-            (add_product(session, farmer, name=product_name), name, cellphone)
+            (add_product(session, farmer, name=product_name), shown_name, cellphone)
         )
 
     login(client, manager)

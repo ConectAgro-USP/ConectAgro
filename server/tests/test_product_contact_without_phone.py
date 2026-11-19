@@ -31,10 +31,10 @@ def test_resident_gets_empty_cellphone_when_manager_has_no_phone(
 
     body = response.json()
     assert response.status_code == status.HTTP_200_OK
-    assert body["recipient_name"] == "Carlos Almeida"
+    assert body["recipient_name"] == "Carlos A."
     assert body["cellphone"] is None
     assert "Alface" in body["message"]
-    assert "João Silva" in body["message"]
+    assert "João S." in body["message"]
 
 
 def test_resident_gets_empty_cellphone_when_manager_phone_is_empty(
@@ -77,10 +77,10 @@ def test_manager_gets_empty_cellphone_when_farmer_has_no_phone(
 
     body = response.json()
     assert response.status_code == status.HTTP_200_OK
-    assert body["recipient_name"] == "João Silva"
+    assert body["recipient_name"] == "João S."
     assert body["cellphone"] is None
     assert "Alface" in body["message"]
-    assert "João Silva" in body["message"]
+    assert "João S." in body["message"]
 
 
 def test_manager_gets_empty_cellphone_when_farmer_phone_is_empty(

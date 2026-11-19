@@ -72,15 +72,21 @@ class ProductService:
         self, public_id: UUID, current_user: User, building: Apartment
     ) -> ProductContactRead:
         product = self._get_existing_product(public_id)
-        farmer = product.farmer.user
-        recipient = farmer if current_user.id == building.manager_id else building.manager
+        if current_user.id == building.manager_id:
+            recipient = product.farmer.user
+            interest = f"Tenho interesse no seu produto {product.name}"
+        else:
+            recipient = building.manager
+            farmer_name = short_name(product.farmer.user.name)
+            by_farmer = f" do agricultor {farmer_name}" if farmer_name else ""
+            interest = f"Tenho interesse no produto {product.name}{by_farmer}"
+        recipient_name = short_name(recipient.name)
+        greeting = f"Olá, {recipient_name}!" if recipient_name else "Olá!"
         return ProductContactRead(
-            recipient_name=recipient.name,
+            recipient_name=recipient_name,
             cellphone=recipient.cellphone or None,
-            message=(
-                f"Olá, {recipient.name}! Tenho interesse no produto "
-                f"{product.name} do agricultor {farmer.name}."
-            ),
+            # o sobrenome abreviado (João S.) já traz o ponto final
+            message=f"{greeting} {interest.removesuffix('.')}.",
         )
 
     def _get_existing_product(self, public_id: UUID) -> Product:
