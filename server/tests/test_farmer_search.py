@@ -161,10 +161,8 @@ def test_api_filter_by_distance_allowed_values(client: TestClient, session: Sess
     create_farmer(session, name="Perto 4km", email="perto@example.com", zip_code="01001-000")
     create_farmer(session, name="Longe 12km", email="longe@example.com", zip_code="02002-000")
 
-    distances = {"01001-000": 4000.0, "02002-000": 12000.0}
-    mock_distance.between_ceps.side_effect = lambda orig, dest: MagicMock(
-        distance_m=distances[dest]
-    )
+    distances = {"01001-000": 4.0, "02002-000": 12.0}
+    mock_distance.km_between.side_effect = lambda orig, dest: distances[dest.zip_code]
 
     app.dependency_overrides[get_distance_service] = lambda: mock_distance
 

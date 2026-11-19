@@ -14,10 +14,6 @@ class CnpjNotFoundError(Exception):
     pass
 
 
-class RouteNotFoundError(Exception):
-    pass
-
-
 class RateLimitedError(Exception):
     pass
 
