@@ -119,3 +119,9 @@ class ProductDetailRead(ProductRead):
 
 class ProductCatalogRead(ProductRead):
     farmer_short_name: str
+
+
+class ProductContactRead(SQLModel):
+    recipient_name: str
+    cellphone: str | None = None
+    message: str
