@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.deps import (
+    CurrentBuilding,
     CurrentFarmer,
     CurrentUser,
     ProductSearchServiceDep,
@@ -96,12 +97,10 @@ def delete_product(public_id: UUID, farmer: CurrentFarmer, product_service: Prod
 def get_product_contact(
     public_id: UUID,
     current_user: CurrentUser,
+    building: CurrentBuilding,
     product_service: ProductServiceDep,
 ):
     try:
-        return product_service.get_product_contact(public_id, current_user)
-    except PermissionError:
-        message = "Acesso permitido apenas para moradores e síndicos"
-        raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
+        return product_service.get_product_contact(public_id, current_user, building)
     except ProductNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, PRODUCT_NOT_FOUND) from None

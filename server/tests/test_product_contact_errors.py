@@ -26,13 +26,17 @@ def test_farmer_cannot_get_product_contact(
         }
 
 
-@pytest.mark.parametrize("link_status", [LinkStatus.PENDENTE, LinkStatus.RECUSADO])
+@pytest.mark.parametrize(
+    "link_status, message",
+    [(LinkStatus.PENDENTE, "aguardando aprovação"), (LinkStatus.RECUSADO, "recusado")],
+)
 def test_unapproved_resident_cannot_get_product_contact(
     client: TestClient,
     session: Session,
     building: Apartment,
     seller: Farmer,
     link_status: LinkStatus,
+    message: str,
 ):
     lettuce = add_product(session, seller)
     resident_user = add_user(session, "bia@example.com")
@@ -44,6 +48,7 @@ def test_unapproved_resident_cannot_get_product_contact(
     response = client.get(f"/api/products/{lettuce.public_id}/contact")
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert message in response.json()["detail"]
 
 
 @pytest.mark.usefixtures("ana")
