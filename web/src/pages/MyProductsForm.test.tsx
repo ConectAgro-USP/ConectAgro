@@ -46,6 +46,19 @@ describe("MyProducts form", () => {
     });
   });
 
+  it("adds the new product at the end of the list, in the API's order", async () => {
+    const cassava = { ...orange, public_id: "produto-2", name: "Mandioca" };
+    renderProducts(jsonResponse([orange]), jsonResponse(cassava, 201));
+    await openNewForm();
+    await fillRequired("Mandioca");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await findCard("Mandioca");
+    const names = screen.getAllByRole("heading", { level: 2 }).map((title) => title.textContent);
+    expect(names).toEqual(["Laranja", "Mandioca"]);
+  });
+
   it("opens the product's data for editing and saves the changes", async () => {
     const changed = { ...orange, name: "Laranja doce" };
     const fetchMock = renderProducts(jsonResponse([orange]), jsonResponse(changed));
