@@ -1,22 +1,39 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jsonResponse, sentBody } from "../test/helpers";
-import { orange, renderProducts, setDate } from "../test/products";
+import { findCard, orange, press, renderProducts } from "../test/products";
+
+const LINK = /^Link para a imagem/;
+
+async function openNewForm() {
+  await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
+}
+
+async function fillRequired(name: string) {
+  await userEvent.type(screen.getByLabelText("Nome do produto"), name);
+  await userEvent.type(screen.getByLabelText("Preço (R$)"), "4.99");
+  await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
+  fireEvent.change(screen.getByLabelText("Data de vencimento"), {
+    target: { value: "2030-10-25" },
+  });
+}
+
+function refusal(field: string, msg: string): Response {
+  return jsonResponse({ detail: [{ loc: ["body", field], msg }] }, 422);
+}
 
 describe("MyProducts form", () => {
-  it("creates a product with all fields and adds it to the list", async () => {
+  it("creates a product with all fields and shows it in the list", async () => {
     const fetchMock = renderProducts(jsonResponse([]), jsonResponse(orange, 201));
-    await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
+    await openNewForm();
 
-    await userEvent.type(screen.getByLabelText("Nome do produto"), "Laranja");
+    expect(screen.getByRole("heading", { name: "Cadastrar produto" })).toHaveFocus();
+    await userEvent.type(screen.getByLabelText(LINK), "https://example.com/laranja.png");
+    await fillRequired("Laranja");
     await userEvent.type(screen.getByLabelText(/^Descrição/), "Laranja pera");
-    await userEvent.type(screen.getByLabelText(/^URL da foto/), "https://example.com/laranja.png");
-    await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
-    await userEvent.type(screen.getByLabelText("Preço (R$)"), "4.99");
-    setDate("2030-10-25");
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
-    expect(await screen.findByRole("heading", { name: "Laranja" })).toBeInTheDocument();
+    expect(await findCard("Laranja")).toBeInTheDocument();
     expect(fetchMock.mock.calls[1][0]).toBe("/api/products");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
     expect(sentBody(fetchMock, 1)).toEqual({
@@ -29,74 +46,68 @@ describe("MyProducts form", () => {
     });
   });
 
-  it("updates the selected product", async () => {
-    const changed = { ...orange, name: "Laranja doce", quantity: 8 };
+  it("opens the product's data for editing and saves the changes", async () => {
+    const changed = { ...orange, name: "Laranja doce" };
     const fetchMock = renderProducts(jsonResponse([orange]), jsonResponse(changed));
-    await userEvent.click(await screen.findByRole("button", { name: "Editar Laranja" }));
+    await press(await findCard("Laranja"), "Editar");
+
+    expect(screen.getByRole("heading", { name: "Editar produto" })).toHaveFocus();
+    expect(screen.getByLabelText("Quantidade (kg)")).toHaveValue(12);
+    expect(screen.getByLabelText("Data de vencimento")).toHaveValue("2030-10-25");
     await userEvent.clear(screen.getByLabelText("Nome do produto"));
     await userEvent.type(screen.getByLabelText("Nome do produto"), "Laranja doce");
-    await userEvent.clear(screen.getByLabelText("Quantidade (kg)"));
-    await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "8");
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
-    expect(await screen.findByRole("heading", { name: "Laranja doce" })).toBeInTheDocument();
+    expect(await findCard("Laranja doce")).toBeInTheDocument();
     expect(fetchMock.mock.calls[1][0]).toBe("/api/products/produto-1");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("PATCH");
-    expect(sentBody(fetchMock, 1)).toMatchObject({ name: "Laranja doce", quantity: 8 });
+    expect(sentBody(fetchMock, 1)).toMatchObject({ name: "Laranja doce", quantity: 12 });
   });
 
-  it("shows the backend message for an expired product in the form", async () => {
-    renderProducts(
-      jsonResponse([]),
-      jsonResponse(
-        {
-          detail: [
-            {
-              loc: ["body", "expiration_date"],
-              msg: "Value error, Não é possível cadastrar produto vencido",
-            },
-          ],
-        },
-        422,
-      ),
-    );
-    await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
-    await userEvent.type(screen.getByLabelText("Nome do produto"), "Produto vencido");
-    await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "1");
-    await userEvent.type(screen.getByLabelText("Preço (R$)"), "2");
-    setDate("2020-01-01");
-    fireEvent.submit(screen.getByRole("heading", { name: "Cadastrar produto" }).closest("form")!);
+  it("previews the picture once the farmer leaves the link", async () => {
+    renderProducts(jsonResponse([]));
+    await openNewForm();
+    await userEvent.type(screen.getByLabelText(LINK), "https://example.com/quebrada.png");
+    expect(document.querySelector("form img")).not.toBeInTheDocument();
+    await userEvent.tab();
+    fireEvent.error(document.querySelector("form img")!);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    await userEvent.clear(screen.getByLabelText(LINK));
+    await userEvent.type(screen.getByLabelText(LINK), "https://example.com/laranja.png");
+    await userEvent.tab();
+
+    expect(document.querySelector("form img")).toHaveAttribute("src", orange.picture_url);
+  });
+
+  it("goes back to the list without saving", async () => {
+    const fetchMock = renderProducts(jsonResponse([orange]));
+    await press(await findCard("Laranja"), "Editar");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(await findCard("Laranja")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [
+      "expiration_date",
+      "Value error, Não é possível cadastrar produto vencido",
       "Não é possível cadastrar produto vencido",
-    );
-    expect(screen.getByRole("heading", { name: "Cadastrar produto" })).toBeInTheDocument();
-  });
-
-  it("translates a negative price validation error into a form message", async () => {
-    renderProducts(
-      jsonResponse([]),
-      jsonResponse(
-        {
-          detail: [
-            {
-              loc: ["body", "price"],
-              msg: "Input should be greater than or equal to 0",
-            },
-          ],
-        },
-        422,
-      ),
-    );
-    await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
-    await userEvent.type(screen.getByLabelText("Nome do produto"), "Laranja");
-    await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "1");
-    fireEvent.change(screen.getByLabelText("Preço (R$)"), { target: { value: "-2" } });
-    setDate("2030-10-25");
-    fireEvent.submit(screen.getByRole("heading", { name: "Cadastrar produto" }).closest("form")!);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    ],
+    [
+      "price",
+      "Input should be greater than or equal to 0",
       "O preço deve ser não negativo e ter até 2 casas decimais",
-    );
+    ],
+  ])("shows in the form why the API refused the %s", async (field, msg, message) => {
+    renderProducts(jsonResponse([]), refusal(field, msg));
+    await openNewForm();
+    await fillRequired("Laranja");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("heading", { name: "Cadastrar produto" })).toBeInTheDocument();
   });
 });

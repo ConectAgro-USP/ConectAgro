@@ -1,19 +1,57 @@
-import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { waitFor, within } from "@testing-library/react";
 import { jsonResponse } from "../test/helpers";
-import { orange, renderProducts } from "../test/products";
+import { findCard, orange, press, renderProducts } from "../test/products";
+
+const SOLD =
+  "Este produto já foi vendido e não pode ser removido. Zere a quantidade para tirá-lo do catálogo";
 
 describe("MyProducts removal", () => {
-  it("requires confirmation before removing a product", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]), new Response(null, { status: 204 }));
-    await userEvent.click(await screen.findByRole("button", { name: "Remover Laranja" }));
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("Tem certeza");
+  it("asks inside the card before removing a product", async () => {
+    const fetchMock = renderProducts(jsonResponse([orange]));
+    const card = await findCard("Laranja");
+
+    await press(card, "Remover");
+
+    expect(within(card).getByText("Remover Laranja?")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Voltar" })).toHaveFocus();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remover" }));
+  it("removes the product after the confirmation", async () => {
+    const fetchMock = renderProducts(jsonResponse([orange]), new Response(null, { status: 204 }));
+    const card = await findCard("Laranja");
+    await press(card, "Remover");
 
-    await waitFor(() => expect(screen.queryByRole("heading", { name: "Laranja" })).not.toBeInTheDocument());
+    await press(card, "Remover");
+
+    await waitFor(() => expect(card).not.toBeInTheDocument());
     expect(fetchMock.mock.calls[1][0]).toBe("/api/products/produto-1");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("DELETE");
+  });
+
+  it("explains inside the card why a sold product can't be removed", async () => {
+    renderProducts(jsonResponse([orange]), jsonResponse({ detail: SOLD }, 409));
+    const card = await findCard("Laranja");
+    await press(card, "Remover");
+
+    await press(card, "Remover");
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent(SOLD);
+    expect(within(card).getByText("Remover Laranja?")).toBeInTheDocument();
+  });
+
+  it("goes back without removing and forgets the refusal", async () => {
+    const fetchMock = renderProducts(jsonResponse([orange]), jsonResponse({ detail: SOLD }, 409));
+    const card = await findCard("Laranja");
+    await press(card, "Remover");
+    await press(card, "Remover");
+    await within(card).findByRole("alert");
+
+    await press(card, "Voltar");
+    expect(within(card).getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    await press(card, "Remover");
+
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

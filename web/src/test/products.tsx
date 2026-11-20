@@ -1,4 +1,5 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Product } from "../api/products";
 import { MyProducts } from "../pages/MyProducts";
 import { anaAsFarmer, fakeAuth, renderWithAuth, stubFetch } from "./helpers";
@@ -15,12 +16,17 @@ export const orange: Product = {
   created_at: "2026-11-12T12:00:00Z",
 };
 
-export function setDate(value: string) {
-  fireEvent.change(screen.getByLabelText("Data de vencimento"), { target: { value } });
-}
-
 export function renderProducts(...responses: Response[]) {
   const fetchMock = stubFetch(...responses);
   renderWithAuth(<MyProducts />, fakeAuth({ user: anaAsFarmer }));
   return fetchMock;
+}
+
+export async function findCard(name: string): Promise<HTMLElement> {
+  const title = await screen.findByRole("heading", { name });
+  return title.closest("li")!;
+}
+
+export function press(card: HTMLElement, button: string) {
+  return userEvent.click(within(card).getByRole("button", { name: button }));
 }
