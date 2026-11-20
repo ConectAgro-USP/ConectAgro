@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MyProfile } from "./pages/MyProfile";
+import { ProductDetail } from "./pages/ProductDetail";
 import { SignUp } from "./pages/SignUp";
 import { RESTRICTED_PAGES } from "./restrictedPages";
 
@@ -22,6 +23,7 @@ export default function App() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/perfil" element={<MyProfile />} />
+        <Route path="/produtos/:publicId" element={<ProductDetail />} />
         {RESTRICTED_PAGES.map((page) => (
           <Route
             key={page.path}
