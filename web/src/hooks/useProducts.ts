@@ -60,7 +60,7 @@ export function useProducts(): UseProductsState {
 
   async function create(product: ProductInput): Promise<Product> {
     const saved = await sendCreateProduct(product);
-    setData((current) => [saved, ...current]);
+    setData((current) => [...current, saved]);
     return saved;
   }
 

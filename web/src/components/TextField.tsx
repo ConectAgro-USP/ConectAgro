@@ -1,8 +1,8 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 const INPUT_CLASSES =
-  "h-14 w-full rounded-lg border border-stone-400 px-4 focus:border-lime-800 focus:outline-1 " +
-  "focus:outline-lime-800";
+  "h-14 w-full rounded-lg border border-stone-400 bg-white px-4 focus:border-lime-800 " +
+  "focus:outline-1 focus:outline-lime-800";
 const EYE_BUTTON_CLASSES =
   "absolute inset-y-0 right-0 flex w-14 items-center justify-center rounded-r-lg text-lime-800 " +
   "focus-visible:outline-2 focus-visible:outline-lime-800";

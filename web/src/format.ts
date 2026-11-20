@@ -6,6 +6,13 @@ const DAY = new Intl.DateTimeFormat("pt-BR", {
   month: "2-digit",
   timeZone: BUSINESS_TZ,
 });
+const FULL_DAY = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: BUSINESS_TZ,
+});
+const DAY_MS = 24 * 60 * 60 * 1000;
 const MONTH = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
   year: "numeric",
@@ -37,6 +44,11 @@ export function formatDate(date: string): string {
 export function formatFullDate(date: string): string {
   const [year, month, day] = date.split("-");
   return `${day}/${month}/${year}`;
+}
+
+export function daysUntil(date: string): number {
+  const [day, month, year] = FULL_DAY.format(new Date()).split("/");
+  return (Date.parse(date) - Date.parse(`${year}-${month}-${day}`)) / DAY_MS;
 }
 
 export function formatNames(names: string[]): string {
