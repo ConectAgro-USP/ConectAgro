@@ -4,12 +4,15 @@ import {
   type BuildingPurchase,
   type PurchasePart,
 } from "../api/purchases";
+import type { Reviewable } from "../api/reviews";
 import { formatDay, formatMoney } from "../format";
 import { HistoryCard } from "../components/history/HistoryCard";
 import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
 import { ItemLines } from "../components/history/ItemLines";
+import { RateLinks } from "../components/reviews/RateLinks";
 import { useHistory } from "../hooks/useHistory";
+import { useReviewables } from "../hooks/useReviewables";
 
 const STATUS_LABELS: Record<PurchaseStatus, string> = {
   "EM PROGRESSO": "A caminho",
@@ -18,8 +21,8 @@ const STATUS_LABELS: Record<PurchaseStatus, string> = {
 };
 
 // quem entrou sem o nome do Google fica sem nome curto na API
-function farmerName(part: PurchasePart): string {
-  return part.farmer_short_name || "Agricultor";
+function farmerName(item: { farmer_short_name: string }): string {
+  return item.farmer_short_name || "Agricultor";
 }
 
 function partStatus(part: PurchasePart): string {
@@ -30,9 +33,35 @@ function partStatus(part: PurchasePart): string {
   return `${label} em ${formatDay(part.closed_at)}`;
 }
 
-function PurchaseCard({ purchase }: Readonly<{ purchase: BuildingPurchase }>) {
+function RateParts({ purchase, reviewables }: Readonly<PurchaseCardProps>) {
+  const toRate = reviewables.filter((item) => item.purchase_public_id === purchase.public_id);
+  if (toRate.length === 0) {
+    return null;
+  }
+
+  const several = purchase.purchase_parts.length > 1;
+  return (
+    <div className="mt-4 space-y-1">
+      {toRate.map((reviewable) => (
+        <RateLinks
+          key={reviewable.farmer_public_id}
+          reviewable={reviewable}
+          label={several ? `Avalie a compra de ${farmerName(reviewable)}` : "Avalie a compra"}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface PurchaseCardProps {
+  purchase: BuildingPurchase;
+  reviewables: Reviewable[];
+}
+
+function PurchaseCard({ purchase, reviewables }: Readonly<PurchaseCardProps>) {
   return (
     <HistoryCard
+      actions={<RateParts purchase={purchase} reviewables={reviewables} />}
       names={purchase.purchase_parts.map(farmerName)}
       items={purchase.purchase_parts.flatMap((part) => part.purchase_products)}
       status={purchase.status}
@@ -66,6 +95,7 @@ function PurchaseCard({ purchase }: Readonly<{ purchase: BuildingPurchase }>) {
 
 export function BuildingPurchases() {
   const history = useHistory(listBuildingPurchases);
+  const reviewables = useReviewables();
 
   return (
     <HistoryLayout
@@ -78,7 +108,9 @@ export function BuildingPurchases() {
       }
     >
       <HistoryMonths items={history.items} dateOf={(purchase) => purchase.created_at}>
-        {(purchase) => <PurchaseCard key={purchase.public_id} purchase={purchase} />}
+        {(purchase) => (
+          <PurchaseCard key={purchase.public_id} purchase={purchase} reviewables={reviewables} />
+        )}
       </HistoryMonths>
     </HistoryLayout>
   );
