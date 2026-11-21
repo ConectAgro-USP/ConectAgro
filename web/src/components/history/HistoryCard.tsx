@@ -26,6 +26,7 @@ interface HistoryCardProps {
   expectedOn: string;
   closedAt: string | null;
   total: string;
+  actions?: ReactNode;
   children: ReactNode;
 }
 
@@ -38,6 +39,7 @@ export function HistoryCard({
   expectedOn,
   closedAt,
   total,
+  actions,
   children,
 }: Readonly<HistoryCardProps>) {
   const [open, setOpen] = useState(false);
@@ -82,6 +84,7 @@ export function HistoryCard({
           )}
         </dl>
       </div>
+      {actions}
       <div className="mt-4 text-center">
         {/* pedido cancelado não tem valor a pagar, então a tela não mostra */}
         {status !== "CANCELADA" && (

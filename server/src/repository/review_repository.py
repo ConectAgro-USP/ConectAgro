@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
-from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
+from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
 from src.models.review import Review, ReviewAuthor
 
 
@@ -30,6 +30,20 @@ class ReviewRepository:
         statement = statement.order_by(Review.created_at.desc(), Review.id.desc())
         return list(self.session.exec(statement).all())
 
+    def list_by_author(self, author: ReviewAuthor) -> list[Review]:
+        statement = select(Review).where(
+            Review.apartment_id == author.apartment_id,
+            Review.buyer_id == author.buyer_id,
+        )
+        statement = statement.options(
+            selectinload(Review.purchase),
+            selectinload(Review.farmer).selectinload(Farmer.user),
+            selectinload(Review.apartment),
+            selectinload(Review.buyer),
+        )
+        statement = statement.order_by(Review.created_at.desc(), Review.id.desc())
+        return list(self.session.exec(statement).all())
+
     def list_reviewable_parts(self, author: ReviewAuthor) -> list[PurchasePart]:
         # o campo vazio do autor vira IS NULL, igual ao que a avaliação guarda
         reviewed = select(Review.id).where(
@@ -46,6 +60,7 @@ class ReviewRepository:
         statement = statement.options(
             selectinload(PurchasePart.purchase),
             selectinload(PurchasePart.farmer).selectinload(Farmer.user),
+            selectinload(PurchasePart.purchase_products).selectinload(PurchaseProduct.product),
         )
         statement = statement.order_by(PurchasePart.closed_at.desc(), PurchasePart.id.desc())
         return list(self.session.exec(statement).all())

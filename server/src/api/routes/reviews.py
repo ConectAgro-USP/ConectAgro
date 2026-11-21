@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.deps import CurrentFarmer, CurrentReviewAuthor, ReviewServiceDep, get_current_user
 from src.models.review import (
+    AuthorReviewRead,
     FarmerReviewsRead,
     ReviewableRead,
     ReviewCreate,
@@ -51,6 +52,11 @@ def create_review(
     except ReviewAlreadyExistsError:
         message = "Você já avaliou este agricultor nesta compra"
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
+
+
+@router.get("/reviews/me", response_model=list[AuthorReviewRead])
+def list_my_authored_reviews(author: CurrentReviewAuthor, review_service: ReviewServiceDep):
+    return review_service.list_by_author(author)
 
 
 @router.patch("/reviews/{public_id}", response_model=ReviewRead)
