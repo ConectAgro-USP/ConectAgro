@@ -67,12 +67,19 @@ class ReviewService:
         review.sqlmodel_update(review_update.model_dump(exclude_unset=True))
         return self.reviews.save(review)
 
+    def list_by_author(self, author: ReviewAuthor) -> list[Review]:
+        return self.reviews.list_by_author(author)
+
     def list_reviewable(self, author: ReviewAuthor) -> list[ReviewableRead]:
         return [
             ReviewableRead(
                 purchase_public_id=part.purchase.public_id,
                 farmer_public_id=part.farmer.public_id,
                 farmer_short_name=short_name(part.farmer.user.name),
+                delivered_at=part.closed_at,
+                product_names=[
+                    item.product_name for item in part.purchase_products if item.product_name
+                ],
             )
             for part in self.reviews.list_reviewable_parts(author)
         ]

@@ -6,7 +6,7 @@ from pydantic import AfterValidator
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import reject_null_character
+from src.services.text_service import reject_null_character, short_name
 
 if TYPE_CHECKING:
     from .apartment import Apartment
@@ -111,6 +111,10 @@ class Review(ReviewBase, table=True):
         return self.farmer.public_id if self.farmer else None
 
     @property
+    def farmer_short_name(self) -> str | None:
+        return short_name(self.farmer.user.name) if self.farmer else None
+
+    @property
     def purchase_public_id(self) -> UUID | None:
         return self.purchase.public_id if self.purchase else None
 
@@ -135,6 +139,10 @@ class ReviewRead(ReviewBase):
     updated_at: datetime | None
 
 
+class AuthorReviewRead(ReviewRead):
+    farmer_short_name: str
+
+
 class ReviewAuthor(NamedTuple):
     building_id: int
     # o síndico avalia pelo prédio e o morador pelo próprio cadastro, só um dos dois é preenchido
@@ -146,6 +154,8 @@ class ReviewableRead(SQLModel):
     purchase_public_id: UUID
     farmer_public_id: UUID
     farmer_short_name: str
+    delivered_at: datetime | None
+    product_names: list[str]
 
 
 class FarmerReviewRead(ReviewBase):
