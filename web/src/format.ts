@@ -34,6 +34,11 @@ export function formatDay(moment: string): string {
   return DAY.format(new Date(moment));
 }
 
+
+export function formatFullDay(moment: string): string {
+  return FULL_DAY.format(new Date(moment));
+}
+
 // a entrega prevista chega só com o dia, sem horário para converter
 export function formatDate(date: string): string {
   const [, month, day] = date.split("-");
@@ -49,6 +54,10 @@ export function formatFullDate(date: string): string {
 export function daysUntil(date: string): number {
   const [day, month, year] = FULL_DAY.format(new Date()).split("/");
   return (Date.parse(date) - Date.parse(`${year}-${month}-${day}`)) / DAY_MS;
+}
+
+export function formatStars(rating: number): string {
+  return rating === 1 ? "1 estrela" : `${rating} estrelas`;
 }
 
 export function formatNames(names: string[]): string {
