@@ -47,7 +47,7 @@ describe("Reviews", () => {
 
     const [review] = within(await list("Suas avaliações")).getAllByRole("listitem");
     expect(within(review).getByRole("heading", { name: "Osvaldo S." })).toBeVisible();
-    expect(within(review).getByRole("img", { name: "Nota 4 de 5" })).toBeInTheDocument();
+    expect(within(review).getByText("Nota 4 de 5")).toBeInTheDocument();
     expect(review).toHaveTextContent("Boa mandioca");
     expect(review).toHaveTextContent(/Feita em\s*20\/10\/2026/);
     const edit = within(review).getByRole("link", { name: "Editar" });

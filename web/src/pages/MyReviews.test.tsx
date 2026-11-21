@@ -65,17 +65,17 @@ describe("MyReviews", () => {
     renderReviews(jsonResponse(received(praised, silent)));
 
     const [first, second] = await findCards();
-    expect(within(first).getByRole("img", { name: "Nota 5 de 5" })).toBeInTheDocument();
+    expect(within(first).getByText("Nota 5 de 5")).toBeInTheDocument();
     expect(within(first).getByText("Mandioca de qualidade.")).toBeVisible();
     expect(first).toHaveTextContent(/Feita em\s*20\/10\/2026/);
-    expect(within(second).getByRole("img", { name: "Nota 4 de 5" })).toBeInTheDocument();
+    expect(within(second).getByText("Nota 4 de 5")).toBeInTheDocument();
   });
 
   it("shows a review without comment with only the stars and the date", async () => {
     renderReviews(jsonResponse(received(silent)));
 
     const [card] = await findCards();
-    expect(card).toHaveTextContent(/^Feita em\s*31\/12\/2025$/);
+    expect(card).toHaveTextContent(/^Nota 4 de 5\s*Feita em\s*31\/12\/2025$/);
   });
 
   it("only shows the reviews, with nothing to change them", async () => {

@@ -215,14 +215,14 @@ export function Reviews() {
 
   function leave() {
     if (fromApp) {
-      navigate(-1);
+      void navigate(-1);
     } else {
-      navigate(REVIEWS_PATH, { replace: true });
+      void navigate(REVIEWS_PATH, { replace: true });
     }
   }
 
   function finish(sent: string) {
-    navigate(REVIEWS_PATH, { replace: true, state: { message: sent } });
+    void navigate(REVIEWS_PATH, { replace: true, state: { message: sent } });
   }
 
   async function send(save: () => Promise<void>) {

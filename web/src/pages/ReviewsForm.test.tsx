@@ -58,7 +58,7 @@ describe("Reviews form", () => {
     const [review] = within(screen.getByRole("list", { name: "Suas avaliações" })).getAllByRole(
       "listitem",
     );
-    expect(within(review).getByRole("img", { name: "Nota 5 de 5" })).toBeInTheDocument();
+    expect(within(review).getByText("Nota 5 de 5")).toBeInTheDocument();
     expect(review).toHaveTextContent("Chegou fresquinho");
     expect(fetchMock.mock.calls[2][0]).toBe("/api/purchases/compra-2/farmers/agricultor-1/reviews");
     expect(fetchMock.mock.calls[2][1]?.method).toBe("POST");
@@ -89,7 +89,7 @@ describe("Reviews form", () => {
     const [review] = within(screen.getByRole("list", { name: "Suas avaliações" })).getAllByRole(
       "listitem",
     );
-    expect(within(review).getByRole("img", { name: "Nota 2 de 5" })).toBeInTheDocument();
+    expect(within(review).getByText("Nota 2 de 5")).toBeInTheDocument();
     expect(review).toHaveTextContent(/Veio murcha.*editada em 16\/11\/2026/);
     expect(fetchMock.mock.calls[2][0]).toBe("/api/reviews/avaliacao-1");
     expect(fetchMock.mock.calls[2][1]?.method).toBe("PATCH");

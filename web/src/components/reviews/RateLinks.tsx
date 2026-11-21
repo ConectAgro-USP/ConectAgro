@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { RATINGS, type Reviewable } from "../../api/reviews";
 import { formatStars } from "../../format";
@@ -15,11 +15,10 @@ interface RateLinksProps {
 
 export function RateLinks({ reviewable, label = "Avalie a compra" }: Readonly<RateLinksProps>) {
   const [hovered, setHovered] = useState(0);
-  const labelId = useId();
 
   return (
-    <div role="group" aria-labelledby={labelId} className="flex flex-wrap items-center gap-x-2">
-      <span id={labelId}>{label}</span>
+    <fieldset className="flex min-w-0 flex-wrap items-center gap-x-2">
+      <legend className="float-left">{label}</legend>
       <div className="flex" onMouseLeave={() => setHovered(0)}>
         {RATINGS.map((rating) => (
           <Link
@@ -34,6 +33,6 @@ export function RateLinks({ reviewable, label = "Avalie a compra" }: Readonly<Ra
           </Link>
         ))}
       </div>
-    </div>
+    </fieldset>
   );
 }

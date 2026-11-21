@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type SubmitEvent } from "react";
 import { COMMENT_MAX_LENGTH, type ReviewCreate } from "../../api/reviews";
 import { useAction } from "../../hooks/useAction";
 import { PrimaryButton, SecondaryButton } from "../Button";
@@ -51,7 +51,7 @@ export function ReviewForm({
     setError("");
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (rating === 0) {
       setError(NO_RATING);

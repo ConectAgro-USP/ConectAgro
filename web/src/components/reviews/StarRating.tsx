@@ -23,12 +23,8 @@ interface RatingStarsProps {
 export function RatingStars({ rating, label, starClassName = "size-6" }: Readonly<RatingStarsProps>) {
   const filled = Math.round(rating);
   return (
-    <span
-      role={label ? "img" : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      className="flex gap-0.5"
-    >
+    <span className="flex gap-0.5">
+      {label && <span className="sr-only">{label}</span>}
       {RATINGS.map((star) => (
         <Star key={star} filled={star <= filled} className={starClassName} />
       ))}
