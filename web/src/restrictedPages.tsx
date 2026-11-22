@@ -1,4 +1,5 @@
 import {
+  ClipboardListIcon,
   HandCoinsIcon,
   MapPinIcon,
   PackageIcon,
@@ -10,6 +11,7 @@ import {
 import type { ReactNode } from "react";
 import type { ProfileType } from "./api/profiles";
 import { REVIEWS_PATH } from "./components/reviews/paths";
+import { BuildingNeeds } from "./pages/BuildingNeeds";
 import { BuildingPurchases } from "./pages/BuildingPurchases";
 import { MyReviews } from "./pages/MyReviews";
 import { MySales } from "./pages/MySales";
@@ -42,6 +44,13 @@ export const RESTRICTED_PAGES: RestrictedPage[] = [
     icon: UsersIcon,
     profiles: ["apartment"],
     element: <Residents />,
+  },
+  {
+    path: "/necessidades",
+    label: "Necessidades do prédio",
+    icon: ClipboardListIcon,
+    profiles: ["apartment"],
+    element: <BuildingNeeds />,
   },
   {
     path: "/compras",
