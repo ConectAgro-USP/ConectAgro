@@ -103,6 +103,12 @@ async function readErrorMessage(response: Response, path: string): Promise<strin
   if (field === "comment" && invalidField.msg?.includes("O texto tem um caractere inválido")) {
     return invalidField.msg.replace(/^Value error,\s*/, "");
   }
+  if (
+    field === "expected_delivery_date" &&
+    invalidField.msg?.includes("A data prevista de entrega não pode estar no passado")
+  ) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
   return INVALID_FIELD_MESSAGES.get(field) ?? UNEXPECTED_ERROR;
 }
 

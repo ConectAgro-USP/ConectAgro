@@ -1,3 +1,4 @@
+import { apiFetch } from "./client";
 import {
   fetchHistory,
   type HistoryFilters,
@@ -26,9 +27,18 @@ export interface BuildingPurchase {
   purchase_parts: PurchasePart[];
 }
 
+export interface PurchaseInput {
+  expected_delivery_date: string;
+  items: { product_public_id: string; quantity: number }[];
+}
+
 export function listBuildingPurchases(
   filters: HistoryFilters,
   page: number,
 ): Promise<HistoryPage<BuildingPurchase>> {
   return fetchHistory("/apartments/me/purchases", "farmer_public_id", filters, page);
+}
+
+export function createPurchase(purchase: PurchaseInput): Promise<unknown> {
+  return apiFetch<unknown>("/purchases", { method: "POST", body: JSON.stringify(purchase) });
 }
