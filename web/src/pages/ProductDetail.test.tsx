@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail as ProductDetailType } from "../api/products";
-import { jsonResponse, stubFetch } from "../test/helpers";
+import { anaAsBuyer, fakeAuth, jsonResponse, stubFetch } from "../test/helpers";
 import { pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
 
 describe("ProductDetail", () => {
@@ -96,6 +96,15 @@ describe("ProductDetail", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
     });
+  });
+
+  it("keeps an id with slashes inside the product path of the API", async () => {
+    const fetchMock = stubFetch(jsonResponse({ detail: "Produto não encontrado" }, 404));
+
+    renderDetail(fakeAuth({ user: anaAsBuyer("APROVADO") }), "/produtos/..%2Fauth%2Fme");
+
+    expect(await screen.findByText("Produto não encontrado")).toBeInTheDocument();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/products/..%2Fauth%2Fme");
   });
 
   it("expands and collapses long product descriptions", async () => {

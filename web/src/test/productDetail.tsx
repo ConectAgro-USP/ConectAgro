@@ -39,12 +39,15 @@ export function pageLoad(product = sampleProduct, reviews: unknown = emptyReview
   return [jsonResponse(product), jsonResponse(managerContact), jsonResponse(reviews)];
 }
 
-export function renderDetail(auth = fakeAuth({ user: anaAsBuyer("APROVADO") })) {
+export function renderDetail(
+  auth = fakeAuth({ user: anaAsBuyer("APROVADO") }),
+  url = "/produtos/prod-123",
+) {
   return renderWithAuth(
     <Routes>
       <Route path="/produtos/:publicId" element={<ProductDetail />} />
     </Routes>,
     auth,
-    "/produtos/prod-123",
+    url,
   );
 }

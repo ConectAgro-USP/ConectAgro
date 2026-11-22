@@ -44,7 +44,8 @@ export function listMyProducts(): Promise<Product[]> {
 }
 
 export function getProduct(publicId: string): Promise<ProductDetail> {
-  return apiFetch<ProductDetail>(`/products/${publicId}`);
+  // o id vem do endereço da página, então não pode virar outro caminho da API
+  return apiFetch<ProductDetail>(`/products/${encodeURIComponent(publicId)}`);
 }
 
 export function getProductContact(publicId: string): Promise<ProductContact> {
