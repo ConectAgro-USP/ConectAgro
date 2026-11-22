@@ -1,4 +1,3 @@
-from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -9,53 +8,17 @@ from sqlmodel import Session
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
-from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
+from src.models.purchase import Purchase, PurchaseStatus
 from src.models.user import User
-from tests.helpers import add_farmer, add_resident, add_user, login
+from tests.helpers import add_farmer, add_resident, add_user, login, reviews_url
 
 REVIEWABLE_URL = "/api/purchases/reviewable"
-DELIVERED = PurchaseStatus.ENTREGUE
-IN_PROGRESS = PurchaseStatus.EM_PROGRESSO
 LISTED_FIELDS = {"public_id", "rating", "comment", "created_at", "updated_at"}
 
 
 @pytest.fixture(autouse=True)
 def logged_manager(client: TestClient, manager: User) -> None:
     login(client, manager)
-
-
-@pytest.fixture
-def joao(session: Session) -> Farmer:
-    return add_farmer(session, add_user(session, "joao@example.com", name="João Lima"))
-
-
-@pytest.fixture
-def maria(session: Session) -> Farmer:
-    return add_farmer(session, add_user(session, "maria@example.com"))
-
-
-@pytest.fixture
-def purchase(session: Session, building: Apartment, joao: Farmer, maria: Farmer) -> Purchase:
-    return add_purchase(session, building.id, (joao, DELIVERED), (maria, IN_PROGRESS))
-
-
-@pytest.fixture
-def resident(session: Session, building: Apartment) -> Buyer:
-    user = add_user(session, "morador@example.com")
-    return add_resident(session, building, user, link_status=LinkStatus.APROVADO)
-
-
-def add_purchase(session: Session, building_id: int, *parts: tuple) -> Purchase:
-    purchase = Purchase(apartment_id=building_id, expected_delivery_date=date(2030, 1, 1))
-    for farmer, part_status in parts:
-        purchase.purchase_parts.append(PurchasePart(farmer_id=farmer.id, status=part_status))
-    session.add(purchase)
-    session.commit()
-    return purchase
-
-
-def reviews_url(purchase: Purchase, farmer: Farmer) -> str:
-    return f"/api/purchases/{purchase.public_id}/farmers/{farmer.public_id}/reviews"
 
 
 def test_manager_and_resident_review_and_farmer_gets_the_average(
@@ -168,31 +131,4 @@ def test_only_the_author_updates_the_review(
     assert updated.json()["updated_at"] is not None
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert unknown.status_code == status.HTTP_404_NOT_FOUND
-    assert by_other.status_code == status.HTTP_403_FORBIDDEN
-
-
-def test_reviewable_lists_delivered_parts_not_yet_reviewed_by_the_user(
-    client: TestClient, session: Session, purchase: Purchase, joao: Farmer, resident: Buyer
-):
-    lucas = add_farmer(session, add_user(session, "lucas@example.com", name="Lucas Reis"))
-    second = add_purchase(session, purchase.apartment_id, (joao, DELIVERED), (lucas, DELIVERED))
-    rows = [(second, lucas, "Lucas R."), (second, joao, "João L."), (purchase, joao, "João L.")]
-    pending = [
-        {"purchase_public_id": str(bought.public_id), "farmer_public_id": str(farmer.public_id)}
-        | {"farmer_short_name": name}
-        for bought, farmer, name in rows
-    ]
-    before = client.get(REVIEWABLE_URL)
-    client.post(reviews_url(second, joao), json={"rating": 4})
-    after = client.get(REVIEWABLE_URL)
-    login(client, resident.user)
-    review = client.post(reviews_url(second, joao), json={"rating": 4}).json()
-    other = add_user(session, "outra@example.com")
-    add_resident(session, resident.apartment, other, unit="43", link_status=LinkStatus.APROVADO)
-    login(client, other)
-    by_other = client.patch(f"/api/reviews/{review['public_id']}", json={"rating": 1})
-
-    assert before.json() == pending
-    assert after.json() == [pending[0], pending[2]]
-    assert client.get(REVIEWABLE_URL).json() == pending
     assert by_other.status_code == status.HTTP_403_FORBIDDEN

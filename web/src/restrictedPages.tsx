@@ -3,16 +3,20 @@ import {
   MapPinIcon,
   PackageIcon,
   ReceiptTextIcon,
+  StarIcon,
   UsersIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ProfileType } from "./api/profiles";
+import { REVIEWS_PATH } from "./components/reviews/paths";
 import { BuildingPurchases } from "./pages/BuildingPurchases";
+import { MyReviews } from "./pages/MyReviews";
 import { MySales } from "./pages/MySales";
 import { MyProducts } from "./pages/MyProducts";
 import { NearbyFarmers } from "./pages/NearbyFarmers";
 import { Residents } from "./pages/Residents";
+import { Reviews } from "./pages/Reviews";
 
 interface RestrictedPage {
   path: string;
@@ -47,6 +51,13 @@ export const RESTRICTED_PAGES: RestrictedPage[] = [
     element: <BuildingPurchases />,
   },
   {
+    path: REVIEWS_PATH,
+    label: "Avaliações",
+    icon: StarIcon,
+    profiles: ["apartment", "buyer"],
+    element: <Reviews />,
+  },
+  {
     path: "/meus-produtos",
     label: "Meus produtos",
     icon: PackageIcon,
@@ -59,6 +70,13 @@ export const RESTRICTED_PAGES: RestrictedPage[] = [
     icon: HandCoinsIcon,
     profiles: ["farmer"],
     element: <MySales />,
+  },
+  {
+    path: "/avaliacoes",
+    label: "Minhas avaliações",
+    icon: StarIcon,
+    profiles: ["farmer"],
+    element: <MyReviews />,
   },
 ];
 

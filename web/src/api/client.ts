@@ -20,6 +20,8 @@ const INVALID_FIELD_MESSAGES = new Map([
   ["price", "O preço deve ser não negativo e ter até 2 casas decimais"],
   ["expiration_date", "Informe uma data de validade válida"],
   ["picture_url", "Informe uma URL de imagem válida"],
+  ["rating", "Escolha uma nota de 1 a 5 estrelas"],
+  ["comment", "O comentário pode ter até 500 caracteres"],
 ]);
 
 interface InvalidField {

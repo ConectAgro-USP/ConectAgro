@@ -1,98 +1,15 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
-import type { PurchaseItem } from "../api/history";
-import type { ProfileRead } from "../api/profiles";
-import type { BuildingPurchase, PurchasePart } from "../api/purchases";
 import {
-  ana,
   anaAsBuyer,
+  anaAsManager,
   fakeAuth,
   jsonResponse,
   renderWithAuth,
   stubFetch,
-  villageVilaVerde,
 } from "../test/helpers";
-import { BuildingPurchases } from "./BuildingPurchases";
-
-const manager: ProfileRead = { ...ana, profile_type: "apartment", apartment: villageVilaVerde };
-
-const mandioca: PurchaseItem = {
-  product_public_id: "produto-1",
-  product_name: "Mandioca",
-  quantity: 3,
-  unit_price: "7.00",
-  subtotal: "21.00",
-};
-const laranja: PurchaseItem = {
-  product_public_id: "produto-2",
-  product_name: "Laranja",
-  quantity: 2,
-  unit_price: "4.50",
-  subtotal: "9.00",
-};
-const tomate: PurchaseItem = {
-  product_public_id: "produto-3",
-  product_name: "Tomate",
-  quantity: 2,
-  unit_price: "9.00",
-  subtotal: "18.00",
-};
-const osvaldoPart: PurchasePart = {
-  public_id: "parte-1",
-  farmer_public_id: "agricultor-1",
-  farmer_short_name: "Osvaldo S.",
-  status: "EM PROGRESSO",
-  closed_at: null,
-  total: "30.00",
-  purchase_products: [mandioca, laranja],
-};
-const mariaPart: PurchasePart = {
-  public_id: "parte-2",
-  farmer_public_id: "agricultor-2",
-  farmer_short_name: "Maria F.",
-  status: "ENTREGUE",
-  closed_at: "2026-11-11T15:00:00Z",
-  total: "18.00",
-  purchase_products: [tomate],
-};
-const purchase: BuildingPurchase = {
-  public_id: "compra-1",
-  status: "EM PROGRESSO",
-  created_at: "2026-11-10T14:00:00Z",
-  expected_delivery_date: "2026-11-20",
-  closed_at: null,
-  total: "48.00",
-  purchase_parts: [osvaldoPart, mariaPart],
-};
-// a API lista todos os agricultores do prédio, e um deles entrou sem nome
-const farmers = [
-  { public_id: "agricultor-3", name: "" },
-  { public_id: "agricultor-2", name: "Maria F." },
-  { public_id: "agricultor-1", name: "Osvaldo S." },
-];
-
-function pageOf(...purchases: BuildingPurchase[]): Response {
-  return jsonResponse({
-    items: purchases,
-    page: 1,
-    total_pages: 1,
-    realized_total: "18.00",
-    expected_total: "30.00",
-    counterparts: farmers,
-  });
-}
-
-function renderPurchases(...responses: Response[]) {
-  const fetchMock = stubFetch(...responses);
-  renderWithAuth(<BuildingPurchases />, fakeAuth({ user: manager }));
-  return fetchMock;
-}
-
-async function findCard(farmers: string): Promise<HTMLElement> {
-  const title = await screen.findByRole("heading", { name: farmers });
-  return title.closest("li")!;
-}
+import { findCard, mariaPart, pageOf, purchase, renderPurchases } from "../test/purchases";
 
 describe("BuildingPurchases", () => {
   it("asks for the purchases of the building", async () => {
@@ -151,8 +68,8 @@ describe("BuildingPurchases", () => {
 
     await userEvent.selectOptions(screen.getByLabelText("Agricultor"), "Maria F.");
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(fetchMock.mock.calls[1][0]).toBe(
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(fetchMock.mock.calls[2][0]).toBe(
       "/api/apartments/me/purchases?page=1&farmer_public_id=agricultor-2",
     );
   });
@@ -186,8 +103,8 @@ describe("BuildingPurchases", () => {
   });
 
   it("opens at /compras for the manager", async () => {
-    stubFetch(pageOf(purchase));
-    renderWithAuth(<App />, fakeAuth({ user: manager }), "/compras");
+    stubFetch(pageOf(purchase), jsonResponse([]));
+    renderWithAuth(<App />, fakeAuth({ user: anaAsManager }), "/compras");
 
     expect(await screen.findByRole("heading", { name: "Compras do prédio" })).toBeInTheDocument();
   });
