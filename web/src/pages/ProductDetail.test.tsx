@@ -37,7 +37,6 @@ const emptyReviews = {
   reviews_count: 0,
   reviews: [],
 };
-const noReviewablePurchases: unknown[] = [];
 
 function renderDetail(
   auth = fakeAuth({ user: anaAsBuyer("APROVADO") }),
@@ -54,7 +53,7 @@ function renderDetail(
 
 describe("ProductDetail", () => {
   it("renders product information including photo, name, description, price, expiration, quantity and farmer", async () => {
-    stubFetch(jsonResponse(sampleProduct), jsonResponse(noReviewablePurchases), jsonResponse(emptyReviews));
+    stubFetch(jsonResponse(sampleProduct), jsonResponse(emptyReviews));
 
     renderDetail();
 
@@ -76,9 +75,7 @@ describe("ProductDetail", () => {
       screen.getByText("Mandioca orgânica plantada no sítio. Sem agrotóxicos e colhida fresca."),
     ).toBeInTheDocument();
 
-    expect(await screen.findByText("(Sem avaliações)")).toBeInTheDocument();
-    expect(await screen.findByText("Este agricultor ainda não recebeu avaliações."))
-      .toBeInTheDocument();
+    expect(await screen.findByText("Ainda sem avaliações")).toBeInTheDocument();
   });
 
   it("shows fallback when product has no photo and no description", async () => {
@@ -92,7 +89,7 @@ describe("ProductDetail", () => {
         farm_name: null,
       },
     };
-    stubFetch(jsonResponse(productWithoutPhoto), jsonResponse(noReviewablePurchases), jsonResponse(emptyReviews));
+    stubFetch(jsonResponse(productWithoutPhoto), jsonResponse(emptyReviews));
 
     renderDetail();
 
@@ -106,91 +103,33 @@ describe("ProductDetail", () => {
     ).toBeInTheDocument();
   });
 
-  it("loads and displays the farmer rating summary and reviews", async () => {
-    const reviews = {
-      average_rating: 4.5,
-      reviews_count: 2,
-      reviews: [
-        {
-          public_id: "review-1",
-          rating: 5,
-          comment: "Mandioca de qualidade.",
-          created_at: "2026-10-20T10:00:00Z",
-          updated_at: null,
-        },
-        {
-          public_id: "review-2",
-          rating: 4,
-          comment: "Muito boa.",
-          created_at: "2026-10-19T10:00:00Z",
-          updated_at: null,
-        },
-      ],
-    };
-    const fetchMock = stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
-      jsonResponse(reviews),
-    );
+  it("shows the farmer's average and count next to who sells", async () => {
+    const reviews = { average_rating: 4.5, reviews_count: 2, reviews: [] };
+    const fetchMock = stubFetch(jsonResponse(sampleProduct), jsonResponse(reviews));
 
     renderDetail();
 
-    await waitFor(() => {
-      expect(screen.getByText("4,5")).toBeInTheDocument();
-      expect(screen.getByText("(2)")).toBeInTheDocument();
-      expect(screen.getByText("Mandioca de qualidade.")).toBeInTheDocument();
-      expect(screen.getByText("Muito boa.")).toBeInTheDocument();
-    });
-
-    expect(fetchMock.mock.calls[2][0]).toBe("/api/farmers/farmer-1/reviews");
-    expect(screen.getByRole("combobox", { name: "Ordenar avaliações" })).toBeInTheDocument();
+    const seller = (await screen.findByText("Vendido por")).parentElement!.parentElement!;
+    await waitFor(() => expect(seller).toHaveTextContent("4,5 de 5 (2 avaliações)"));
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/farmers/farmer-1/reviews");
   });
 
-  it("submits a review for an eligible delivered purchase and refreshes the list", async () => {
-    const user = userEvent.setup();
-    const purchasePublicId = "purchase-1";
-    const submittedReview = {
-      public_id: "review-new",
-      purchase_public_id: purchasePublicId,
-      farmer_public_id: "farmer-1",
-      apartment_public_id: null,
-      buyer_public_id: "buyer-1",
-      rating: 4,
-      comment: "Muito boa.",
-      created_at: "2026-11-19T10:00:00Z",
-      updated_at: null,
-    };
-    const refreshedReviews = {
-      average_rating: 4,
-      reviews_count: 1,
-      reviews: [submittedReview],
-    };
-    const fetchMock = stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse([
-        {
-          purchase_public_id: purchasePublicId,
-          farmer_public_id: "farmer-1",
-          farmer_short_name: "João",
-        },
-      ]),
+  it("names the farmer by the farm, or just Agricultor, without a short name", async () => {
+    const farmer = { ...sampleProduct.farmer, short_name: "", picture_url: null };
+    stubFetch(
+      jsonResponse({ ...sampleProduct, farmer }),
       jsonResponse(emptyReviews),
-      jsonResponse(submittedReview, 201),
-      jsonResponse(refreshedReviews),
+      jsonResponse({ ...sampleProduct, farmer: { ...farmer, farm_name: null } }),
+      jsonResponse(emptyReviews),
     );
 
+    const { unmount } = renderDetail();
+
+    expect(await screen.findByText("Sítio LabXP")).toBeInTheDocument();
+    expect(screen.queryByText("(Sítio LabXP)")).not.toBeInTheDocument();
+    unmount();
     renderDetail();
-
-    await user.selectOptions(await screen.findByLabelText("Nota da avaliação"), "4");
-    await user.type(screen.getByLabelText("Comentário da avaliação"), "Muito boa.");
-    await user.click(screen.getByRole("button", { name: "Enviar avaliação" }));
-
-    expect(await screen.findByText("Avaliação enviada.")).toBeInTheDocument();
-    expect(await screen.findAllByText("Muito boa.")).toHaveLength(2);
-    expect(fetchMock.mock.calls[3][0]).toBe(
-      `/api/purchases/${purchasePublicId}/farmers/farmer-1/reviews`,
-    );
-    expect(sentBody(fetchMock, 3)).toEqual({ rating: 4, comment: "Muito boa." });
+    expect(await screen.findByText("Agricultor")).toBeInTheDocument();
   });
 
   it("allows a resident (buyer) to select quantity and register interest successfully", async () => {
@@ -208,7 +147,6 @@ describe("ProductDetail", () => {
 
     const fetchMock = stubFetch(
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
       jsonResponse(interestResponse, 201),
     );
@@ -233,9 +171,9 @@ describe("ProductDetail", () => {
       expect(screen.getByText("Interesse registrado com sucesso!")).toBeInTheDocument();
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(fetchMock.mock.calls[3][0]).toBe("/api/interests");
-    expect(sentBody(fetchMock, 3)).toEqual({
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/interests");
+    expect(sentBody(fetchMock, 2)).toEqual({
       product_public_id: "prod-123",
       quantity: 5,
     });
@@ -245,7 +183,6 @@ describe("ProductDetail", () => {
     const user = userEvent.setup();
     stubFetch(
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
     );
 
@@ -273,7 +210,6 @@ describe("ProductDetail", () => {
 
     stubFetch(
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
       jsonResponse(errorResponse, 409),
     );
@@ -303,7 +239,6 @@ describe("ProductDetail", () => {
 
     const fetchMock = stubFetch(
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
       jsonResponse(contactResponse),
     );
@@ -345,7 +280,6 @@ describe("ProductDetail", () => {
 
     const fetchMock = stubFetch(
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
       jsonResponse(contactResponse),
     );
@@ -389,7 +323,6 @@ describe("ProductDetail", () => {
 
     stubFetch(
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
       jsonResponse(contactWithoutPhone),
     );
@@ -418,7 +351,6 @@ describe("ProductDetail", () => {
 
     stubFetch(
       jsonResponse(unavailableProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
     );
 
@@ -437,7 +369,6 @@ describe("ProductDetail", () => {
     stubFetch(
       jsonResponse({ detail: "Produto não encontrado" }, 404),
       jsonResponse(sampleProduct),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
     );
 
@@ -468,7 +399,6 @@ describe("ProductDetail", () => {
 
     stubFetch(
       jsonResponse(productWithLongDesc),
-      jsonResponse(noReviewablePurchases),
       jsonResponse(emptyReviews),
     );
 

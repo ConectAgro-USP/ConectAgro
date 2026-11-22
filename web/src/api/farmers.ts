@@ -25,6 +25,11 @@ export interface FarmerProduct {
   expiration_date: string;
 }
 
+export interface FarmerReviews {
+  average_rating: number | null;
+  reviews_count: number;
+}
+
 // o servidor monta e ordena a lista inteira de novo a cada pedido, seja qual for a página,
 // então páginas grandes fazem menos pedidos e dão menos chance de a lista mudar entre elas
 const FARMERS_PER_PAGE = 100;
@@ -44,4 +49,8 @@ export function listFarmerProducts(
 ): Promise<Page<FarmerProduct>> {
   const query = new URLSearchParams({ farmer_public_id: farmerPublicId, page: String(page) });
   return apiFetch<Page<FarmerProduct>>(`/products?${query}`);
+}
+
+export function getFarmerReviews(farmerPublicId: string): Promise<FarmerReviews> {
+  return apiFetch<FarmerReviews>(`/farmers/${farmerPublicId}/reviews`);
 }

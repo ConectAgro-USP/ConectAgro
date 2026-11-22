@@ -2,13 +2,10 @@ import { Link, useParams } from "react-router";
 import { FormError } from "../components/FormError";
 import { formatMoney } from "../format";
 import { useProductDetail } from "../hooks/useProductDetail";
-import { useFarmerReviews } from "../hooks/useFarmerReviews";
 import { ProductActions } from "./product/ProductActions";
 import { ProductDescription } from "./product/ProductDescription";
 import { ProductFarmerInfo } from "./product/ProductFarmerInfo";
 import { ProductImage } from "./product/ProductImage";
-import { ProductRatingSummary } from "./product/ProductRatingSummary";
-import { ProductReviewsSection } from "./product/ProductReviewsSection";
 
 function productDate(date: string): string {
   return date.split("-").reverse().join("/");
@@ -17,12 +14,11 @@ function productDate(date: string): string {
 export function ProductDetail() {
   const { publicId } = useParams<{ publicId: string }>();
   const { product, loading, error, retry } = useProductDetail(publicId);
-  const farmerReviews = useFarmerReviews(product?.farmer_public_id ?? "");
 
   if (loading) {
     return (
       <main className="min-h-screen bg-stone-50 px-4 py-8 text-stone-900 sm:px-6">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-5xl">
           <p className="text-stone-600">Carregando produto...</p>
         </div>
       </main>
@@ -32,7 +28,7 @@ export function ProductDetail() {
   if (error || !product) {
     return (
       <main className="min-h-screen bg-stone-50 px-4 py-8 text-stone-900 sm:px-6">
-        <div className="mx-auto max-w-7xl space-y-4">
+        <div className="mx-auto max-w-5xl space-y-4">
           <FormError message={error || "Produto não encontrado"} />
           <div className="flex gap-4">
             <button
@@ -56,52 +52,33 @@ export function ProductDetail() {
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 text-stone-900 sm:px-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="space-y-8 lg:col-span-2">
-            <div className="flex flex-col gap-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm md:flex-row">
-              <ProductImage pictureUrl={product.picture_url} productName={product.name} />
+      <div className="mx-auto max-w-5xl space-y-8">
+        <div className="flex flex-col gap-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm md:flex-row">
+          <ProductImage pictureUrl={product.picture_url} productName={product.name} />
 
-              <div className="flex flex-1 flex-col">
-                <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
-                  {product.name}
-                </h1>
+          <div className="flex flex-1 flex-col">
+            <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
+              {product.name}
+            </h1>
 
-                <ProductRatingSummary
-                  averageRating={farmerReviews.reviews?.average_rating}
-                  reviewsCount={farmerReviews.reviews?.reviews_count}
-                  loading={farmerReviews.loading}
-                  error={farmerReviews.error}
-                />
+            <p className="mt-4 text-3xl font-bold text-stone-900">
+              {formatMoney(product.price)}/kg
+            </p>
 
-                <p className="mt-4 text-3xl font-bold text-stone-900">
-                  {formatMoney(product.price)}/kg
-                </p>
-
-                <div className="mt-4">
-                  <span className="block text-sm text-stone-600">Data de validade:</span>
-                  <span className="text-base font-semibold text-stone-900">
-                    {productDate(product.expiration_date)}
-                  </span>
-                </div>
-
-                <ProductActions product={product} />
-
-                <ProductFarmerInfo farmer={product.farmer} />
-              </div>
+            <div className="mt-4">
+              <span className="block text-sm text-stone-600">Data de validade:</span>
+              <span className="text-base font-semibold text-stone-900">
+                {productDate(product.expiration_date)}
+              </span>
             </div>
 
-            <ProductDescription description={product.description} />
-          </div>
+            <ProductActions product={product} />
 
-          <ProductReviewsSection
-            farmerPublicId={product.farmer_public_id}
-            data={farmerReviews.reviews}
-            loading={farmerReviews.loading}
-            error={farmerReviews.error}
-            onReviewSubmitted={farmerReviews.reload}
-          />
+            <ProductFarmerInfo farmer={product.farmer} />
+          </div>
         </div>
+
+        <ProductDescription description={product.description} />
       </div>
     </main>
   );
