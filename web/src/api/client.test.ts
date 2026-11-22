@@ -42,6 +42,16 @@ describe("apiFetch", () => {
     await expect(apiFetch("/profiles/farmer")).rejects.toMatchObject({ status: 422, message });
   });
 
+  it("keeps the reason the API gave for an invalid character in the comment", async () => {
+    const msg = "Value error, O texto tem um caractere inválido";
+    stubFetch(jsonResponse({ detail: [{ loc: ["body", "comment"], msg }] }, 422));
+
+    await expect(apiFetch("/reviews/avaliacao-1")).rejects.toMatchObject({
+      status: 422,
+      message: "O texto tem um caractere inválido",
+    });
+  });
+
   it.each([
     ["an unknown field", jsonResponse({ detail: [{ loc: ["query", "page"] }] }, 422)],
     ["an empty list of fields", jsonResponse({ detail: [] }, 422)],
