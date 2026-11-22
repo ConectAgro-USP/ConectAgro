@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, NamedTuple, Optional
 from uuid import UUID, uuid4
 
-from pydantic import AfterValidator
+from pydantic import AfterValidator, Strict
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -15,10 +15,12 @@ if TYPE_CHECKING:
     from .purchase import Purchase
 
 Comment = Annotated[str, AfterValidator(reject_null_character)]
+# sem o Strict o pydantic converte booleano e texto em nota
+Rating = Annotated[int, Strict()]
 
 
 class ReviewBase(SQLModel):
-    rating: int = Field(
+    rating: Rating = Field(
         ge=1,
         le=5,
     )
@@ -125,7 +127,7 @@ class ReviewCreate(ReviewBase):
 
 class ReviewUpdate(SQLModel):
     # o default None marca campo não enviado, e o tipo sem None recusa null explícito
-    rating: int = Field(default=None, ge=1, le=5)
+    rating: Rating = Field(default=None, ge=1, le=5)
     comment: Comment = Field(default=None, max_length=500)
 
 
