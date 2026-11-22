@@ -1,19 +1,14 @@
-import { ArrowLeftIcon, FunnelIcon } from "lucide-react";
+import { FunnelIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { NO_FILTERS, type HistoryFilters, type PurchaseStatus } from "../../api/history";
 import type { History } from "../../hooks/useHistory";
 import { SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
+import { TitleBar } from "../TitleBar";
 import { formatMoney } from "../../format";
 import { HistoryFilterFields } from "./HistoryFilterFields";
 
-const TITLE_BAR_CLASSES =
-  "mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-3 py-1 " +
-  "sm:grid-cols-[1fr_auto_1fr]";
-const BACK_LINK_CLASSES =
-  "flex size-12 items-center justify-center justify-self-start rounded-full " +
-  "focus-visible:outline-2 focus-visible:outline-white";
 const FILTER_BUTTON_CLASSES =
   "flex h-11 items-center gap-2 justify-self-end rounded-full border border-white " +
   "bg-lime-900 px-4 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 " +
@@ -64,24 +59,18 @@ export function HistoryLayout({
 
   return (
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
-      <div className="bg-lime-700 px-4 text-white sm:px-6">
-        <div className={TITLE_BAR_CLASSES}>
-          <Link to="/" aria-label="Voltar ao início" className={BACK_LINK_CLASSES}>
-            <ArrowLeftIcon aria-hidden="true" className="size-8" />
-          </Link>
-          <h1 className="text-center text-xl font-bold sm:text-4xl">{title}</h1>
-          <button
-            type="button"
-            aria-expanded={filtersOpen}
-            aria-controls={filtersId}
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className={FILTER_BUTTON_CLASSES}
-          >
-            <FunnelIcon aria-hidden="true" className="size-5" />
-            {activeFilters === 0 ? "Filtrar" : `Filtros (${activeFilters})`}
-          </button>
-        </div>
-      </div>
+      <TitleBar title={title}>
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls={filtersId}
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          className={FILTER_BUTTON_CLASSES}
+        >
+          <FunnelIcon aria-hidden="true" className="size-5" />
+          {activeFilters === 0 ? "Filtrar" : `Filtros (${activeFilters})`}
+        </button>
+      </TitleBar>
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         {/* fica sempre no HTML para o botão ter para onde apontar */}
         <div id={filtersId} hidden={!filtersOpen} className="border-b border-stone-300 py-6">

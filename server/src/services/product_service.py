@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from src.models.buyer import LinkStatus
+from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import (
     Product,
@@ -68,38 +68,26 @@ class ProductService:
                 raise ProductHasPurchasesError from None
             raise
 
-    def get_product_contact(self, public_id: UUID, current_user: User) -> ProductContactRead:
-        if current_user.apartment is not None:
-            product = self._get_existing_product(public_id)
-            farmer_user = product.farmer.user
-            return ProductContactRead(
-                recipient_name=farmer_user.name,
-                cellphone=farmer_user.cellphone or None,
-                message=(
-                    f"Olá, {farmer_user.name}! Tenho interesse no produto "
-                    f"{product.name} do agricultor {farmer_user.name}."
-                ),
-            )
-
-        buyer = current_user.buyer
-        if (
-            buyer is not None
-            and buyer.link_status == LinkStatus.APROVADO
-            and buyer.apartment is not None
-        ):
-            product = self._get_existing_product(public_id)
-            manager = buyer.apartment.manager
-            farmer_name = product.farmer.user.name
-            return ProductContactRead(
-                recipient_name=manager.name,
-                cellphone=manager.cellphone or None,
-                message=(
-                    f"Olá, {manager.name}! Tenho interesse no produto "
-                    f"{product.name} do agricultor {farmer_name}."
-                ),
-            )
-
-        raise PermissionError
+    def get_product_contact(
+        self, public_id: UUID, current_user: User, building: Apartment
+    ) -> ProductContactRead:
+        product = self._get_existing_product(public_id)
+        if current_user.id == building.manager_id:
+            recipient = product.farmer.user
+            interest = f"Tenho interesse no seu produto {product.name}"
+        else:
+            recipient = building.manager
+            farmer_name = short_name(product.farmer.user.name)
+            by_farmer = f" do agricultor {farmer_name}" if farmer_name else ""
+            interest = f"Tenho interesse no produto {product.name}{by_farmer}"
+        recipient_name = short_name(recipient.name)
+        greeting = f"Olá, {recipient_name}!" if recipient_name else "Olá!"
+        return ProductContactRead(
+            recipient_name=recipient_name,
+            cellphone=recipient.cellphone or None,
+            # o sobrenome abreviado (João S.) já traz o ponto final
+            message=f"{greeting} {interest.removesuffix('.')}.",
+        )
 
     def _get_existing_product(self, public_id: UUID) -> Product:
         product = self.products.get_product_by_public_id(public_id)

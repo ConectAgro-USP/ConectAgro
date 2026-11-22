@@ -18,11 +18,6 @@ class Address(BaseModel):
     coordinates: Coordinates | None = None
 
 
-class Route(BaseModel):
-    distance_m: float = Field(ge=0, allow_inf_nan=False)
-    duration_s: float = Field(ge=0, allow_inf_nan=False)
-
-
 class Company(BaseModel):
     # a mesma empresa fica guardada e vai para vários pedidos: ninguém a altera
     model_config = ConfigDict(frozen=True)

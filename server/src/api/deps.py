@@ -7,7 +7,6 @@ from sqlmodel import Session
 
 from src.connectors.brasilapi import BrasilApiConnector
 from src.connectors.cnpja import CnpjaConnector
-from src.connectors.osrm import OsrmConnector
 from src.core.db import engine
 from src.core.security import decode_access_token
 from src.models.apartment import Apartment
@@ -227,15 +226,8 @@ def get_review_service(session: SessionDep, purchases: PurchaseRepositoryDep) ->
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 
 
-def get_osrm_connector() -> OsrmConnector:
-    return OsrmConnector(http_client)
-
-
-OsrmDep = Annotated[OsrmConnector, Depends(get_osrm_connector)]
-
-
-def get_distance_service(ceps: BrasilApiDep, routes: OsrmDep) -> DistanceService:
-    return DistanceService(ceps, routes)
+def get_distance_service(ceps: BrasilApiDep) -> DistanceService:
+    return DistanceService(ceps)
 
 
 DistanceServiceDep = Annotated[DistanceService, Depends(get_distance_service)]
@@ -260,14 +252,14 @@ def get_farmer_search_service(
 FarmerSearchServiceDep = Annotated[FarmerSearchService, Depends(get_farmer_search_service)]
 
 
-def get_current_building_zip_code(current_user: CurrentUser) -> str:
-    # o síndico usa o CEP do seu prédio, o morador usa o do prédio que o aprovou
+def get_current_building(current_user: CurrentUser) -> Apartment:
+    # o síndico usa o seu prédio, o morador usa o prédio que o aprovou
     if current_user.apartment is not None:
-        return current_user.apartment.zip_code
+        return current_user.apartment
     if current_user.buyer is None or current_user.buyer.apartment is None:
         message = "Acesso permitido apenas para moradores e síndicos"
         raise HTTPException(status.HTTP_403_FORBIDDEN, message)
-    return get_current_buyer(current_user).apartment.zip_code
+    return get_current_buyer(current_user).apartment
 
 
-BuildingZipCode = Annotated[str, Depends(get_current_building_zip_code)]
+CurrentBuilding = Annotated[Apartment, Depends(get_current_building)]

@@ -96,3 +96,6 @@ class FarmerSearchRepository:
             delivery_count[farmer_id] = (on_time_count, delivered_count + 1)
 
         return delivery_count
+
+    def commit(self) -> None:
+        self.session.commit()

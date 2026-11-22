@@ -19,8 +19,9 @@ from src.api import rate_limits
 from src.api.deps import RECENT_COMPANIES, get_session
 from src.main import app
 from src.models.apartment import Apartment
+from src.models.farmer import Farmer
 from src.models.user import User
-from tests.helpers import ITAU_CNPJ, add_building, add_user, login
+from tests.helpers import ITAU_CNPJ, add_building, add_farmer, add_user, login
 
 engine_test = create_engine(
     "sqlite://",
@@ -87,3 +88,17 @@ def building(session: Session, manager: User) -> Apartment:
 def other_building(session: Session) -> Apartment:
     other_manager = add_user(session, "outro@example.com")
     return add_building(session, other_manager, name="Edifício Bauru", cnpj=ITAU_CNPJ)
+
+
+@pytest.fixture
+def farmer(client: TestClient, session: Session) -> Farmer:
+    user = add_user(session, "joao@example.com", name="João Silva")
+    farmer = add_farmer(session, user)
+    login(client, user)
+    return farmer
+
+
+@pytest.fixture
+def seller(session: Session) -> Farmer:
+    # agricultor sem login: o produto é visto por quem não é o dono
+    return add_farmer(session, add_user(session, "sitio@example.com", name="João Silva"))

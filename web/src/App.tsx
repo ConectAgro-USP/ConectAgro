@@ -28,7 +28,7 @@ export default function App() {
           <Route
             key={page.path}
             path={page.path}
-            element={<ProtectedRoute allowedProfile={page.profile}>{page.element}</ProtectedRoute>}
+            element={<ProtectedRoute allowedProfiles={page.profiles}>{page.element}</ProtectedRoute>}
           />
         ))}
       </Route>

@@ -1,5 +1,6 @@
 from datetime import date
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -21,6 +22,7 @@ class ProductSearchFilters(BaseModel):
     q: str | None = Field(default=None, max_length=200)
     expiration_from: date | None = None
     min_quantity: int | None = Field(default=None, ge=1, le=INT4_MAX)
+    farmer_public_id: UUID | None = None
     sort: ProductSort = ProductSort.RELEVANCE
     page: int = Field(default=1, ge=1, le=INT4_MAX)
 

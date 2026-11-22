@@ -7,10 +7,10 @@ import { ProfileSetup } from "../pages/ProfileSetup";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedProfile?: ProfileType;
+  allowedProfiles?: ProfileType[];
 }
 
-export function ProtectedRoute({ children, allowedProfile }: Readonly<ProtectedRouteProps>) {
+export function ProtectedRoute({ children, allowedProfiles }: Readonly<ProtectedRouteProps>) {
   const { user, profileType, linkStatus, loading, sessionError } = useAuth();
 
   if (loading) return null;
@@ -19,7 +19,7 @@ export function ProtectedRoute({ children, allowedProfile }: Readonly<ProtectedR
   if (!profileType) return <ProfileSetup />;
   if (linkStatus === "PENDENTE") return <PendingLink />;
   if (linkStatus === "RECUSADO") return <RejectedLink />;
-  if (allowedProfile && allowedProfile !== profileType) return <Navigate to="/" replace />;
+  if (allowedProfiles && !allowedProfiles.includes(profileType)) return <Navigate to="/" replace />;
 
   return children;
 }

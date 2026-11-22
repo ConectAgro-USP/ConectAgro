@@ -16,6 +16,9 @@ class Apartment(SQLModel, table=True):
     public_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
 
     zip_code: str
+    # None nos cadastros anteriores às coordenadas, que a busca por distância preenche
+    latitude: float | None = None
+    longitude: float | None = None
     building_name: str
     # sem unique: quem cadastrasse o CNPJ antes trancaria o síndico de verdade
     building_cnpj: str = Field(index=True)
