@@ -10,6 +10,7 @@ import {
 import { useAuth } from "../../auth/AuthContext";
 import { PrimaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
+import { formatCount } from "../../format";
 
 const MAX_QUANTITY = 50;
 
@@ -88,7 +89,9 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
             Quantidade
           </label>
           <span className="text-sm font-medium text-stone-600">
-            {isAvailable ? `${product.quantity} kg disponíveis` : "Indisponível"}
+            {isAvailable
+              ? formatCount(product.quantity, "kg disponível", "kg disponíveis")
+              : "Indisponível"}
           </span>
         </div>
         <input

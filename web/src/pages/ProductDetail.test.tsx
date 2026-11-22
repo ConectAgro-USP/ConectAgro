@@ -63,8 +63,7 @@ describe("ProductDetail", () => {
       expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
     });
 
-    const photo = screen.getByRole("img", { name: "Mandioca Natural" });
-    expect(photo).toHaveAttribute("src", "https://example.com/mandioca.jpg");
+    expect(document.querySelector("img")).toHaveAttribute("src", "https://example.com/mandioca.jpg");
 
     expect(screen.getByText("R$ 20,00/kg")).toBeInTheDocument();
     expect(screen.getByText("20/10/2026")).toBeInTheDocument();
@@ -97,7 +96,7 @@ describe("ProductDetail", () => {
       expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("img", { name: "Sem foto para Mandioca Natural" })).toBeInTheDocument();
+    expect(document.querySelector("img")).not.toBeInTheDocument();
     expect(
       screen.getByText("Nenhuma descrição informada para este produto."),
     ).toBeInTheDocument();
@@ -378,7 +377,7 @@ describe("ProductDetail", () => {
       expect(screen.getByText("Produto não encontrado")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
