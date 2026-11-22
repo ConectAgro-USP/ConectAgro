@@ -1,8 +1,9 @@
-import { ChevronDownIcon, StarIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { NearbyFarmer } from "../../api/farmers";
-import { formatCount, formatDistance, formatPercent, formatRating } from "../../format";
+import { formatCount, formatDistance, formatPercent } from "../../format";
 import { FarmerProducts } from "./FarmerProducts";
+import { FarmerRating } from "./FarmerRating";
 
 const DISTANCE_TAB_CLASSES =
   "absolute top-0 right-0 rounded-tr-4xl rounded-bl-2xl bg-lime-700 px-5 py-1.5 text-lg " +
@@ -27,22 +28,6 @@ function productsText(count: number): string {
     return "Nenhum produto disponível agora";
   }
   return formatCount(count, "produto disponível", "produtos disponíveis");
-}
-
-function Rating({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
-  if (farmer.average_rating === null) {
-    return <dd className="text-stone-600">Ainda sem avaliações</dd>;
-  }
-  return (
-    <dd className="flex items-center gap-1.5">
-      <StarIcon aria-hidden="true" className="size-5 fill-amber-400 text-amber-500" />
-      <span className="font-bold tabular-nums">{formatRating(farmer.average_rating)}</span>{" "}
-      <span className="sr-only">de 5</span>{" "}
-      <span className="text-stone-600">
-        ({formatCount(farmer.reviews_count, "avaliação", "avaliações")})
-      </span>
-    </dd>
-  );
 }
 
 export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
@@ -79,7 +64,9 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
         <dl className="space-y-1 text-lg sm:pt-8 sm:text-right">
           <div className="flex gap-2 sm:justify-end">
             <dt className="sr-only">Avaliação</dt>
-            <Rating farmer={farmer} />
+            <dd>
+              <FarmerRating average={farmer.average_rating} count={farmer.reviews_count} />
+            </dd>
           </div>
           {farmer.on_time_delivery_percentage !== null && (
             <div className="flex gap-2 sm:justify-end">

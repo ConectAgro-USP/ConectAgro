@@ -21,8 +21,35 @@ export interface ProductInput {
   expiration_date: string;
 }
 
+export interface ProductFarmer {
+  public_id: string;
+  farm_name: string | null;
+  short_name: string;
+  picture_url: string | null;
+}
+
+export interface ProductDetail extends Product {
+  is_available: boolean;
+  farmer: ProductFarmer;
+}
+
+export interface ProductContact {
+  recipient_name: string;
+  cellphone: string | null;
+  message: string;
+}
+
 export function listMyProducts(): Promise<Product[]> {
   return apiFetch<Product[]>("/products/me");
+}
+
+export function getProduct(publicId: string): Promise<ProductDetail> {
+  // o id vem do endereço da página, então não pode virar outro caminho da API
+  return apiFetch<ProductDetail>(`/products/${encodeURIComponent(publicId)}`);
+}
+
+export function getProductContact(publicId: string): Promise<ProductContact> {
+  return apiFetch<ProductContact>(`/products/${publicId}/contact`);
 }
 
 export function createProduct(product: ProductInput): Promise<Product> {
