@@ -52,6 +52,16 @@ describe("apiFetch", () => {
     });
   });
 
+  it("keeps the reason the API gave for a delivery date in the past", async () => {
+    const msg = "Value error, A data prevista de entrega não pode estar no passado";
+    stubFetch(jsonResponse({ detail: [{ loc: ["body", "expected_delivery_date"], msg }] }, 422));
+
+    await expect(apiFetch("/purchases")).rejects.toMatchObject({
+      status: 422,
+      message: "A data prevista de entrega não pode estar no passado",
+    });
+  });
+
   it.each([
     ["an unknown field", jsonResponse({ detail: [{ loc: ["query", "page"] }] }, 422)],
     ["an empty list of fields", jsonResponse({ detail: [] }, 422)],
