@@ -28,14 +28,26 @@ function totalOf(need: BuildingNeed): string {
   return `${need.total_quantity} kg no total, de ${residents}`;
 }
 
+function inStock(need: BuildingNeed): boolean {
+  return need.product.quantity > 0;
+}
+
 export function BuildingNeeds() {
   const list = useBuildingNeeds();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [closing, setClosing] = useState(false);
   const orderLabelId = useId();
+  const stockNoteId = useId();
   const needs = list.needs ?? [];
-  const selected = needs.filter((need) => selectedIds.includes(need.product.public_id));
+  // sem estoque o produto sai da compra, mesmo se já estava marcado
+  const isSelected = (need: BuildingNeed) =>
+    selectedIds.includes(need.product.public_id) && inStock(need);
+  const selected = needs.filter(isSelected);
   const farmers = new Set(selected.map((need) => need.product.farmer.public_id)).size;
+  // sem nada a comprar o formulário fecha, e só volta pelo botão
+  if (closing && selected.length === 0) {
+    setClosing(false);
+  }
 
   function select(publicId: string, checked: boolean) {
     setSelectedIds((current) =>
@@ -47,8 +59,8 @@ export function BuildingNeeds() {
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
       <TitleBar title="Necessidades do prédio" />
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        {closing ? (
-          <PurchaseForm needs={selected} onBack={() => setClosing(false)} />
+        {closing && selected.length > 0 ? (
+          <PurchaseForm needs={selected} onBack={() => setClosing(false)} reload={list.reload} />
         ) : (
           <>
             <div
@@ -96,12 +108,16 @@ export function BuildingNeeds() {
               <ul className="space-y-4 pt-8">
                 {needs.map((need) => {
                   const seller = sellerName(need.product.farmer);
+                  const soldOut = !inStock(need);
+                  const noteId = `${stockNoteId}-${need.product.public_id}`;
                   return (
                     <li key={need.product.public_id} className={CARD_CLASSES}>
                       <input
                         type="checkbox"
                         aria-label={`Selecionar ${need.product.name} de ${seller}`}
-                        checked={selectedIds.includes(need.product.public_id)}
+                        aria-describedby={soldOut ? noteId : undefined}
+                        checked={isSelected(need)}
+                        disabled={soldOut}
                         onChange={(event) => select(need.product.public_id, event.target.checked)}
                         className="mt-0.5 size-6 shrink-0 accent-lime-800"
                       />
@@ -109,6 +125,11 @@ export function BuildingNeeds() {
                         <h2 className="text-xl font-bold break-words">{need.product.name}</h2>
                         <p className="break-words text-stone-700">{seller}</p>
                         <p className="text-stone-600">{totalOf(need)}</p>
+                        {soldOut && (
+                          <p id={noteId} className="font-bold text-amber-700">
+                            Sem estoque
+                          </p>
+                        )}
                       </div>
                     </li>
                   );

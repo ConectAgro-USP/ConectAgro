@@ -29,7 +29,7 @@ export interface BuildingPurchase {
 
 export interface PurchaseInput {
   expected_delivery_date: string;
-  items: { product_public_id: string; quantity: number }[];
+  items: { product_public_id: string; quantity: number; unit_price: string }[];
 }
 
 export function listBuildingPurchases(

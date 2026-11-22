@@ -24,6 +24,10 @@ function groupByFarmer(needs: BuildingNeed[]): BuildingNeed[][] {
   return [...farmers.values()];
 }
 
+function startingQuantity({ product, total_quantity }: BuildingNeed): string {
+  return String(Math.min(total_quantity, product.quantity));
+}
+
 interface QuantityLineProps {
   product: ProductDetail;
   quantity: string;
@@ -65,19 +69,17 @@ function QuantityLine({ product, quantity, cost, onChange }: Readonly<QuantityLi
 interface PurchaseFormProps {
   needs: BuildingNeed[];
   onBack: () => void;
+  reload: () => void;
 }
 
-export function PurchaseForm({ needs, onBack }: Readonly<PurchaseFormProps>) {
+export function PurchaseForm({ needs, onBack, reload }: Readonly<PurchaseFormProps>) {
   const { error, pending, run } = useAction();
+  const [sent, setSent] = useState(false);
+  const busy = pending || sent;
   const navigate = useNavigate();
   const title = useRef<HTMLHeadingElement>(null);
-  const [quantities, setQuantities] = useState(() =>
-    Object.fromEntries(
-      needs.map(({ product, total_quantity }) => [
-        product.public_id,
-        String(Math.min(total_quantity, product.quantity)),
-      ]),
-    ),
+  const [quantities, setQuantities] = useState<Partial<Record<string, string>>>(() =>
+    Object.fromEntries(needs.map((need) => [need.product.public_id, startingQuantity(need)])),
   );
 
   // a lista sai da tela e o foco no título leva ao começo do formulário
@@ -85,12 +87,17 @@ export function PurchaseForm({ needs, onBack }: Readonly<PurchaseFormProps>) {
     title.current?.focus();
   }, []);
 
-  function costOf(product: ProductDetail): number {
-    return Number(quantities[product.public_id]) * Number(product.price);
+  // a lista recarregada pode trazer de volta um produto ainda sem quantidade
+  function quantityOf(need: BuildingNeed): string {
+    return quantities[need.product.public_id] ?? startingQuantity(need);
+  }
+
+  function costOf(need: BuildingNeed): number {
+    return Number(quantityOf(need)) * Number(need.product.price);
   }
 
   function sumOf(group: BuildingNeed[]): number {
-    return group.reduce((sum, { product }) => sum + costOf(product), 0);
+    return group.reduce((sum, need) => sum + costOf(need), 0);
   }
 
   function changeQuantity(publicId: string, quantity: string) {
@@ -100,12 +107,21 @@ export function PurchaseForm({ needs, onBack }: Readonly<PurchaseFormProps>) {
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const date = new FormData(event.currentTarget).get("expected_delivery_date");
-    const items = needs.map(({ product }) => ({
-      product_public_id: product.public_id,
-      quantity: Number(quantities[product.public_id]),
+    const items = needs.map((need) => ({
+      product_public_id: need.product.public_id,
+      quantity: Number(quantityOf(need)),
+      unit_price: need.product.price,
     }));
     run(async () => {
-      await createPurchase({ expected_delivery_date: String(date), items });
+      try {
+        await createPurchase({ expected_delivery_date: String(date), items });
+      } catch (purchaseError) {
+        // preço ou estoque podem ter mudado, a lista nova mostra o que vale
+        reload();
+        throw purchaseError;
+      }
+      // a página só troca depois, e o botão não pode voltar a ficar ativo
+      setSent(true);
       void navigate("/compras");
     });
   }
@@ -119,20 +135,20 @@ export function PurchaseForm({ needs, onBack }: Readonly<PurchaseFormProps>) {
         onSubmit={handleSubmit}
         className="mt-6 rounded-4xl border border-stone-200 bg-stone-100 px-6 sm:px-10"
       >
-        <fieldset disabled={pending} className="divide-y divide-stone-300">
+        <fieldset disabled={busy} className="divide-y divide-stone-300">
           {groupByFarmer(needs).map((group) => (
             <section key={group[0].product.farmer.public_id} className="py-8">
               <h3 className="text-xl font-bold break-words">
                 {sellerName(group[0].product.farmer)}
               </h3>
               <ul className="divide-y divide-dashed divide-stone-400">
-                {group.map(({ product }) => (
+                {group.map((need) => (
                   <QuantityLine
-                    key={product.public_id}
-                    product={product}
-                    quantity={quantities[product.public_id]}
-                    cost={costOf(product)}
-                    onChange={(quantity) => changeQuantity(product.public_id, quantity)}
+                    key={need.product.public_id}
+                    product={need.product}
+                    quantity={quantityOf(need)}
+                    cost={costOf(need)}
+                    onChange={(quantity) => changeQuantity(need.product.public_id, quantity)}
                   />
                 ))}
               </ul>
@@ -158,11 +174,11 @@ export function PurchaseForm({ needs, onBack }: Readonly<PurchaseFormProps>) {
         <div className="space-y-4 border-t border-stone-300 py-6">
           <FormError message={error} />
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <SecondaryButton disabled={pending} onClick={onBack}>
+            <SecondaryButton disabled={busy} onClick={onBack}>
               Voltar
             </SecondaryButton>
-            <PrimaryButton disabled={pending}>
-              {pending ? "Confirmando..." : "Confirmar compra"}
+            <PrimaryButton disabled={busy}>
+              {busy ? "Confirmando..." : "Confirmar compra"}
             </PrimaryButton>
           </div>
         </div>
