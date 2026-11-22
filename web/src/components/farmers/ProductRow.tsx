@@ -10,9 +10,19 @@ const PRICE_CLASSES =
   "flex items-baseline gap-2 px-4 pt-1 pb-3 sm:w-44 sm:shrink-0 sm:flex-col sm:items-center " +
   "sm:justify-center sm:gap-0 sm:bg-stone-500 sm:p-4 sm:text-white";
 
-export function ProductRow({ product }: Readonly<{ product: FarmerProduct }>) {
+interface ProductRowProps {
+  product: FarmerProduct;
+  seller?: string;
+  className?: string;
+}
+
+export function ProductRow({
+  product,
+  seller,
+  className = "bg-stone-50",
+}: Readonly<ProductRowProps>) {
   return (
-    <li className="flex overflow-hidden rounded-3xl bg-stone-50 text-left">
+    <li className={`flex overflow-hidden rounded-3xl text-left ${className}`}>
       <ProductPicture url={product.picture_url} className={PICTURE_CLASSES} />
       <div className="flex min-w-0 flex-1 flex-col sm:flex-row">
         <div className="min-w-0 flex-1 px-4 pt-3 sm:px-6 sm:py-5">
@@ -21,6 +31,12 @@ export function ProductRow({ product }: Readonly<{ product: FarmerProduct }>) {
               {product.name}
             </Link>
           </h3>
+          {seller && (
+            <p className="break-words text-stone-700">
+              <span className="sr-only">Vendido por </span>
+              {seller}
+            </p>
+          )}
           {product.description && (
             <p className="line-clamp-2 break-words text-stone-600">{product.description}</p>
           )}
