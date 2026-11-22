@@ -42,3 +42,17 @@ export function listBuildingPurchases(
 export function createPurchase(purchase: PurchaseInput): Promise<unknown> {
   return apiFetch<unknown>("/purchases", { method: "POST", body: JSON.stringify(purchase) });
 }
+
+export function changeMyPartStatus(
+  purchasePublicId: string,
+  status: Exclude<PurchaseStatus, "EM PROGRESSO">,
+): Promise<unknown> {
+  return apiFetch<unknown>(`/purchases/${purchasePublicId}/parts/me/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function cancelPurchase(purchasePublicId: string): Promise<unknown> {
+  return apiFetch<unknown>(`/purchases/${purchasePublicId}/cancel`, { method: "POST" });
+}

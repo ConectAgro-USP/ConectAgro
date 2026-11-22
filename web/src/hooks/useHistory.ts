@@ -21,6 +21,7 @@ export interface History<Item> {
   error: string;
   loadMore: () => void;
   retry: () => void;
+  reload: () => void;
 }
 
 export function useHistory<Item>(loadPage: LoadPage<Item>): History<Item> {
@@ -32,5 +33,16 @@ export function useHistory<Item>(loadPage: LoadPage<Item>): History<Item> {
     setCounterparts(latest);
   }
 
-  return { ...pages, filters: pages.search, changeFilters: pages.changeSearch, counterparts };
+  function reload() {
+    // a cópia dos filtros faz a lista pedir a primeira página de novo
+    pages.changeSearch({ ...pages.search });
+  }
+
+  return {
+    ...pages,
+    filters: pages.search,
+    changeFilters: pages.changeSearch,
+    counterparts,
+    reload,
+  };
 }
