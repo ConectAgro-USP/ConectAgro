@@ -22,7 +22,7 @@ const ICON_BUTTON_CLASSES =
 const PLACEHOLDER_BUTTON_CLASSES =
   "hidden size-12 items-center justify-center rounded-full disabled:cursor-not-allowed sm:flex";
 const NAV_LINK_CLASSES =
-  "flex h-12 items-center gap-2 rounded-full px-2 focus-visible:outline-2 sm:px-5 " +
+  "flex h-12 items-center gap-2 rounded-full px-1 focus-visible:outline-2 sm:px-3 " +
   "focus-visible:outline-lime-800";
 
 function chooseNavLinkClasses({ isActive }: { isActive: boolean }): string {
