@@ -45,7 +45,12 @@ def buy(client: TestClient, *items: tuple[Product, int], delivery: date = FUTURE
     payload = {
         "expected_delivery_date": delivery.isoformat(),
         "items": [
-            {"product_public_id": str(product.public_id), "quantity": quantity}
+            {
+                "product_public_id": str(product.public_id),
+                "quantity": quantity,
+                # o produto desconhecido do teste de 404 não tem preço
+                "unit_price": str(product.price or "0.00"),
+            }
             for product, quantity in items
         ],
     }
