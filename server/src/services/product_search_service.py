@@ -19,10 +19,9 @@ class ProductSearchService:
         products, total = self.products.search(filters, today)
         items = []
         for product in products:
-            farmer_short_name = short_name(product.farmer.user.name)
-            items.append(
-                ProductCatalogRead.model_validate(
-                    product, update={"farmer_short_name": farmer_short_name}
-                )
-            )
+            farmer_names = {
+                "farmer_short_name": short_name(product.farmer.user.name),
+                "farmer_farm_name": product.farmer.farm_name,
+            }
+            items.append(ProductCatalogRead.model_validate(product, update=farmer_names))
         return ProductSearchResponse.from_page(items, filters.page, PRODUCTS_PER_PAGE, total)

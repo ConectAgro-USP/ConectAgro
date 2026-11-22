@@ -349,7 +349,7 @@ def product_read_data() -> dict:
     }
 
 
-def test_product_catalog_read_from_table_adds_farmer_short_name(
+def test_product_catalog_read_from_table_adds_the_farmer_names(
     session: Session, farmer: Farmer
 ):
     product = Product(
@@ -360,22 +360,24 @@ def test_product_catalog_read_from_table_adds_farmer_short_name(
     session.commit()
 
     catalog_item = ProductCatalogRead.model_validate(
-        product, update={"farmer_short_name": "João S."}
+        product, update={"farmer_short_name": "João S.", "farmer_farm_name": "Sítio Boa Vista"}
     )
 
     assert catalog_item.public_id == product.public_id
     assert catalog_item.name == "Alface"
     assert catalog_item.farmer_public_id == farmer.public_id
     assert catalog_item.farmer_short_name == "João S."
+    assert catalog_item.farmer_farm_name == "Sítio Boa Vista"
     assert "id" not in catalog_item.model_dump()
     assert "farmer_id" not in catalog_item.model_dump()
 
 
-def test_product_catalog_read_carries_only_the_farmer_id_and_short_name():
+def test_product_catalog_read_carries_only_the_farmer_id_and_names():
     # o catálogo é uma lista: a foto e os telefones do agricultor ficam na página do produto
     catalog_item = ProductCatalogRead(
         **product_read_data(),
         farmer_short_name="João S.",
+        farmer_farm_name=None,
         cellphone="11957249062",
         email="joao@example.com",
     )
@@ -392,6 +394,7 @@ def test_product_catalog_read_carries_only_the_farmer_id_and_short_name():
         "created_at",
         "farmer_public_id",
         "farmer_short_name",
+        "farmer_farm_name",
     }
 
 

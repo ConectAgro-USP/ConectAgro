@@ -123,6 +123,7 @@ class ProductDetailRead(ProductRead):
 
 class ProductCatalogRead(ProductRead):
     farmer_short_name: str
+    farmer_farm_name: str | None
 
 
 class ProductContactRead(SQLModel):
