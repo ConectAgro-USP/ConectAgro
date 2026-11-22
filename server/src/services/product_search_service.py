@@ -18,10 +18,12 @@ class ProductSearchService:
         today = datetime.now(BUSINESS_TZ).date()
         products, total = self.products.search(filters, today)
         items = []
-        for product in products:
-            farmer_names = {
+        for product, average, count in products:
+            farmer_summary = {
                 "farmer_short_name": short_name(product.farmer.user.name),
                 "farmer_farm_name": product.farmer.farm_name,
+                "farmer_average_rating": None if average is None else round(float(average), 2),
+                "farmer_reviews_count": count or 0,
             }
-            items.append(ProductCatalogRead.model_validate(product, update=farmer_names))
+            items.append(ProductCatalogRead.model_validate(product, update=farmer_summary))
         return ProductSearchResponse.from_page(items, filters.page, PRODUCTS_PER_PAGE, total)

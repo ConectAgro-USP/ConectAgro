@@ -124,6 +124,8 @@ class ProductDetailRead(ProductRead):
 class ProductCatalogRead(ProductRead):
     farmer_short_name: str
     farmer_farm_name: str | None
+    farmer_average_rating: float | None
+    farmer_reviews_count: int
 
 
 class ProductContactRead(SQLModel):

@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func
@@ -16,6 +17,9 @@ from src.models.product_search import (
 from src.models.purchase import PurchaseProduct
 from src.models.review import Review
 
+# o produto vem com a nota média e o número de avaliações do agricultor
+RatedProduct = tuple[Product, Decimal | float | None, int | None]
+
 
 class ProductInUseError(Exception):
     pass
@@ -26,7 +30,7 @@ class ProductRepository:
         self.session = session
 
 
-    def search(self, filters: ProductSearchFilters, today: date) -> tuple[list[Product], int]:
+    def search(self, filters: ProductSearchFilters, today: date) -> tuple[list[RatedProduct], int]:
         conditions = [Product.expiration_date >= today, Product.quantity > 0, Product.is_available]
         if filters.expiration_from is not None:
             conditions.append(Product.expiration_date >= filters.expiration_from)
@@ -40,7 +44,7 @@ class ProductRepository:
 
         ratings = self._farmer_ratings()
         statement = (
-            select(Product, ratings.c.average_rating)
+            select(Product, ratings.c.average_rating, ratings.c.reviews_count)
             .outerjoin(ratings, ratings.c.farmer_id == Product.farmer_id)
             .where(*conditions)
             .options(selectinload(Product.farmer).selectinload(Farmer.user))
@@ -53,7 +57,7 @@ class ProductRepository:
         total = self.session.exec(
             select(func.count(Product.id)).where(*conditions)
         ).one()
-        return [product for product, _ in rows], total
+        return list(rows), total
 
 
     @staticmethod
@@ -62,6 +66,7 @@ class ProductRepository:
             select(
                 Review.farmer_id.label("farmer_id"),
                 func.avg(Review.rating).label("average_rating"),
+                func.count(Review.id).label("reviews_count"),
             )
             .group_by(Review.farmer_id)
             .subquery()

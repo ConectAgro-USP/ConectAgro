@@ -349,7 +349,7 @@ def product_read_data() -> dict:
     }
 
 
-def test_product_catalog_read_from_table_adds_the_farmer_names(
+def test_product_catalog_read_from_table_adds_the_farmer_summary(
     session: Session, farmer: Farmer
 ):
     product = Product(
@@ -360,7 +360,13 @@ def test_product_catalog_read_from_table_adds_the_farmer_names(
     session.commit()
 
     catalog_item = ProductCatalogRead.model_validate(
-        product, update={"farmer_short_name": "João S.", "farmer_farm_name": "Sítio Boa Vista"}
+        product,
+        update={
+            "farmer_short_name": "João S.",
+            "farmer_farm_name": "Sítio Boa Vista",
+            "farmer_average_rating": 4.5,
+            "farmer_reviews_count": 2,
+        },
     )
 
     assert catalog_item.public_id == product.public_id
@@ -368,16 +374,19 @@ def test_product_catalog_read_from_table_adds_the_farmer_names(
     assert catalog_item.farmer_public_id == farmer.public_id
     assert catalog_item.farmer_short_name == "João S."
     assert catalog_item.farmer_farm_name == "Sítio Boa Vista"
+    assert (catalog_item.farmer_average_rating, catalog_item.farmer_reviews_count) == (4.5, 2)
     assert "id" not in catalog_item.model_dump()
     assert "farmer_id" not in catalog_item.model_dump()
 
 
-def test_product_catalog_read_carries_only_the_farmer_id_and_names():
+def test_product_catalog_read_carries_only_the_farmer_id_and_summary():
     # o catálogo é uma lista: a foto e os telefones do agricultor ficam na página do produto
     catalog_item = ProductCatalogRead(
         **product_read_data(),
         farmer_short_name="João S.",
         farmer_farm_name=None,
+        farmer_average_rating=None,
+        farmer_reviews_count=0,
         cellphone="11957249062",
         email="joao@example.com",
     )
@@ -395,6 +404,8 @@ def test_product_catalog_read_carries_only_the_farmer_id_and_names():
         "farmer_public_id",
         "farmer_short_name",
         "farmer_farm_name",
+        "farmer_average_rating",
+        "farmer_reviews_count",
     }
 
 
