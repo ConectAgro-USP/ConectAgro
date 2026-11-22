@@ -1,55 +1,8 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route, Routes } from "react-router";
 import type { ProductDetail as ProductDetailType } from "../api/products";
-import {
-  anaAsBuyer,
-  anaAsManager,
-  fakeAuth,
-  jsonResponse,
-  renderWithAuth,
-  sentBody,
-  stubFetch,
-} from "../test/helpers";
-import { ProductDetail } from "./ProductDetail";
-
-const sampleProduct: ProductDetailType = {
-  public_id: "prod-123",
-  name: "Mandioca Natural",
-  description: "Mandioca orgânica plantada no sítio. Sem agrotóxicos e colhida fresca.",
-  picture_url: "https://example.com/mandioca.jpg",
-  quantity: 25,
-  price: "20.00",
-  expiration_date: "2026-10-20",
-  is_available: true,
-  farmer_public_id: "farmer-1",
-  created_at: "2026-10-01T10:00:00Z",
-  farmer: {
-    public_id: "farmer-1",
-    short_name: "João Vikator",
-    farm_name: "Sítio LabXP",
-    picture_url: "https://example.com/joao.jpg",
-  },
-};
-
-const emptyReviews = {
-  average_rating: null,
-  reviews_count: 0,
-  reviews: [],
-};
-
-function renderDetail(
-  auth = fakeAuth({ user: anaAsBuyer("APROVADO") }),
-  url = "/produtos/prod-123",
-) {
-  return renderWithAuth(
-    <Routes>
-      <Route path="/produtos/:publicId" element={<ProductDetail />} />
-    </Routes>,
-    auth,
-    url,
-  );
-}
+import { anaAsBuyer, anaAsManager, fakeAuth, jsonResponse, stubFetch } from "../test/helpers";
+import { emptyReviews, renderDetail, sampleProduct } from "../test/productDetail";
 
 describe("ProductDetail", () => {
   it("renders product information including photo, name, description, price, expiration, quantity and farmer", async () => {
@@ -66,7 +19,7 @@ describe("ProductDetail", () => {
     expect(document.querySelector("img")).toHaveAttribute("src", "https://example.com/mandioca.jpg");
 
     expect(screen.getByText("R$ 20,00/kg")).toBeInTheDocument();
-    expect(screen.getByText("20/10/2026")).toBeInTheDocument();
+    expect(screen.getByText("20/10/2099")).toBeInTheDocument();
     expect(screen.getByText("25 kg disponíveis")).toBeInTheDocument();
     expect(screen.getByText(/João Vikator/)).toBeInTheDocument();
     expect(screen.getByText(/\(Sítio LabXP\)/)).toBeInTheDocument();
@@ -129,101 +82,6 @@ describe("ProductDetail", () => {
     unmount();
     renderDetail();
     expect(await screen.findByText("Agricultor")).toBeInTheDocument();
-  });
-
-  it("allows a resident (buyer) to select quantity and register interest successfully", async () => {
-    const user = userEvent.setup();
-    const interestResponse = {
-      public_id: "int-1",
-      buyer_public_id: "buyer-1",
-      product_public_id: "prod-123",
-      product_name: "Mandioca Natural",
-      product_status: "Disponível",
-      quantity: 5,
-      created_at: "2026-11-19T10:00:00Z",
-      updated_at: null,
-    };
-
-    const fetchMock = stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-      jsonResponse(interestResponse, 201),
-    );
-
-    renderDetail(fakeAuth({ user: anaAsBuyer("APROVADO") }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
-    });
-
-    const quantityInput = screen.getByLabelText("Quantidade");
-    expect(quantityInput).toHaveValue("1");
-
-    await user.clear(quantityInput);
-    await user.type(quantityInput, "5");
-    expect(quantityInput).toHaveValue("5");
-
-    const registerButton = screen.getByRole("button", { name: "Registrar interesse" });
-    await user.click(registerButton);
-
-    await waitFor(() => {
-      expect(screen.getByText("Interesse registrado com sucesso!")).toBeInTheDocument();
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[2][0]).toBe("/api/interests");
-    expect(sentBody(fetchMock, 2)).toEqual({
-      product_public_id: "prod-123",
-      quantity: 5,
-    });
-  });
-
-  it("limits the quantity input to 0 through 50 and prevents requesting more than stock", async () => {
-    const user = userEvent.setup();
-    stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-    );
-
-    renderDetail();
-    const quantityInput = await screen.findByLabelText("Quantidade");
-    await user.clear(quantityInput);
-    await user.type(quantityInput, "51");
-    expect(quantityInput).toHaveValue("5");
-
-    await user.clear(quantityInput);
-    await user.type(quantityInput, "50");
-    expect(quantityInput).toHaveValue("50");
-    expect(screen.getByRole("alert")).toHaveTextContent("excede o estoque disponível");
-    expect(screen.getByRole("button", { name: "Registrar interesse" })).toBeDisabled();
-
-    await user.clear(quantityInput);
-    await user.type(quantityInput, "0");
-    expect(quantityInput).toHaveValue("0");
-    expect(screen.getByRole("button", { name: "Registrar interesse" })).toBeDisabled();
-  });
-
-  it("shows error when registering interest fails", async () => {
-    const user = userEvent.setup();
-    const errorResponse = { detail: "Interesse nesse produto já registrado" };
-
-    stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-      jsonResponse(errorResponse, 409),
-    );
-
-    renderDetail(fakeAuth({ user: anaAsBuyer("APROVADO") }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Registrar interesse" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Interesse nesse produto já registrado")).toBeInTheDocument();
-    });
   });
 
   it("shows WhatsApp button for resident and opens chat link", async () => {
@@ -339,29 +197,6 @@ describe("ProductDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("Telefone não informado para contato")).toBeInTheDocument();
     });
-  });
-
-  it("disables interest and selection when product has zero quantity or is unavailable", async () => {
-    const unavailableProduct: ProductDetailType = {
-      ...sampleProduct,
-      quantity: 0,
-      is_available: false,
-    };
-
-    stubFetch(
-      jsonResponse(unavailableProduct),
-      jsonResponse(emptyReviews),
-    );
-
-    renderDetail(fakeAuth({ user: anaAsBuyer("APROVADO") }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Indisponível")).toBeInTheDocument();
-    expect(screen.getByLabelText("Quantidade")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Registrar interesse" })).toBeDisabled();
   });
 
   it("shows error and allows retrying when loading product fails", async () => {
