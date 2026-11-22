@@ -33,11 +33,23 @@ describe("apiFetch", () => {
     ["body", "cpf", "CPF inválido"],
     ["query", "cnpj", "CNPJ inválido"],
     ["body", "building_cnpj", "CNPJ inválido"],
+    ["body", "rating", "Escolha uma nota de 1 a 5 estrelas"],
+    ["body", "comment", "O comentário pode ter até 500 caracteres"],
   ])("explains the first %s field %s the API refused", async (place, field, message) => {
     const detail = [{ loc: [place, field], msg: "String should have at most 20 characters" }];
     stubFetch(jsonResponse({ detail }, 422));
 
     await expect(apiFetch("/profiles/farmer")).rejects.toMatchObject({ status: 422, message });
+  });
+
+  it("keeps the reason the API gave for an invalid character in the comment", async () => {
+    const msg = "Value error, O texto tem um caractere inválido";
+    stubFetch(jsonResponse({ detail: [{ loc: ["body", "comment"], msg }] }, 422));
+
+    await expect(apiFetch("/reviews/avaliacao-1")).rejects.toMatchObject({
+      status: 422,
+      message: "O texto tem um caractere inválido",
+    });
   });
 
   it.each([

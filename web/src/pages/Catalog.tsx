@@ -37,6 +37,10 @@ export function Catalog() {
                 key={product.public_id}
                 product={product}
                 seller={sellerOf(product)}
+                rating={{
+                  average: product.farmer_average_rating,
+                  count: product.farmer_reviews_count,
+                }}
                 className={ROW_CLASSES}
               />
             ))}

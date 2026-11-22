@@ -3,6 +3,11 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from src.models.apartment import Apartment
+from src.models.buyer import Buyer
+from src.models.purchase import PurchaseStatus
+from src.models.review import Review
+from tests.helpers import add_purchase_from
 from tests.test_product_search import add_farmer_with_name, add_product
 
 # a busca exige login, então todos os testes rodam com a Ana logada
@@ -58,3 +63,26 @@ def test_search_tells_the_farm_of_each_product(client: TestClient, session: Sess
 
     farms = {item["name"]: item["farmer_farm_name"] for item in response.json()["items"]}
     assert farms == {"Tomate": "Sítio Boa Vista", "Alface": None}
+
+
+def test_search_tells_how_each_farmer_was_rated(
+    client: TestClient, session: Session, building: Apartment, resident: Buyer
+):
+    rated = add_farmer_with_name(session, "avaliado@example.com")
+    unrated = add_farmer_with_name(session, "novo@example.com")
+    add_product(session, rated, "Tomate")
+    add_product(session, unrated, "Alface")
+    purchase = add_purchase_from(session, building.id, (rated, PurchaseStatus.ENTREGUE))
+    second = add_purchase_from(session, building.id, (rated, PurchaseStatus.ENTREGUE))
+    session.add(Review(rating=5, apartment=building, farmer=rated, purchase=purchase))
+    session.add(Review(rating=4, buyer=resident, farmer=rated, purchase=purchase))
+    session.add(Review(rating=4, apartment=building, farmer=rated, purchase=second))
+    session.commit()
+
+    response = client.get("/api/products")
+
+    ratings = {
+        item["name"]: (item["farmer_average_rating"], item["farmer_reviews_count"])
+        for item in response.json()["items"]
+    }
+    assert ratings == {"Tomate": (4.33, 3), "Alface": (None, 0)}

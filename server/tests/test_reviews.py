@@ -51,8 +51,10 @@ def test_manager_and_resident_review_and_farmer_gets_the_average(
 @pytest.mark.parametrize(
     "body",
     [{"rating": None}, {"rating": 0}, {"rating": 6}, {"rating": 4.5}]
+    + [{"rating": True}, {"rating": "5"}, {"rating": 5.0}]
     + [{"comment": "a" * 501}, {"comment": "a\x00"}],
-    ids=["sem-nota", "nota-zero", "nota-seis", "nota-quebrada", "longo", "caractere-nulo"],
+    ids=["sem-nota", "nota-zero", "nota-seis", "nota-quebrada"]
+    + ["nota-booleana", "nota-texto", "nota-com-ponto", "longo", "caractere-nulo"],
 )
 def test_review_rejects_invalid_body(
     client: TestClient, purchase: Purchase, joao: Farmer, body: dict
@@ -122,6 +124,7 @@ def test_only_the_author_updates_the_review(
     url = f"/api/reviews/{created.json()['public_id']}"
     updated = client.patch(url, json={"rating": 3})
     invalid = client.patch(url, json={"comment": None})
+    as_text = client.patch(url, json={"rating": "2"})
     unknown = client.patch(f"/api/reviews/{uuid4()}", json={"rating": 3})
     login(client, resident.user)
     by_other = client.patch(url, json={"rating": 1})
@@ -130,5 +133,6 @@ def test_only_the_author_updates_the_review(
     assert (updated.json()["rating"], updated.json()["comment"]) == (3, "Ótimo")
     assert updated.json()["updated_at"] is not None
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert as_text.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert unknown.status_code == status.HTTP_404_NOT_FOUND
     assert by_other.status_code == status.HTTP_403_FORBIDDEN

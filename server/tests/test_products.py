@@ -499,6 +499,8 @@ def test_catalog_lists_products_of_every_farmer(
             "farmer_public_id": str(seller.public_id),
             "farmer_short_name": "João S.",
             "farmer_farm_name": None,
+            "farmer_average_rating": None,
+            "farmer_reviews_count": 0,
         },
         {
             "public_id": str(potato.public_id),
@@ -512,6 +514,8 @@ def test_catalog_lists_products_of_every_farmer(
             "farmer_public_id": str(maria.public_id),
             "farmer_short_name": "Maria S.",
             "farmer_farm_name": None,
+            "farmer_average_rating": None,
+            "farmer_reviews_count": 0,
         },
     ]
 
