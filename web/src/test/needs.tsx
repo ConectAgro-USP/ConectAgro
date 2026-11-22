@@ -1,5 +1,6 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { use, type ReactNode } from "react";
 import { Route, Routes } from "react-router";
 import type { BuildingNeed } from "../api/interests";
 import { BuildingNeeds } from "../pages/BuildingNeeds";
@@ -42,16 +43,34 @@ export const laranja: BuildingNeed = {
   interested_buyers_count: 1,
 };
 
-export function renderNeeds(...responses: Response[]) {
+export const soldOutAlface: BuildingNeed = {
+  ...alface,
+  product: { ...alface.product, quantity: 0 },
+};
+
+function renderRoutes(purchases: ReactNode, responses: Response[]) {
   const fetchMock = stubFetch(...responses);
   renderWithAuth(
     <Routes>
       <Route path="/" element={<BuildingNeeds />} />
-      <Route path="/compras" element={<h1>Compras do prédio</h1>} />
+      <Route path="/compras" element={purchases} />
     </Routes>,
     fakeAuth({ user: anaAsManager }),
   );
   return fetchMock;
+}
+
+export function renderNeeds(...responses: Response[]) {
+  return renderRoutes(<h1>Compras do prédio</h1>, responses);
+}
+
+// a troca de página espera a promessa, e o formulário fica na tela
+export function renderNeedsWithSlowPurchases(...responses: Response[]) {
+  const neverLoaded = new Promise<ReactNode>(() => {});
+  function SlowPurchases() {
+    return use(neverLoaded);
+  }
+  return renderRoutes(<SlowPurchases />, responses);
 }
 
 export async function openPurchase(...names: string[]) {

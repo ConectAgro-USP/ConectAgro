@@ -1,5 +1,4 @@
-import { within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { waitFor, within } from "@testing-library/react";
 import type { BuildingPurchase } from "../api/purchases";
 import { jsonResponse } from "../test/helpers";
 import {
@@ -7,6 +6,7 @@ import {
   openPurchase,
   osvaldoPart,
   pageOf,
+  press,
   purchase,
   renderPurchases,
 } from "../test/purchases";
@@ -20,10 +20,6 @@ function closedPurchase(status: "ENTREGUE" | "CANCELADA"): BuildingPurchase {
   const closed_at = "2026-11-12T15:00:00Z";
   const part = { ...osvaldoPart, status, closed_at };
   return { ...openPurchase, status, closed_at, purchase_parts: [part] };
-}
-
-function press(card: HTMLElement, button: string) {
-  return userEvent.click(within(card).getByRole("button", { name: button }));
 }
 
 describe("BuildingPurchases, cancelling a purchase", () => {
@@ -55,23 +51,26 @@ describe("BuildingPurchases, cancelling a purchase", () => {
     await press(card, CANCEL);
 
     expect(await within(card).findByText("Cancelada")).toBeVisible();
+    expect(within(card).getByRole("status")).toHaveTextContent("Compra cancelada");
     expect(fetchMock.mock.calls[2][0]).toBe("/api/purchases/compra-2/cancel");
     expect(fetchMock.mock.calls[2][1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[3][0]).toBe("/api/apartments/me/purchases?page=1");
     expect(within(card).queryByRole("button", { name: CANCEL })).not.toBeInTheDocument();
   });
 
-  it("keeps the reason the API refused after the purchases load again", async () => {
+  it("keeps the card as it was, with the reason the API refused", async () => {
     const refused = jsonResponse({ detail: DELIVERED }, 409);
-    renderPurchases(pageOf(openPurchase), refused, pageOf(closedPurchase("ENTREGUE")));
+    const fetchMock = renderPurchases(pageOf(openPurchase), refused);
     const card = await findCard("Osvaldo S.");
     await press(card, CANCEL);
 
     await press(card, CANCEL);
 
-    expect(await within(card).findByText("Entregue")).toBeVisible();
-    expect(within(card).getByRole("alert")).toHaveTextContent(DELIVERED);
-    expect(within(card).queryByRole("button", { name: CANCEL })).not.toBeInTheDocument();
-    expect(within(card).queryByRole("button", { name: "Voltar" })).not.toBeInTheDocument();
+    expect(await within(card).findByRole("alert")).toHaveTextContent(DELIVERED);
+    await waitFor(() => expect(within(card).getByRole("button", { name: "Voltar" })).toBeEnabled());
+    expect(within(card).getByRole("button", { name: CANCEL })).toBeEnabled();
+    // o status aparece no topo do cartão e de novo nos detalhes escondidos
+    expect(within(card).getAllByText("A caminho")[0]).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

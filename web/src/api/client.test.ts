@@ -35,6 +35,7 @@ describe("apiFetch", () => {
     ["body", "building_cnpj", "CNPJ inválido"],
     ["body", "rating", "Escolha uma nota de 1 a 5 estrelas"],
     ["body", "comment", "O comentário pode ter até 500 caracteres"],
+    ["body", "expected_delivery_date", "Informe uma data de entrega válida"],
   ])("explains the first %s field %s the API refused", async (place, field, message) => {
     const detail = [{ loc: [place, field], msg: "String should have at most 20 characters" }];
     stubFetch(jsonResponse({ detail }, 422));

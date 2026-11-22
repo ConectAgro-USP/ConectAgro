@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jsonResponse, sentBody } from "../test/helpers";
 import {
@@ -9,6 +9,7 @@ import {
   mandioca,
   openPurchase,
   renderNeeds,
+  soldOutAlface,
 } from "../test/needs";
 
 const JOAO = "João Vikator, Sítio LabXP";
@@ -68,9 +69,9 @@ describe("BuildingNeeds purchase", () => {
     expect(sentBody(fetchMock, 1)).toEqual({
       expected_delivery_date: "2026-12-01",
       items: [
-        { product_public_id: "produto-1", quantity: 12 },
-        { product_public_id: "produto-2", quantity: 4 },
-        { product_public_id: "produto-3", quantity: 1 },
+        { product_public_id: "produto-1", quantity: 12, unit_price: "20.00" },
+        { product_public_id: "produto-2", quantity: 4, unit_price: "3.50" },
+        { product_public_id: "produto-3", quantity: 1, unit_price: "4.50" },
       ],
     });
   });
@@ -93,5 +94,26 @@ describe("BuildingNeeds purchase", () => {
 
     expect(screen.getByLabelText("Entrega prevista")).toBeInvalid();
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("gives a product that rejoins the purchase its starting quantity", async () => {
+    const lowStockMandioca = { ...mandioca, product: { ...mandioca.product, quantity: 10 } };
+    renderNeeds(
+      jsonResponse([mandioca, alface]),
+      jsonResponse([soldOutAlface, mandioca]),
+      jsonResponse({ detail: "O produto Mandioca não tem a quantidade pedida" }, 409),
+      jsonResponse([alface, lowStockMandioca]),
+    );
+    await userEvent.click(await screen.findByRole("checkbox", { name: /^Selecionar Alface de/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Menor primeiro" }));
+    await screen.findByText("Sem estoque");
+    await openPurchase("Mandioca");
+    fillDeliveryDate("2026-12-01");
+
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
+
+    await waitFor(() => expect(quantityOf("Alface")).toHaveValue(4));
+    expect(document.body).toHaveTextContent(/Total\s*R\$ 254,00/);
+    expect(document.body).not.toHaveTextContent("NaN");
   });
 });

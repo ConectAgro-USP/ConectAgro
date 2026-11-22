@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { PurchaseItem } from "../api/history";
 import type { BuildingPurchase, PurchasePart } from "../api/purchases";
 import type { Reviewable } from "../api/reviews";
@@ -90,4 +91,8 @@ export function renderRating(firstPage: Response, reviewables: Reviewable[], ...
 export async function findCard(farmers: string): Promise<HTMLElement> {
   const title = await screen.findByRole("heading", { name: farmers });
   return title.closest("li")!;
+}
+
+export function press(card: HTMLElement, button: string) {
+  return userEvent.click(within(card).getByRole("button", { name: button }));
 }

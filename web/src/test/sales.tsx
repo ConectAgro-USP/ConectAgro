@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { PurchaseItem } from "../api/history";
 import type { Sale } from "../api/sales";
 import { MySales } from "../pages/MySales";
@@ -35,7 +36,7 @@ const buildings = [
   { public_id: "predio-2", name: "Edifício Jardim das Acácias" },
 ];
 
-export function salesPage(...sales: Sale[]): Response {
+export function pageOf(...sales: Sale[]): Response {
   return jsonResponse({
     items: sales,
     page: 1,
@@ -52,7 +53,11 @@ export function renderSales(...responses: Response[]) {
   return fetchMock;
 }
 
-export async function findSale(building: string): Promise<HTMLElement> {
+export async function findCard(building: string): Promise<HTMLElement> {
   const title = await screen.findByRole("heading", { name: building });
   return title.closest("li")!;
+}
+
+export function press(card: HTMLElement, button: string) {
+  return userEvent.click(within(card).getByRole("button", { name: button }));
 }
