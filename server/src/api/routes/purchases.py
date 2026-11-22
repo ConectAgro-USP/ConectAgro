@@ -13,6 +13,8 @@ from src.services.exceptions import (
     ProductExpiredError,
     ProductNotFoundError,
     ProductOutOfStockError,
+    ProductPriceChangedError,
+    ProductUnavailableError,
     PurchaseAccessDeniedError,
     PurchaseAlreadyDeliveredError,
     PurchaseNotFoundError,
@@ -35,6 +37,12 @@ def create_purchase(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado") from None
     except ProductExpiredError as error:
         message = f"O produto {error} está vencido e não pode ser comprado"
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
+    except ProductUnavailableError as error:
+        message = f"O produto {error} está indisponível e não pode ser comprado"
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
+    except ProductPriceChangedError as error:
+        message = f"O preço do produto {error} mudou, confira o resumo da compra"
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
     except ProductOutOfStockError as error:
         message = f"O produto {error} não tem a quantidade pedida"
