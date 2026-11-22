@@ -82,7 +82,7 @@ class InterestCreate(InterestBase):
 
 class ApartmentNeedRead(SQLModel):
     product: ProductDetailRead
-    total_quantity: int = Field(gt=0, le=INT4_MAX)
+    total_quantity: int = Field(gt=0)
     interested_buyers_count: int = Field(gt=0)
 
 
