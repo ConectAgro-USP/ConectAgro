@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { errorMessage, lostAccess } from "../api/client";
 import {
   listAuthoredReviews,
@@ -26,9 +26,15 @@ export function useAuthorReviews() {
   const [lists, setLists] = useState<Lists | null>(null);
   const [error, setError] = useState("");
   const [request, setRequest] = useState({});
+  // a lista que ainda chega não pode desfazer o que acabou de ser salvo
+  const stopLoading = useRef(() => {});
 
   useEffect(() => {
     let outdated = false;
+    const stop = () => {
+      outdated = true;
+    };
+    stopLoading.current = stop;
 
     async function load() {
       try {
@@ -47,9 +53,7 @@ export function useAuthorReviews() {
     }
 
     load().catch((refreshError: unknown) => console.error(refreshError));
-    return () => {
-      outdated = true;
-    };
+    return stop;
   }, [request, refreshUser]);
 
   function reload() {
@@ -58,6 +62,8 @@ export function useAuthorReviews() {
   }
 
   function markReviewed(reviewable: Reviewable, review: Review) {
+    stopLoading.current();
+    setError("");
     setLists((current) => ({
       reviewables: (current?.reviewables ?? []).filter(
         (item) => !sameReviewable(item, reviewable),
@@ -70,6 +76,8 @@ export function useAuthorReviews() {
   }
 
   function markEdited(review: Review) {
+    stopLoading.current();
+    setError("");
     setLists((current) => ({
       reviewables: current?.reviewables ?? [],
       authored: (current?.authored ?? []).map((item) =>

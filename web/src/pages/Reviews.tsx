@@ -1,5 +1,11 @@
-import { useId } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { startTransition, useId } from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useSearchParams,
+} from "react-router";
 import {
   createReview,
   RATINGS,
@@ -206,6 +212,7 @@ export function Reviews() {
   const [params] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const view = viewOf(params);
   const { fromApp, message = "" } = reviewsStateOf(location.state);
 
@@ -250,8 +257,11 @@ export function Reviews() {
           initial={{ rating: view.rating, comment: "" }}
           onSubmit={(values) =>
             send(async () => {
-              reviews.markReviewed(reviewable, await createReview(reviewable, values));
-              finish(SENT);
+              const created = await createReview(reviewable, values);
+              startTransition(() => {
+                reviews.markReviewed(reviewable, created);
+                finish(SENT);
+              });
             })
           }
           onCancel={leave}
@@ -291,7 +301,7 @@ export function Reviews() {
           {reviews.loading ? "Carregando..." : ""}
         </output>
         <output className="block text-lg font-bold text-lime-800">
-          {view.kind === "list" ? message : ""}
+          {view.kind === "list" && navigationType !== "POP" ? message : ""}
         </output>
         {reviews.error && (view.kind === "list" || !reviews.loaded) && (
           <div className="space-y-4 pt-4">
