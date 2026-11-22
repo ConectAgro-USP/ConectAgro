@@ -94,6 +94,13 @@ export function stubFetch(...responses: Response[]) {
   return fetchMock;
 }
 
+// a página fica esperando a API, os testes só olham quem chega nela
+export function stubSilentApi() {
+  const fetchMock = vi.fn<typeof fetch>(() => new Promise(() => {}));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
 export function sentBody(fetchMock: ReturnType<typeof stubFetch>, call: number): unknown {
   return JSON.parse(String(fetchMock.mock.calls[call][1]?.body));
 }

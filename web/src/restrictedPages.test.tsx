@@ -3,7 +3,14 @@ import App from "./App";
 import type { ProfileRead, ProfileType } from "./api/profiles";
 import { AppHeader } from "./components/AppHeader";
 import { RESTRICTED_PAGES } from "./restrictedPages";
-import { anaAsBuyer, anaAsFarmer, anaAsManager, fakeAuth, renderWithAuth } from "./test/helpers";
+import {
+  anaAsBuyer,
+  anaAsFarmer,
+  anaAsManager,
+  fakeAuth,
+  renderWithAuth,
+  stubSilentApi,
+} from "./test/helpers";
 
 const USERS: Record<ProfileType, ProfileRead> = {
   farmer: anaAsFarmer,
@@ -11,13 +18,12 @@ const USERS: Record<ProfileType, ProfileRead> = {
   buyer: anaAsBuyer("APROVADO"),
 };
 const PROFILES = Object.keys(USERS) as ProfileType[];
-
-// a página fica esperando a API, os testes só olham quem chega nela
-function stubSilentApi() {
-  const fetchMock = vi.fn<typeof fetch>(() => new Promise(() => {}));
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
+const CATALOG_HOME = { heading: "Produtos em destaque", calls: ["/api/products?page=1"] };
+const HOMES: Record<ProfileType, { heading: string; calls: string[] }> = {
+  farmer: { heading: "Olá, Ana Souza", calls: [] },
+  apartment: CATALOG_HOME,
+  buyer: CATALOG_HOME,
+};
 
 describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
   const outsiders = PROFILES.filter((profile) => !page.profiles.includes(profile));
@@ -41,13 +47,13 @@ describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
     expect(screen.getByRole("heading", { level: 1, name: page.label })).toBeInTheDocument();
   });
 
-  it.each(outsiders)("sends the %s profile back to the home without asking the API", (profile) => {
+  it.each(outsiders)("sends the %s profile back to the home without the page's API", (profile) => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: USERS[profile] }), page.path);
 
-    expect(screen.getByRole("heading", { name: "Olá, Ana Souza" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: HOMES[profile].heading })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: page.label })).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(HOMES[profile].calls);
   });
 });
 

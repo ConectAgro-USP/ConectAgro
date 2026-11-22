@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { Page } from "./pagination";
 
 export interface Product {
   public_id: string;
@@ -39,8 +40,18 @@ export interface ProductContact {
   message: string;
 }
 
+export interface CatalogProduct extends Product {
+  farmer_short_name: string;
+  farmer_farm_name: string | null;
+}
+
 export function listMyProducts(): Promise<Product[]> {
   return apiFetch<Product[]>("/products/me");
+}
+
+// o usePages manda a busca antes da página, e o catálogo não tem busca
+export function listCatalog(_search: null, page: number): Promise<Page<CatalogProduct>> {
+  return apiFetch<Page<CatalogProduct>>(`/products?page=${page}`);
 }
 
 export function getProduct(publicId: string): Promise<ProductDetail> {

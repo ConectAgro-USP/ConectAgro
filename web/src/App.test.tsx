@@ -1,12 +1,13 @@
 import { screen } from "@testing-library/react";
 import App from "./App";
-import { ana, anaAsBuyer, fakeAuth, renderWithAuth } from "./test/helpers";
+import { ana, anaAsBuyer, fakeAuth, renderWithAuth, stubSilentApi } from "./test/helpers";
 
 describe("App", () => {
   it.each([
-    ["/", "Olá, Ana Souza"],
+    ["/", "Produtos em destaque"],
     ["/perfil", "Meu perfil"],
   ])("shows the header with the page at %s", (url, heading) => {
+    stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsBuyer("APROVADO") }), url);
 
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();

@@ -6,11 +6,12 @@ import type { ProfileRead } from "../api/profiles";
 import type { Sale } from "../api/sales";
 import {
   ana,
+  anaAsManager,
   fakeAuth,
   jsonResponse,
   renderWithAuth,
   stubFetch,
-  villageVilaVerde,
+  stubSilentApi,
 } from "../test/helpers";
 import { MySales } from "./MySales";
 
@@ -19,7 +20,6 @@ const farmer: ProfileRead = {
   profile_type: "farmer",
   farmer: { farm_name: "Sítio Boa Vista", zip_code: "01310200" },
 };
-const manager: ProfileRead = { ...ana, profile_type: "apartment", apartment: villageVilaVerde };
 
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
@@ -156,10 +156,10 @@ describe("MySales", () => {
   });
 
   it("sends a manager at /vendas back to the home", () => {
-    const fetchMock = stubFetch();
-    renderWithAuth(<App />, fakeAuth({ user: manager }), "/vendas");
+    const fetchMock = stubSilentApi();
+    renderWithAuth(<App />, fakeAuth({ user: anaAsManager }), "/vendas");
 
-    expect(screen.getByRole("heading", { name: "Olá, Ana Souza" })).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
   });
 });

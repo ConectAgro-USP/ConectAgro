@@ -44,3 +44,17 @@ def test_search_by_unknown_or_invalid_farmer(client: TestClient, session: Sessio
     assert unknown.json()["items"] == []
     assert unknown.json()["total"] == 0
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def test_search_tells_the_farm_of_each_product(client: TestClient, session: Session):
+    with_farm = add_farmer_with_name(session, "sitio@example.com")
+    with_farm.farm_name = "Sítio Boa Vista"
+    session.commit()
+    without_farm = add_farmer_with_name(session, "sem-sitio@example.com")
+    add_product(session, with_farm, "Tomate")
+    add_product(session, without_farm, "Alface")
+
+    response = client.get("/api/products")
+
+    farms = {item["name"]: item["farmer_farm_name"] for item in response.json()["items"]}
+    assert farms == {"Tomate": "Sítio Boa Vista", "Alface": None}

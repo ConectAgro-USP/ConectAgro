@@ -1,7 +1,13 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
-import { anaAsManager, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
+import {
+  anaAsManager,
+  fakeAuth,
+  jsonResponse,
+  renderWithAuth,
+  stubSilentApi,
+} from "../test/helpers";
 import { findCard, orange, renderProducts } from "../test/products";
 
 describe("MyProducts", () => {
@@ -54,10 +60,10 @@ describe("MyProducts", () => {
   });
 
   it("restricts the route to farmers", async () => {
-    const fetchMock = stubFetch();
+    const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsManager }), "/meus-produtos");
 
-    expect(screen.getByRole("heading", { name: "Olá, Ana Souza" })).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
   });
 });

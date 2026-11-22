@@ -8,6 +8,7 @@ import {
   jsonResponse,
   renderWithAuth,
   stubFetch,
+  stubSilentApi,
 } from "../test/helpers";
 import { findCard, mariaPart, pageOf, purchase, renderPurchases } from "../test/purchases";
 
@@ -110,10 +111,10 @@ describe("BuildingPurchases", () => {
   });
 
   it("sends a resident at /compras back to the home", () => {
-    const fetchMock = stubFetch();
+    const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsBuyer("APROVADO") }), "/compras");
 
-    expect(screen.getByRole("heading", { name: "Olá, Ana Souza" })).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
   });
 });
