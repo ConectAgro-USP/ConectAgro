@@ -1,7 +1,9 @@
+import type { ComponentProps } from "react";
 import { Link } from "react-router";
 import type { FarmerProduct } from "../../api/farmers";
 import { formatCount, formatFullDate, formatMoney } from "../../format";
 import { ProductPicture } from "../ProductPicture";
+import { FarmerRating } from "./FarmerRating";
 
 const PICTURE_CLASSES = "min-h-24 w-24 shrink-0 self-stretch sm:w-40";
 const NAME_LINK_CLASSES =
@@ -13,12 +15,14 @@ const PRICE_CLASSES =
 interface ProductRowProps {
   product: FarmerProduct;
   seller?: string;
+  rating?: ComponentProps<typeof FarmerRating>;
   className?: string;
 }
 
 export function ProductRow({
   product,
   seller,
+  rating,
   className = "bg-stone-50",
 }: Readonly<ProductRowProps>) {
   return (
@@ -37,6 +41,7 @@ export function ProductRow({
               {seller}
             </p>
           )}
+          {rating && <FarmerRating {...rating} />}
           {product.description && (
             <p className="line-clamp-2 break-words text-stone-600">{product.description}</p>
           )}

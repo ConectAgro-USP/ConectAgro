@@ -43,6 +43,8 @@ export interface ProductContact {
 export interface CatalogProduct extends Product {
   farmer_short_name: string;
   farmer_farm_name: string | null;
+  farmer_average_rating: number | null;
+  farmer_reviews_count: number;
 }
 
 export function listMyProducts(): Promise<Product[]> {

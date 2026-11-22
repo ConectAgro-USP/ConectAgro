@@ -25,6 +25,8 @@ const mandioca: CatalogProduct = {
   created_at: "2026-11-20T12:00:00Z",
   farmer_short_name: "João S.",
   farmer_farm_name: "Sítio Borba",
+  farmer_average_rating: 4.5,
+  farmer_reviews_count: 2,
 };
 const laranja: CatalogProduct = {
   ...mandioca,
@@ -35,6 +37,8 @@ const laranja: CatalogProduct = {
   farmer_public_id: "agricultor-2",
   farmer_short_name: "Maria F.",
   farmer_farm_name: null,
+  farmer_average_rating: null,
+  farmer_reviews_count: 0,
 };
 const resident = anaAsBuyer("APROVADO");
 
@@ -62,6 +66,13 @@ describe("Dashboard, catalog of the resident and the manager", () => {
     expect(row).toHaveTextContent("30 kg disponíveis · Vence 10/12/2099");
     expect(row).toHaveTextContent("R$ 7,00 por quilo");
     expect(row.querySelector("img")).toHaveAttribute("src", mandioca.picture_url);
+  });
+
+  it("shows how each farmer was rated", async () => {
+    renderHome(resident, pageOf([mandioca, laranja]));
+
+    expect(await findRow("Mandioca")).toHaveTextContent("4,5 de 5 (2 avaliações)");
+    expect(await findRow("Laranja")).toHaveTextContent("Ainda sem avaliações");
   });
 
   it("names the seller with what the farmer filled in", async () => {
