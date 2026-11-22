@@ -5,7 +5,7 @@ import {
   type PurchasePart,
 } from "../api/purchases";
 import type { Reviewable } from "../api/reviews";
-import { formatDay, formatMoney } from "../format";
+import { farmerName, formatDay, formatMoney } from "../format";
 import { HistoryCard } from "../components/history/HistoryCard";
 import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
@@ -19,11 +19,6 @@ const STATUS_LABELS: Record<PurchaseStatus, string> = {
   ENTREGUE: "Entregue",
   CANCELADA: "Cancelada",
 };
-
-// quem entrou sem o nome do Google fica sem nome curto na API
-function farmerName(item: { farmer_short_name: string }): string {
-  return item.farmer_short_name || "Agricultor";
-}
 
 function partStatus(part: PurchasePart): string {
   const label = STATUS_LABELS[part.status];

@@ -20,7 +20,7 @@ import {
 import { RateLinks } from "../components/reviews/RateLinks";
 import { ReviewForm } from "../components/reviews/ReviewForm";
 import { RatingStars } from "../components/reviews/StarRating";
-import { formatDay, formatFullDay, formatNames } from "../format";
+import { farmerName, formatDay, formatFullDay, formatNames } from "../format";
 import { useAuthorReviews } from "../hooks/useAuthorReviews";
 
 const SENT = "Avaliação enviada. Obrigado por ajudar outros prédios a escolher!";
@@ -61,10 +61,6 @@ function viewOf(params: URLSearchParams): View {
     return { kind: "create", purchase, farmer, rating: ratingOf(params.get("nota")) };
   }
   return { kind: "list" };
-}
-
-function farmerName(item: { farmer_short_name: string }): string {
-  return item.farmer_short_name || "Agricultor";
 }
 
 function deliveryContext(reviewable: Reviewable): string {

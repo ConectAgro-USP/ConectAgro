@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { RATINGS, type Reviewable } from "../../api/reviews";
-import { formatStars } from "../../format";
+import { formatCount } from "../../format";
 import { FROM_APP, newReviewPath } from "./paths";
 import { Star } from "./StarRating";
 
@@ -29,7 +29,7 @@ export function RateLinks({ reviewable, label = "Avalie a compra" }: Readonly<Ra
             className={STAR_LINK_CLASSES}
           >
             <Star filled={rating <= hovered} className="size-7" />
-            <span className="sr-only">{formatStars(rating)}</span>
+            <span className="sr-only">{formatCount(rating, "estrela", "estrelas")}</span>
           </Link>
         ))}
       </div>

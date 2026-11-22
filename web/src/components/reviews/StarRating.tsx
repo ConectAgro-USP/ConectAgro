@@ -1,7 +1,7 @@
 import { StarIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { RATINGS } from "../../api/reviews";
-import { formatStars } from "../../format";
+import { formatCount } from "../../format";
 
 const RATING_WORDS = ["Péssimo", "Ruim", "Regular", "Bom", "Incrível"];
 
@@ -70,7 +70,7 @@ export function StarRatingField({
               />
               <Star filled={rating <= shown} className="size-10" />
               <span className="sr-only">
-                {formatStars(rating)}, {RATING_WORDS[rating - 1]}
+                {formatCount(rating, "estrela", "estrelas")}, {RATING_WORDS[rating - 1]}
               </span>
             </label>
           ))}

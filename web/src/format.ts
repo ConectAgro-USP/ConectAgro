@@ -34,7 +34,6 @@ export function formatDay(moment: string): string {
   return DAY.format(new Date(moment));
 }
 
-
 export function formatFullDay(moment: string): string {
   return FULL_DAY.format(new Date(moment));
 }
@@ -56,12 +55,13 @@ export function daysUntil(date: string): number {
   return (Date.parse(date) - Date.parse(`${year}-${month}-${day}`)) / DAY_MS;
 }
 
-export function formatStars(rating: number): string {
-  return rating === 1 ? "1 estrela" : `${rating} estrelas`;
-}
-
 export function formatNames(names: string[]): string {
   return NAMES.format(names);
+}
+
+// quem entrou sem o nome do Google fica sem nome curto na API
+export function farmerName(item: { farmer_short_name: string }): string {
+  return item.farmer_short_name || "Agricultor";
 }
 
 export function formatCount(count: number, singular: string, plural: string): string {

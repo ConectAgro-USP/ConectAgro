@@ -2,12 +2,8 @@ import type { ReceivedReview, ReceivedReviews } from "../api/reviews";
 import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { RatingStars } from "../components/reviews/StarRating";
-import { formatFullDay, formatRating } from "../format";
+import { formatCount, formatFullDay, formatRating } from "../format";
 import { useReceivedReviews } from "../hooks/useReceivedReviews";
-
-function countText(count: number): string {
-  return count === 1 ? "1 avaliação" : `${count} avaliações`;
-}
 
 function Summary({ reviews }: Readonly<{ reviews: ReceivedReviews }>) {
   const { average_rating: average, reviews_count: count } = reviews;
@@ -25,7 +21,9 @@ function Summary({ reviews }: Readonly<{ reviews: ReceivedReviews }>) {
       <span className="text-4xl font-bold tabular-nums">{formatRating(average)}</span>
       <span className="sr-only">de 5</span>
       <RatingStars rating={average} starClassName="size-8" />
-      <span className="text-lg text-stone-600">{countText(count)}</span>
+      <span className="text-lg text-stone-600">
+        {formatCount(count, "avaliação", "avaliações")}
+      </span>
     </p>
   );
 }
