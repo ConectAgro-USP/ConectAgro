@@ -1,4 +1,8 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import type { AuthoredReview, Review, Reviewable } from "../api/reviews";
+import { ReviewForm } from "../components/reviews/ReviewForm";
 import { Reviews } from "../pages/Reviews";
 import { anaAsManager, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
 
@@ -46,4 +50,38 @@ export function renderReviews(
   ...more: Response[]
 ) {
   return renderReviewsAnswering(url, jsonResponse(reviewables), jsonResponse(authored), ...more);
+}
+
+export const OSVALDO_URL = "/avaliar?compra=compra-2&agricultor=agricultor-1";
+
+export function title(): HTMLElement {
+  return screen.getByRole("heading", { level: 1 });
+}
+
+export function renderForm(props: Partial<ComponentProps<typeof ReviewForm>> = {}) {
+  const onSubmit = vi.fn<(review: unknown) => Promise<void>>().mockResolvedValue(undefined);
+  const onCancel = vi.fn();
+  render(
+    <ReviewForm
+      farmerName="Osvaldo S."
+      context="Entregue em 19/11 · Mandioca e Alface"
+      initial={{ rating: 0, comment: "" }}
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+      {...props}
+    />,
+  );
+  return { onSubmit, onCancel };
+}
+
+export function star(rating: number): HTMLElement {
+  return screen.getByRole("radio", { name: new RegExp(`^${rating} estrelas?,`) });
+}
+
+export function comment(): HTMLElement {
+  return screen.getByLabelText("Comentário (opcional)");
+}
+
+export function send() {
+  return userEvent.click(screen.getByRole("button", { name: "Enviar" }));
 }
