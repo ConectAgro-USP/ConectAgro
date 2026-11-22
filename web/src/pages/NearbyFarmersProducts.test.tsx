@@ -46,6 +46,14 @@ describe("NearbyFarmers, products of a farmer", () => {
     );
   });
 
+  it("links each product name to its page", async () => {
+    const { card } = await openProducts(pageOf([laranja]));
+
+    const name = await within(card).findByRole("link", { name: "Laranja" });
+
+    expect(name).toHaveAttribute("href", "/produtos/produto-1");
+  });
+
   it("keeps the products when the card closes and opens again", async () => {
     const { fetchMock, card } = await openProducts(pageOf([laranja]));
     const orange = await within(card).findByRole("heading", { name: "Laranja" });
