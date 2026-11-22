@@ -18,6 +18,7 @@ const CANCEL_SALE = {
   label: "Cancelar venda",
   question: "Cancelar esta venda?",
   hint: "Os produtos voltam para o seu estoque e o cancelamento não pode ser desfeito.",
+  done: "Venda cancelada",
 };
 
 interface SaleCardProps {

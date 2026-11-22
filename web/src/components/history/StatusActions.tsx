@@ -6,12 +6,13 @@ import { FormError } from "../FormError";
 const ACTIONS_CLASSES = "mt-6 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
 // os rótulos são compridos, então no celular um botão fica sobre o outro
 const BUTTON_ROW_CLASSES = "flex w-full flex-col gap-3 sm:w-auto sm:flex-row";
+const DELIVERED = "Venda marcada como entregue";
 
 interface StatusActionsProps {
   open: boolean;
   describedBy: string;
   disabled: boolean;
-  cancel: { label: string; question: string; hint: string };
+  cancel: { label: string; question: string; hint: string; done: string };
   onCancel: () => Promise<unknown>;
   onDeliver?: () => Promise<unknown>;
   reload: () => void;
@@ -27,23 +28,21 @@ export function StatusActions({
   reload,
 }: Readonly<StatusActionsProps>) {
   const [confirming, setConfirming] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
   const { error, setError, pending, run } = useAction();
   const buttonProps = { "aria-describedby": describedBy, disabled: disabled || pending };
 
-  // fechado o pedido, o motivo da recusa continua no cartão
-  if (!open && !error) {
-    return null;
+  function send(request: () => Promise<unknown>, done: string) {
+    run(async () => {
+      await request();
+      setAnnouncement(done);
+      reload();
+    });
   }
 
-  function send(request: () => Promise<unknown>) {
-    run(async () => {
-      try {
-        await request();
-      } finally {
-        // mesmo com erro, o pedido pode ter mudado em outra tela
-        reload();
-      }
-    });
+  function openConfirmation() {
+    setError("");
+    setConfirming(true);
   }
 
   function goBack() {
@@ -51,7 +50,8 @@ export function StatusActions({
     setConfirming(false);
   }
 
-  return (
+  // fechado o pedido, o motivo da recusa continua no cartão
+  const actions = (open || error) && (
     <div className={ACTIONS_CLASSES}>
       {/* em duas linhas os botões descem, e um clique duplo não cancela */}
       {open && confirming && (
@@ -63,26 +63,39 @@ export function StatusActions({
       <FormError message={error} />
       {open && confirming && (
         <div className={BUTTON_ROW_CLASSES}>
+          <DangerButton {...buttonProps} onClick={() => send(onCancel, cancel.done)}>
+            {cancel.label}
+          </DangerButton>
+          {/* fica por último, onde um toque duplo não muda nada */}
           <SecondaryButton autoFocus {...buttonProps} onClick={goBack}>
             Voltar
           </SecondaryButton>
-          <DangerButton {...buttonProps} onClick={() => send(onCancel)}>
-            {cancel.label}
-          </DangerButton>
         </div>
       )}
       {open && !confirming && (
         <div className={BUTTON_ROW_CLASSES}>
-          <SecondaryButton {...buttonProps} onClick={() => setConfirming(true)}>
+          <SecondaryButton {...buttonProps} onClick={openConfirmation}>
             {cancel.label}
           </SecondaryButton>
           {onDeliver && (
-            <PrimaryButton type="button" {...buttonProps} onClick={() => send(onDeliver)}>
+            <PrimaryButton
+              type="button"
+              {...buttonProps}
+              onClick={() => send(onDeliver, DELIVERED)}
+            >
               Marcar como entregue
             </PrimaryButton>
           )}
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {/* sempre montado, para o leitor de tela anunciar o resultado */}
+      <output className="sr-only">{announcement}</output>
+      {actions}
+    </>
   );
 }

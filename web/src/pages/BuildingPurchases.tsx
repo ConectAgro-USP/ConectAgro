@@ -26,6 +26,7 @@ const CANCEL_PURCHASE = {
   label: "Cancelar compra",
   question: "Cancelar esta compra?",
   hint: "Os agricultores não fazem mais a entrega e o cancelamento não pode ser desfeito.",
+  done: "Compra cancelada",
 };
 
 function partStatus(part: PurchasePart): string {
