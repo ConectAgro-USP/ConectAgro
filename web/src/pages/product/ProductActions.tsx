@@ -1,28 +1,18 @@
 import { useState } from "react";
-import { CheckCircleIcon, MessageCircleIcon } from "lucide-react";
-import { errorMessage } from "../../api/client";
+import { CheckCircleIcon } from "lucide-react";
 import { createInterest } from "../../api/interests";
-import {
-  getProductContact,
-  type ProductContact,
-  type ProductDetail,
-} from "../../api/products";
+import type { ProductDetail } from "../../api/products";
 import { useAuth } from "../../auth/AuthContext";
 import { PrimaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 import { daysUntil, formatCount } from "../../format";
 import { useAction } from "../../hooks/useAction";
+import { ProductContact } from "./ProductContact";
 
 const QUANTITY_CLASSES =
   "h-14 w-full rounded-xl border border-stone-400 bg-white px-4 text-stone-900 " +
   "focus:border-lime-800 focus:outline-1 focus:outline-lime-800 " +
   "disabled:cursor-not-allowed disabled:bg-stone-100";
-
-function formatWhatsAppUrl(cellphone: string, message: string): string {
-  const digits = cellphone.replace(/\D/g, "");
-  const phone = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-}
 
 interface ProductActionsProps {
   product: ProductDetail;
@@ -41,9 +31,6 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
   const canRegisterInterest =
     isAvailable && requestedQuantity > 0 && !quantityExceedsStock && !interestSuccess;
 
-  const [contactPending, setContactPending] = useState(false);
-  const [contactError, setContactError] = useState("");
-
   function handleRegisterInterest() {
     interest.run(async () => {
       await createInterest({
@@ -52,24 +39,6 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
       });
       setInterestSuccess(true);
     });
-  }
-
-  async function handleOpenWhatsApp() {
-    setContactError("");
-    setContactPending(true);
-    try {
-      const contact: ProductContact = await getProductContact(product.public_id);
-      if (!contact.cellphone || contact.cellphone.trim() === "") {
-        setContactError("Telefone não informado para contato");
-        return;
-      }
-      const url = formatWhatsAppUrl(contact.cellphone, contact.message);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      setContactError(errorMessage(err));
-    } finally {
-      setContactPending(false);
-    }
   }
 
   return (
@@ -131,19 +100,10 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
           </PrimaryButton>
         )}
 
-        <button
-          type="button"
-          disabled={contactPending}
-          onClick={handleOpenWhatsApp}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-stone-800 font-bold text-white transition hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <MessageCircleIcon className="size-5" />
-          <span>
-            {profileType === "apartment"
-              ? "Conversar com o agricultor no WhatsApp"
-              : "Conversar no WhatsApp"}
-          </span>
-        </button>
+        {isBuyer && <ProductContact productPublicId={product.public_id} recipient="síndico" />}
+        {profileType === "apartment" && (
+          <ProductContact productPublicId={product.public_id} recipient="agricultor" />
+        )}
 
         {interestSuccess && (
           <div
@@ -155,7 +115,6 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
           </div>
         )}
         <FormError message={interest.error} />
-        <FormError message={contactError} />
       </div>
     </>
   );

@@ -1,12 +1,12 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail as ProductDetailType } from "../api/products";
-import { anaAsBuyer, anaAsManager, fakeAuth, jsonResponse, stubFetch } from "../test/helpers";
-import { emptyReviews, renderDetail, sampleProduct } from "../test/productDetail";
+import { jsonResponse, stubFetch } from "../test/helpers";
+import { pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
 
 describe("ProductDetail", () => {
   it("renders product information including photo, name, description, price, expiration, quantity and farmer", async () => {
-    stubFetch(jsonResponse(sampleProduct), jsonResponse(emptyReviews));
+    stubFetch(...pageLoad());
 
     renderDetail();
 
@@ -41,7 +41,7 @@ describe("ProductDetail", () => {
         farm_name: null,
       },
     };
-    stubFetch(jsonResponse(productWithoutPhoto), jsonResponse(emptyReviews));
+    stubFetch(...pageLoad(productWithoutPhoto));
 
     renderDetail();
 
@@ -57,22 +57,20 @@ describe("ProductDetail", () => {
 
   it("shows the farmer's average and count next to who sells", async () => {
     const reviews = { average_rating: 4.5, reviews_count: 2, reviews: [] };
-    const fetchMock = stubFetch(jsonResponse(sampleProduct), jsonResponse(reviews));
+    const fetchMock = stubFetch(...pageLoad(sampleProduct, reviews));
 
     renderDetail();
 
     const seller = (await screen.findByText("Vendido por")).parentElement!.parentElement!;
     await waitFor(() => expect(seller).toHaveTextContent("4,5 de 5 (2 avaliações)"));
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/farmers/farmer-1/reviews");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/farmers/farmer-1/reviews");
   });
 
   it("names the farmer by the farm, or just Agricultor, without a short name", async () => {
     const farmer = { ...sampleProduct.farmer, short_name: "", picture_url: null };
     stubFetch(
-      jsonResponse({ ...sampleProduct, farmer }),
-      jsonResponse(emptyReviews),
-      jsonResponse({ ...sampleProduct, farmer: { ...farmer, farm_name: null } }),
-      jsonResponse(emptyReviews),
+      ...pageLoad({ ...sampleProduct, farmer }),
+      ...pageLoad({ ...sampleProduct, farmer: { ...farmer, farm_name: null } }),
     );
 
     const { unmount } = renderDetail();
@@ -84,127 +82,8 @@ describe("ProductDetail", () => {
     expect(await screen.findByText("Agricultor")).toBeInTheDocument();
   });
 
-  it("shows WhatsApp button for resident and opens chat link", async () => {
-    const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-
-    const contactResponse = {
-      recipient_name: "Carlos Síndico",
-      cellphone: "(11) 98765-4321",
-      message: "Olá, Carlos! Tenho interesse no produto Mandioca Natural.",
-    };
-
-    const fetchMock = stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-      jsonResponse(contactResponse),
-    );
-
-    renderDetail(fakeAuth({ user: anaAsBuyer("APROVADO") }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
-    });
-
-    const chatButton = screen.getByRole("button", { name: "Conversar no WhatsApp" });
-    await user.click(chatButton);
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/products/prod-123/contact",
-        expect.anything(),
-      );
-    });
-
-    expect(openSpy).toHaveBeenCalledWith(
-      "https://wa.me/5511987654321?text=Ol%C3%A1%2C%20Carlos!%20Tenho%20interesse%20no%20produto%20Mandioca%20Natural.",
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    openSpy.mockRestore();
-  });
-
-  it("shows WhatsApp button for manager with customized label and does not show register interest button", async () => {
-    const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-
-    const contactResponse = {
-      recipient_name: "João Vikator",
-      cellphone: "11999998888",
-      message: "Olá, João! Tenho interesse no produto Mandioca Natural.",
-    };
-
-    const fetchMock = stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-      jsonResponse(contactResponse),
-    );
-
-    renderDetail(fakeAuth({ user: anaAsManager }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
-    });
-
-    expect(screen.queryByRole("button", { name: "Registrar interesse" })).not.toBeInTheDocument();
-
-    const managerChatButton = screen.getByRole("button", {
-      name: "Conversar com o agricultor no WhatsApp",
-    });
-    await user.click(managerChatButton);
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/products/prod-123/contact",
-        expect.anything(),
-      );
-    });
-
-    expect(openSpy).toHaveBeenCalledWith(
-      "https://wa.me/5511999998888?text=Ol%C3%A1%2C%20Jo%C3%A3o!%20Tenho%20interesse%20no%20produto%20Mandioca%20Natural.",
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    openSpy.mockRestore();
-  });
-
-  it("shows friendly error when contact phone is not provided", async () => {
-    const user = userEvent.setup();
-    const contactWithoutPhone = {
-      recipient_name: "João Vikator",
-      cellphone: null,
-      message: "Olá!",
-    };
-
-    stubFetch(
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-      jsonResponse(contactWithoutPhone),
-    );
-
-    renderDetail(fakeAuth({ user: anaAsManager }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mandioca Natural" })).toBeInTheDocument();
-    });
-
-    await user.click(
-      screen.getByRole("button", { name: "Conversar com o agricultor no WhatsApp" }),
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Telefone não informado para contato")).toBeInTheDocument();
-    });
-  });
-
   it("shows error and allows retrying when loading product fails", async () => {
-    stubFetch(
-      jsonResponse({ detail: "Produto não encontrado" }, 404),
-      jsonResponse(sampleProduct),
-      jsonResponse(emptyReviews),
-    );
+    stubFetch(jsonResponse({ detail: "Produto não encontrado" }, 404), ...pageLoad());
 
     renderDetail();
 
@@ -231,10 +110,7 @@ describe("ProductDetail", () => {
       description: longDesc,
     };
 
-    stubFetch(
-      jsonResponse(productWithLongDesc),
-      jsonResponse(emptyReviews),
-    );
+    stubFetch(...pageLoad(productWithLongDesc));
 
     renderDetail();
 

@@ -1,7 +1,7 @@
 import { Route, Routes } from "react-router";
 import type { ProductDetail as ProductDetailType } from "../api/products";
 import { ProductDetail } from "../pages/ProductDetail";
-import { anaAsBuyer, fakeAuth, renderWithAuth } from "./helpers";
+import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth } from "./helpers";
 
 export const sampleProduct: ProductDetailType = {
   public_id: "prod-123",
@@ -27,6 +27,17 @@ export const emptyReviews = {
   reviews_count: 0,
   reviews: [],
 };
+
+export const managerContact = {
+  recipient_name: "Carlos S.",
+  cellphone: "11987654321",
+  message: "Olá, Carlos S.! Tenho interesse no produto Mandioca Natural do agricultor João V.",
+};
+
+// o morador e o síndico pedem o contato antes da nota do agricultor
+export function pageLoad(product = sampleProduct, reviews: unknown = emptyReviews): Response[] {
+  return [jsonResponse(product), jsonResponse(managerContact), jsonResponse(reviews)];
+}
 
 export function renderDetail(auth = fakeAuth({ user: anaAsBuyer("APROVADO") })) {
   return renderWithAuth(

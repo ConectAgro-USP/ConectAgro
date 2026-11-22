@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { anaAsManager, fakeAuth, jsonResponse, sentBody, stubFetch } from "../test/helpers";
-import { emptyReviews, renderDetail, sampleProduct } from "../test/productDetail";
+import { pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
 
 const interest = {
   public_id: "int-1",
@@ -15,7 +15,7 @@ const interest = {
 };
 
 function renderProduct(...more: Response[]) {
-  const fetchMock = stubFetch(jsonResponse(sampleProduct), jsonResponse(emptyReviews), ...more);
+  const fetchMock = stubFetch(...pageLoad(), ...more);
   renderDetail();
   return fetchMock;
 }
@@ -31,8 +31,8 @@ describe("ProductDetail, interest", () => {
     await userEvent.click(screen.getByRole("button", { name: "Registrar interesse" }));
 
     expect(await screen.findByText("Interesse registrado com sucesso!")).toBeInTheDocument();
-    expect(fetchMock.mock.calls[2][0]).toBe("/api/interests");
-    expect(sentBody(fetchMock, 2)).toEqual({ product_public_id: "prod-123", quantity: 5 });
+    expect(fetchMock.mock.calls[3][0]).toBe("/api/interests");
+    expect(sentBody(fetchMock, 3)).toEqual({ product_public_id: "prod-123", quantity: 5 });
     expect(screen.getByRole("button", { name: "Registrar interesse" })).toBeDisabled();
     expect(quantity).toBeDisabled();
   });
@@ -69,7 +69,7 @@ describe("ProductDetail, interest", () => {
     ["unavailable", { quantity: 0, is_available: false }],
     ["expired", { expiration_date: "2020-01-01" }],
   ])("blocks the interest when the product is %s", async (_, changes) => {
-    stubFetch(jsonResponse({ ...sampleProduct, ...changes }), jsonResponse(emptyReviews));
+    stubFetch(...pageLoad({ ...sampleProduct, ...changes }));
 
     renderDetail();
 
@@ -79,7 +79,7 @@ describe("ProductDetail, interest", () => {
   });
 
   it("shows the stock to the manager, without the quantity or the interest", async () => {
-    stubFetch(jsonResponse(sampleProduct), jsonResponse(emptyReviews));
+    stubFetch(...pageLoad());
 
     renderDetail(fakeAuth({ user: anaAsManager }));
 
