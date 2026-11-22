@@ -26,7 +26,7 @@ const tomate: PurchaseItem = {
   unit_price: "9.00",
   subtotal: "18.00",
 };
-const osvaldoPart: PurchasePart = {
+export const osvaldoPart: PurchasePart = {
   public_id: "parte-1",
   farmer_public_id: "agricultor-1",
   farmer_short_name: "Osvaldo S.",
@@ -52,6 +52,12 @@ export const purchase: BuildingPurchase = {
   closed_at: null,
   total: "48.00",
   purchase_parts: [osvaldoPart, mariaPart],
+};
+export const openPurchase: BuildingPurchase = {
+  ...purchase,
+  public_id: "compra-2",
+  total: "30.00",
+  purchase_parts: [osvaldoPart],
 };
 // a API lista todos os agricultores do prédio, e um deles entrou sem nome
 const farmers = [
