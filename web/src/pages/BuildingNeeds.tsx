@@ -1,10 +1,11 @@
 import { useId, useState } from "react";
 import type { BuildingNeed } from "../api/interests";
-import { SecondaryButton } from "../components/Button";
+import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { TitleBar } from "../components/TitleBar";
-import { formatCount } from "../format";
+import { formatCount, sellerName } from "../format";
 import { useBuildingNeeds } from "../hooks/useBuildingNeeds";
+import { PurchaseForm } from "./needs/PurchaseForm";
 
 const ORDER_BUTTON_CLASSES =
   "h-11 flex-1 rounded-full border border-stone-400 bg-white px-2 font-bold sm:flex-none " +
@@ -18,11 +19,6 @@ const ORDERS = [
   { descending: false, label: "Menor primeiro" },
 ];
 
-function sellerOf({ product }: BuildingNeed): string {
-  const names = [product.farmer.short_name, product.farmer.farm_name].filter(Boolean);
-  return names.join(", ") || "Agricultor";
-}
-
 function totalOf(need: BuildingNeed): string {
   const residents = formatCount(
     need.interested_buyers_count,
@@ -32,13 +28,26 @@ function totalOf(need: BuildingNeed): string {
   return `${need.total_quantity} kg no total, de ${residents}`;
 }
 
+function inStock(need: BuildingNeed): boolean {
+  return need.product.quantity > 0;
+}
+
 export function BuildingNeeds() {
   const list = useBuildingNeeds();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [closing, setClosing] = useState(false);
   const orderLabelId = useId();
+  const stockNoteId = useId();
   const needs = list.needs ?? [];
-  const selected = needs.filter((need) => selectedIds.includes(need.product.public_id));
+  // sem estoque o produto sai da compra, mesmo se já estava marcado
+  const isSelected = (need: BuildingNeed) =>
+    selectedIds.includes(need.product.public_id) && inStock(need);
+  const selected = needs.filter(isSelected);
   const farmers = new Set(selected.map((need) => need.product.farmer.public_id)).size;
+  // sem nada a comprar o formulário fecha, e só volta pelo botão
+  if (closing && selected.length === 0) {
+    setClosing(false);
+  }
 
   function select(publicId: string, checked: boolean) {
     setSelectedIds((current) =>
@@ -50,57 +59,84 @@ export function BuildingNeeds() {
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
       <TitleBar title="Necessidades do prédio" />
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div
-          role="group"
-          aria-labelledby={orderLabelId}
-          className="flex flex-wrap items-center gap-2 border-b border-stone-300 py-8"
-        >
-          <span id={orderLabelId} className="w-full text-lg font-bold sm:mr-2 sm:w-auto">
-            Ordenar por quantidade total
-          </span>
-          {ORDERS.map(({ descending, label }) => (
-            <button
-              key={label}
-              type="button"
-              aria-pressed={descending === list.descending}
-              onClick={() => list.sort(descending)}
-              className={ORDER_BUTTON_CLASSES}
+        {closing && selected.length > 0 ? (
+          <PurchaseForm needs={selected} onBack={() => setClosing(false)} reload={list.reload} />
+        ) : (
+          <>
+            <div
+              role="group"
+              aria-labelledby={orderLabelId}
+              className="flex flex-wrap items-center gap-2 border-b border-stone-300 py-8"
             >
-              {label}
-            </button>
-          ))}
-        </div>
-        {selected.length > 0 && (
-          <p className="pt-8 text-lg font-bold">
-            {formatCount(selected.length, "produto selecionado", "produtos selecionados")}, de{" "}
-            {formatCount(farmers, "agricultor", "agricultores")}
-          </p>
-        )}
-        {list.needs?.length === 0 && (
-          <p className="pt-12 text-center text-xl text-balance">
-            Ainda não há interesses dos moradores. Quando um morador registrar interesse em um
-            produto, ele aparece aqui.
-          </p>
-        )}
-        {needs.length > 0 && (
-          <ul className="space-y-4 pt-8">
-            {needs.map((need) => (
-              <li key={need.product.public_id} className={CARD_CLASSES}>
-                <input
-                  type="checkbox"
-                  aria-label={`Selecionar ${need.product.name} de ${sellerOf(need)}`}
-                  checked={selectedIds.includes(need.product.public_id)}
-                  onChange={(event) => select(need.product.public_id, event.target.checked)}
-                  className="mt-0.5 size-6 shrink-0 accent-lime-800"
-                />
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold break-words">{need.product.name}</h2>
-                  <p className="break-words text-stone-700">{sellerOf(need)}</p>
-                  <p className="text-stone-600">{totalOf(need)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+              <span id={orderLabelId} className="w-full text-lg font-bold sm:mr-2 sm:w-auto">
+                Ordenar por quantidade total
+              </span>
+              {ORDERS.map(({ descending, label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={descending === list.descending}
+                  onClick={() => list.sort(descending)}
+                  className={ORDER_BUTTON_CLASSES}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {selected.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-8">
+                <p className="text-lg font-bold">
+                  {formatCount(selected.length, "produto selecionado", "produtos selecionados")},
+                  de {formatCount(farmers, "agricultor", "agricultores")}
+                </p>
+                <PrimaryButton
+                  type="button"
+                  onClick={() => setClosing(true)}
+                  className="w-full sm:w-auto"
+                >
+                  Fechar compra
+                </PrimaryButton>
+              </div>
+            )}
+            {list.needs?.length === 0 && (
+              <p className="pt-12 text-center text-xl text-balance">
+                Ainda não há interesses dos moradores. Quando um morador registrar interesse em um
+                produto, ele aparece aqui.
+              </p>
+            )}
+            {needs.length > 0 && (
+              <ul className="space-y-4 pt-8">
+                {needs.map((need) => {
+                  const seller = sellerName(need.product.farmer);
+                  const soldOut = !inStock(need);
+                  const noteId = `${stockNoteId}-${need.product.public_id}`;
+                  return (
+                    <li key={need.product.public_id} className={CARD_CLASSES}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Selecionar ${need.product.name} de ${seller}`}
+                        aria-describedby={soldOut ? noteId : undefined}
+                        checked={isSelected(need)}
+                        disabled={soldOut}
+                        onChange={(event) => select(need.product.public_id, event.target.checked)}
+                        className="mt-0.5 size-6 shrink-0 accent-lime-800"
+                      />
+                      <div className="min-w-0">
+                        <h2 className="text-xl font-bold break-words">{need.product.name}</h2>
+                        <p className="break-words text-stone-700">{seller}</p>
+                        <p className="text-stone-600">{totalOf(need)}</p>
+                        {soldOut && (
+                          <p id={noteId} className="font-bold text-amber-700">
+                            Sem estoque
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
         <div className="flex flex-col items-center gap-4 pt-10">
           <output className="text-lg text-stone-600">{list.loading ? "Carregando..." : ""}</output>

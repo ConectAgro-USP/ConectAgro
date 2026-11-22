@@ -22,6 +22,7 @@ const INVALID_FIELD_MESSAGES = new Map([
   ["picture_url", "Informe uma URL de imagem válida"],
   ["rating", "Escolha uma nota de 1 a 5 estrelas"],
   ["comment", "O comentário pode ter até 500 caracteres"],
+  ["expected_delivery_date", "Informe uma data de entrega válida"],
 ]);
 
 interface InvalidField {
@@ -101,6 +102,12 @@ async function readErrorMessage(response: Response, path: string): Promise<strin
     return invalidField.msg.replace(/^Value error,\s*/, "");
   }
   if (field === "comment" && invalidField.msg?.includes("O texto tem um caractere inválido")) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
+  if (
+    field === "expected_delivery_date" &&
+    invalidField.msg?.includes("A data prevista de entrega não pode estar no passado")
+  ) {
     return invalidField.msg.replace(/^Value error,\s*/, "");
   }
   return INVALID_FIELD_MESSAGES.get(field) ?? UNEXPECTED_ERROR;

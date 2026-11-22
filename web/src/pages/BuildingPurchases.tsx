@@ -1,5 +1,7 @@
+import { useId } from "react";
 import type { PurchaseStatus } from "../api/history";
 import {
+  cancelPurchase,
   listBuildingPurchases,
   type BuildingPurchase,
   type PurchasePart,
@@ -10,6 +12,7 @@ import { HistoryCard } from "../components/history/HistoryCard";
 import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
 import { ItemLines } from "../components/history/ItemLines";
+import { StatusActions } from "../components/history/StatusActions";
 import { RateLinks } from "../components/reviews/RateLinks";
 import { useHistory } from "../hooks/useHistory";
 import { useReviewables } from "../hooks/useReviewables";
@@ -19,6 +22,12 @@ const STATUS_LABELS: Record<PurchaseStatus, string> = {
   ENTREGUE: "Entregue",
   CANCELADA: "Cancelada",
 };
+const CANCEL_PURCHASE = {
+  label: "Cancelar compra",
+  question: "Cancelar esta compra?",
+  hint: "Os agricultores não fazem mais a entrega e o cancelamento não pode ser desfeito.",
+  done: "Compra cancelada",
+};
 
 function partStatus(part: PurchasePart): string {
   const label = STATUS_LABELS[part.status];
@@ -26,6 +35,13 @@ function partStatus(part: PurchasePart): string {
     return label;
   }
   return `${label} em ${formatDay(part.closed_at)}`;
+}
+
+function cancellable(purchase: BuildingPurchase): boolean {
+  return (
+    purchase.status === "EM PROGRESSO" &&
+    !purchase.purchase_parts.some((part) => part.status === "ENTREGUE")
+  );
 }
 
 function RateParts({ purchase, reviewables }: Readonly<PurchaseCardProps>) {
@@ -53,10 +69,35 @@ interface PurchaseCardProps {
   reviewables: Reviewable[];
 }
 
-function PurchaseCard({ purchase, reviewables }: Readonly<PurchaseCardProps>) {
+interface ReloadablePurchaseCardProps extends PurchaseCardProps {
+  busy: boolean;
+  reload: () => void;
+}
+
+function PurchaseCard({
+  purchase,
+  reviewables,
+  busy,
+  reload,
+}: Readonly<ReloadablePurchaseCardProps>) {
+  const titleId = useId();
+
   return (
     <HistoryCard
-      actions={<RateParts purchase={purchase} reviewables={reviewables} />}
+      titleId={titleId}
+      actions={
+        <>
+          <StatusActions
+            open={cancellable(purchase)}
+            describedBy={titleId}
+            disabled={busy}
+            cancel={CANCEL_PURCHASE}
+            onCancel={() => cancelPurchase(purchase.public_id)}
+            reload={reload}
+          />
+          <RateParts purchase={purchase} reviewables={reviewables} />
+        </>
+      }
       names={purchase.purchase_parts.map(farmerName)}
       items={purchase.purchase_parts.flatMap((part) => part.purchase_products)}
       status={purchase.status}
@@ -104,7 +145,13 @@ export function BuildingPurchases() {
     >
       <HistoryMonths items={history.items} dateOf={(purchase) => purchase.created_at}>
         {(purchase) => (
-          <PurchaseCard key={purchase.public_id} purchase={purchase} reviewables={reviewables} />
+          <PurchaseCard
+            key={purchase.public_id}
+            purchase={purchase}
+            reviewables={reviewables}
+            busy={history.loading}
+            reload={history.reload}
+          />
         )}
       </HistoryMonths>
     </HistoryLayout>

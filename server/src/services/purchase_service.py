@@ -30,6 +30,8 @@ from src.services.exceptions import (
     ProductExpiredError,
     ProductNotFoundError,
     ProductOutOfStockError,
+    ProductPriceChangedError,
+    ProductUnavailableError,
     PurchaseAccessDeniedError,
     PurchaseAlreadyDeliveredError,
     PurchaseNotFoundError,
@@ -43,11 +45,9 @@ class PurchaseService:
         self.purchases = purchases
 
     def create(self, apartment: Apartment, purchase_in: PurchaseCreate) -> Purchase:
-        quantities = {}
-        for item in purchase_in.items:
-            quantities[item.product_public_id] = item.quantity
-        products = self.purchases.lock_products(list(quantities))
-        if len(products) != len(quantities):
+        items = {item.product_public_id: item for item in purchase_in.items}
+        products = self.purchases.lock_products(list(items))
+        if len(products) != len(items):
             raise ProductNotFoundError
 
         today = datetime.now(BUSINESS_TZ).date()
@@ -57,18 +57,22 @@ class PurchaseService:
         )
         parts = {}
         for product in products:
-            quantity = quantities[product.public_id]
+            item = items[product.public_id]
             if product.expiration_date < today:
                 raise ProductExpiredError(product.name)
-            if product.quantity < quantity:
+            if not product.is_available:
+                raise ProductUnavailableError(product.name)
+            if product.price != item.unit_price:
+                raise ProductPriceChangedError(product.name)
+            if product.quantity < item.quantity:
                 raise ProductOutOfStockError(product.name)
-            product.quantity -= quantity
+            product.quantity -= item.quantity
             if product.farmer_id not in parts:
                 part = PurchasePart(farmer_id=product.farmer_id)
                 parts[product.farmer_id] = part
                 purchase.purchase_parts.append(part)
             purchase_product = PurchaseProduct(
-                product=product, quantity=quantity, unit_price=product.price
+                product=product, quantity=item.quantity, unit_price=product.price
             )
             parts[product.farmer_id].purchase_products.append(purchase_product)
 

@@ -26,7 +26,7 @@ const RATING = new Intl.NumberFormat("pt-BR", {
 });
 const PERCENT = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 
-export function formatMoney(value: string): string {
+export function formatMoney(value: string | number): string {
   return MONEY.format(Number(value));
 }
 
@@ -62,6 +62,11 @@ export function formatNames(names: string[]): string {
 // quem entrou sem o nome do Google fica sem nome curto na API
 export function farmerName(item: { farmer_short_name: string }): string {
   return item.farmer_short_name || "Agricultor";
+}
+
+export function sellerName(farmer: { short_name: string; farm_name: string | null }): string {
+  const names = [farmer.short_name, farmer.farm_name].filter(Boolean);
+  return names.join(", ") || "Agricultor";
 }
 
 export function formatCount(count: number, singular: string, plural: string): string {

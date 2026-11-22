@@ -63,6 +63,14 @@ class ProductExpiredError(Exception):
     pass
 
 
+class ProductUnavailableError(Exception):
+    pass
+
+
+class ProductPriceChangedError(Exception):
+    pass
+
+
 class ProductOutOfStockError(Exception):
     pass
 

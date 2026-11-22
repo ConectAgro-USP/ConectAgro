@@ -35,6 +35,7 @@ describe("apiFetch", () => {
     ["body", "building_cnpj", "CNPJ inválido"],
     ["body", "rating", "Escolha uma nota de 1 a 5 estrelas"],
     ["body", "comment", "O comentário pode ter até 500 caracteres"],
+    ["body", "expected_delivery_date", "Informe uma data de entrega válida"],
   ])("explains the first %s field %s the API refused", async (place, field, message) => {
     const detail = [{ loc: [place, field], msg: "String should have at most 20 characters" }];
     stubFetch(jsonResponse({ detail }, 422));
@@ -49,6 +50,16 @@ describe("apiFetch", () => {
     await expect(apiFetch("/reviews/avaliacao-1")).rejects.toMatchObject({
       status: 422,
       message: "O texto tem um caractere inválido",
+    });
+  });
+
+  it("keeps the reason the API gave for a delivery date in the past", async () => {
+    const msg = "Value error, A data prevista de entrega não pode estar no passado";
+    stubFetch(jsonResponse({ detail: [{ loc: ["body", "expected_delivery_date"], msg }] }, 422));
+
+    await expect(apiFetch("/purchases")).rejects.toMatchObject({
+      status: 422,
+      message: "A data prevista de entrega não pode estar no passado",
     });
   });
 

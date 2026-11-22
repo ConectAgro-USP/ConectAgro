@@ -27,6 +27,7 @@ interface HistoryCardProps {
   closedAt: string | null;
   total: string;
   actions?: ReactNode;
+  titleId?: string;
   children: ReactNode;
 }
 
@@ -40,6 +41,7 @@ export function HistoryCard({
   closedAt,
   total,
   actions,
+  titleId,
   children,
 }: Readonly<HistoryCardProps>) {
   const [open, setOpen] = useState(false);
@@ -61,7 +63,7 @@ export function HistoryCard({
             ))}
           </div>
           <div>
-            <h3 className="text-2xl sm:text-3xl">{formatNames(people)}</h3>
+            <h3 id={titleId} className="text-2xl sm:text-3xl">{formatNames(people)}</h3>
             <p className="line-clamp-2 text-stone-600">{formatNames(products)}</p>
           </div>
         </div>
