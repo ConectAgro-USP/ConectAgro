@@ -123,3 +123,16 @@ def add_purchase(
     session.commit()
     session.refresh(purchase)
     return purchase
+
+
+def add_purchase_from(session: Session, building_id: int, *parts: tuple) -> Purchase:
+    purchase = Purchase(apartment_id=building_id, expected_delivery_date=date(2030, 1, 1))
+    for farmer, part_status in parts:
+        purchase.purchase_parts.append(PurchasePart(farmer_id=farmer.id, status=part_status))
+    session.add(purchase)
+    session.commit()
+    return purchase
+
+
+def reviews_url(purchase: Purchase, farmer: Farmer) -> str:
+    return f"/api/purchases/{purchase.public_id}/farmers/{farmer.public_id}/reviews"

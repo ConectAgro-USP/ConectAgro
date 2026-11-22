@@ -19,9 +19,19 @@ from src.api import rate_limits
 from src.api.deps import RECENT_COMPANIES, get_session
 from src.main import app
 from src.models.apartment import Apartment
+from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
+from src.models.purchase import Purchase, PurchaseStatus
 from src.models.user import User
-from tests.helpers import ITAU_CNPJ, add_building, add_farmer, add_user, login
+from tests.helpers import (
+    ITAU_CNPJ,
+    add_building,
+    add_farmer,
+    add_purchase_from,
+    add_resident,
+    add_user,
+    login,
+)
 
 engine_test = create_engine(
     "sqlite://",
@@ -102,3 +112,25 @@ def farmer(client: TestClient, session: Session) -> Farmer:
 def seller(session: Session) -> Farmer:
     # agricultor sem login: o produto é visto por quem não é o dono
     return add_farmer(session, add_user(session, "sitio@example.com", name="João Silva"))
+
+
+@pytest.fixture
+def joao(session: Session) -> Farmer:
+    return add_farmer(session, add_user(session, "joao@example.com", name="João Lima"))
+
+
+@pytest.fixture
+def maria(session: Session) -> Farmer:
+    return add_farmer(session, add_user(session, "maria@example.com"))
+
+
+@pytest.fixture
+def purchase(session: Session, building: Apartment, joao: Farmer, maria: Farmer) -> Purchase:
+    delivered, in_progress = PurchaseStatus.ENTREGUE, PurchaseStatus.EM_PROGRESSO
+    return add_purchase_from(session, building.id, (joao, delivered), (maria, in_progress))
+
+
+@pytest.fixture
+def resident(session: Session, building: Apartment) -> Buyer:
+    user = add_user(session, "morador@example.com")
+    return add_resident(session, building, user, link_status=LinkStatus.APROVADO)
