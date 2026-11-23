@@ -92,15 +92,18 @@ describe("BuildingPurchases", () => {
     expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
   });
 
-  it("invites the manager without purchases to the home", async () => {
+  it("invites the manager without purchases to the needs of the building", async () => {
     renderPurchases(pageOf());
 
     expect(
       await screen.findByText(
-        "Você ainda não fez compras, confira a página inicial e faça a sua primeira compra hoje",
+        "Você ainda não fez compras, veja as necessidades do prédio e feche a sua primeira compra",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ir para a página inicial" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver as necessidades do prédio" })).toHaveAttribute(
+      "href",
+      "/necessidades",
+    );
   });
 
   it("opens at /compras for the manager", async () => {
