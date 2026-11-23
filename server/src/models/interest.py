@@ -51,9 +51,8 @@ class Interest(InterestBase, table=True):
 
     @property
     def product_public_id(self) -> UUID | None:
-        if self.product is not None:
-            return self.product.public_id
-        return self.product_public_id_snapshot
+        # produto removido não tem mais página, então o id não vai para a tela
+        return self.product.public_id if self.product is not None else None
 
     @property
     def product_name(self) -> str | None:
