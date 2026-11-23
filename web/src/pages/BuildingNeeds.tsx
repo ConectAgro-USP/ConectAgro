@@ -4,6 +4,7 @@ import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { TitleBar } from "../components/TitleBar";
 import { formatCount, sellerName } from "../format";
+import { useAction } from "../hooks/useAction";
 import { useBuildingNeeds } from "../hooks/useBuildingNeeds";
 import { PurchaseForm } from "./needs/PurchaseForm";
 
@@ -34,6 +35,7 @@ function inStock(need: BuildingNeed): boolean {
 
 export function BuildingNeeds() {
   const list = useBuildingNeeds();
+  const purchase = useAction();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [closing, setClosing] = useState(false);
   const orderLabelId = useId();
@@ -49,6 +51,12 @@ export function BuildingNeeds() {
     setClosing(false);
   }
 
+  // a recusa só fica na lista quando o formulário fecha sozinho
+  function showForm(show: boolean) {
+    purchase.setError("");
+    setClosing(show);
+  }
+
   function select(publicId: string, checked: boolean) {
     setSelectedIds((current) =>
       checked ? [...current, publicId] : current.filter((id) => id !== publicId),
@@ -60,7 +68,12 @@ export function BuildingNeeds() {
       <TitleBar title="Necessidades do prédio" />
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         {closing && selected.length > 0 ? (
-          <PurchaseForm needs={selected} onBack={() => setClosing(false)} reload={list.reload} />
+          <PurchaseForm
+            needs={selected}
+            action={purchase}
+            onBack={() => showForm(false)}
+            reload={list.reload}
+          />
         ) : (
           <>
             <div
@@ -83,6 +96,11 @@ export function BuildingNeeds() {
                 </button>
               ))}
             </div>
+            {purchase.error && (
+              <div className="pt-8">
+                <FormError message={purchase.error} />
+              </div>
+            )}
             {selected.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-4 pt-8">
                 <p className="text-lg font-bold">
@@ -91,7 +109,7 @@ export function BuildingNeeds() {
                 </p>
                 <PrimaryButton
                   type="button"
-                  onClick={() => setClosing(true)}
+                  onClick={() => showForm(true)}
                   className="w-full sm:w-auto"
                 >
                   Fechar compra

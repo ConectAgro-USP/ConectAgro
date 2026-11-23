@@ -7,7 +7,7 @@ import { PrimaryButton, SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 import { TextField } from "../../components/TextField";
 import { formatCount, formatMoney, sellerName } from "../../format";
-import { useAction } from "../../hooks/useAction";
+import type { useAction } from "../../hooks/useAction";
 
 const QUANTITY_CLASSES =
   "h-12 w-24 rounded-lg border border-stone-400 bg-white px-3 tabular-nums " +
@@ -68,12 +68,13 @@ function QuantityLine({ product, quantity, cost, onChange }: Readonly<QuantityLi
 
 interface PurchaseFormProps {
   needs: BuildingNeed[];
+  action: ReturnType<typeof useAction>;
   onBack: () => void;
   reload: () => void;
 }
 
-export function PurchaseForm({ needs, onBack, reload }: Readonly<PurchaseFormProps>) {
-  const { error, pending, run } = useAction();
+export function PurchaseForm({ needs, action, onBack, reload }: Readonly<PurchaseFormProps>) {
+  const { error, pending, run } = action;
   const [sent, setSent] = useState(false);
   const busy = pending || sent;
   const navigate = useNavigate();
