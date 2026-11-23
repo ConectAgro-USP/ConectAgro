@@ -29,6 +29,27 @@ describe("MyProducts removal", () => {
     expect(fetchMock.mock.calls[1][1]?.method).toBe("DELETE");
   });
 
+  it("drops the card when another tab already removed the product", async () => {
+    renderProducts(jsonResponse([orange]), jsonResponse({ detail: "Produto não encontrado" }, 404));
+    const card = await findCard("Laranja");
+    await press(card, "Remover");
+
+    await press(card, "Remover");
+
+    await waitFor(() => expect(card).not.toBeInTheDocument());
+  });
+
+  it("keeps the card when the 404 does not come from the product route", async () => {
+    renderProducts(jsonResponse([orange]), new Response("Not Found", { status: 404 }));
+    const card = await findCard("Laranja");
+    await press(card, "Remover");
+
+    await press(card, "Remover");
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Algo deu errado");
+    expect(within(card).getByText("Remover Laranja?")).toBeInTheDocument();
+  });
+
   it("explains inside the card why a sold product can't be removed", async () => {
     renderProducts(jsonResponse([orange]), jsonResponse({ detail: SOLD }, 409));
     const card = await findCard("Laranja");

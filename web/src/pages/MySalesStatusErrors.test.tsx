@@ -1,6 +1,7 @@
-import { waitFor, within } from "@testing-library/react";
-import { jsonResponse } from "../test/helpers";
+import { screen, waitFor, within } from "@testing-library/react";
+import { anaAsFarmer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
 import { findCard, pageOf, pendingSale, press, renderSales } from "../test/sales";
+import { MySales } from "./MySales";
 
 const VILLAGE = "Cond. Village Vila Verde";
 const DELIVER = "Marcar como entregue";
@@ -20,6 +21,19 @@ describe("MySales, refused status changes", () => {
     expect(within(card).getByRole("button", { name: CANCEL })).toBeEnabled();
     expect(within(card).getByText("Pendente")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reloads the user when the session ended before the change", async () => {
+    stubFetch(pageOf(pendingSale), jsonResponse({ detail: "Não autenticado" }, 401));
+    const auth = fakeAuth({ user: anaAsFarmer });
+    renderWithAuth(<MySales />, auth);
+    const card = await findCard(VILLAGE);
+
+    await press(card, DELIVER);
+
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Não autenticado");
+    expect(screen.queryByText("Venda marcada como entregue")).not.toBeInTheDocument();
   });
 
   it("forgets the refusal when going back", async () => {

@@ -1,7 +1,15 @@
-import { within } from "@testing-library/react";
+import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse, sentBody } from "../test/helpers";
+import {
+  anaAsBuyer,
+  fakeAuth,
+  jsonResponse,
+  renderWithAuth,
+  sentBody,
+  stubFetch,
+} from "../test/helpers";
 import { findCard, laranja, mandioca, renderInterests } from "../test/interests";
+import { MyInterests } from "./MyInterests";
 
 const QUANTITY = "Quantidade (kg)";
 const AT_LEAST_ONE = "Informe uma quantidade de pelo menos 1 kg";
@@ -92,6 +100,18 @@ describe("MyInterests, quantity", () => {
 
     expect(await within(card).findByRole("alert")).toHaveTextContent("Interesse não encontrado");
     expect(within(card).queryByText("Quantidade atualizada")).not.toBeInTheDocument();
+  });
+
+  it("reloads the user when the session ended before the save", async () => {
+    stubFetch(jsonResponse([mandioca]), jsonResponse({ detail: "Não autenticado" }, 401));
+    const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
+    renderWithAuth(<MyInterests />, auth);
+    const card = await findCard("Mandioca");
+    await type(card, "8");
+
+    await userEvent.click(saveButton(card));
+
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
   });
 
   it("only shows the quantity of an unavailable product", async () => {

@@ -1,10 +1,12 @@
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
+import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
 import { findCard, laranja, mandioca, renderInterests } from "../test/interests";
 import { press } from "../test/products";
+import { MyInterests } from "./MyInterests";
 
 const NOT_FOUND = "Interesse não encontrado";
+const FAILURE = "Algo deu errado";
 const QUESTION = "Remover o interesse em Mandioca?";
 
 describe("MyInterests, removal", () => {
@@ -69,20 +71,41 @@ describe("MyInterests, removal", () => {
     await waitFor(() => expect(card).not.toBeInTheDocument());
   });
 
-  it("keeps the confirmation and shows why the removal failed", async () => {
+  it("drops the card when another tab already removed the interest", async () => {
     renderInterests(jsonResponse([mandioca]), jsonResponse({ detail: NOT_FOUND }, 404));
     const card = await findCard("Mandioca");
     await press(card, "Remover");
 
     await press(card, "Remover");
 
-    expect(await within(card).findByRole("alert")).toHaveTextContent(NOT_FOUND);
+    await waitFor(() => expect(card).not.toBeInTheDocument());
+  });
+
+  it("reloads the user when the session ended before the removal", async () => {
+    stubFetch(jsonResponse([mandioca]), jsonResponse({ detail: "Não autenticado" }, 401));
+    const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
+    renderWithAuth(<MyInterests />, auth);
+    const card = await findCard("Mandioca");
+    await press(card, "Remover");
+
+    await press(card, "Remover");
+
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
+  });
+
+  it("keeps the confirmation and shows why the removal failed", async () => {
+    renderInterests(jsonResponse([mandioca]), jsonResponse({}, 500));
+    const card = await findCard("Mandioca");
+    await press(card, "Remover");
+
+    await press(card, "Remover");
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent(FAILURE);
     expect(within(card).getByText(QUESTION)).toBeInTheDocument();
   });
 
   it("goes back without removing and forgets the refusal", async () => {
-    const refusal = jsonResponse({ detail: NOT_FOUND }, 404);
-    const fetchMock = renderInterests(jsonResponse([mandioca]), refusal);
+    const fetchMock = renderInterests(jsonResponse([mandioca]), jsonResponse({}, 500));
     const card = await findCard("Mandioca");
     await press(card, "Remover");
     await press(card, "Remover");
