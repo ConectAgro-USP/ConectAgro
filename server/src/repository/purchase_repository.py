@@ -57,6 +57,10 @@ class PurchaseRepository:
         )
         return list(self.session.exec(statement).all())
 
+    def delete_interests(self, interests: list[Interest]) -> None:
+        for interest in interests:
+            self.session.delete(interest)
+
     def list_sales(
         self, farmer_id: int, filters: SalesFilters, since: datetime | None, until: datetime | None
     ) -> tuple[list[PurchasePart], int]:

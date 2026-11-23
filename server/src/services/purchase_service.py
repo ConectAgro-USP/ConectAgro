@@ -51,6 +51,7 @@ class PurchaseService:
         if len(products) != len(items):
             raise ProductNotFoundError
         product_ids = [product.id for product in products]
+        # depois da trava, a compra repetida já não acha os interesses
         interests = self.purchases.list_building_interests(apartment.id, product_ids)
         needed = {interest.product_id for interest in interests}
 
@@ -83,6 +84,7 @@ class PurchaseService:
             parts[product.farmer_id].purchase_products.append(purchase_product)
 
         self.purchases.add(purchase)
+        self.purchases.delete_interests(interests)
         self.purchases.commit()
         return self.purchases.get_by_public_id(purchase.public_id)
 
