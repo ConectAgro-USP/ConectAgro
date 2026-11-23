@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { ApiError } from "../api/client";
@@ -9,7 +9,7 @@ import { AuthProvider } from "./AuthProvider";
 
 const farmer: ProfileRead = { ...ana, profile_type: "farmer" };
 
-function ShowSession() {
+function ShowSession({ slowSave }: Readonly<{ slowSave?: Promise<ProfileRead> }>) {
   const { user, profileType, linkStatus, loading, sessionError, refreshUser, saveProfile, logout } =
     useAuth();
   const [saveError, setSaveError] = useState("");
@@ -32,15 +32,24 @@ function ShowSession() {
       <button onClick={() => saveProfile(Promise.resolve(farmer))}>Salvar</button>
       <button onClick={() => saveRejected(409, "Conflito")}>Salvar com conflito</button>
       <button onClick={() => saveRejected(401, "Sessão expirada")}>Salvar sem sessão</button>
+      {slowSave && <button onClick={() => saveProfile(slowSave)}>Salvar devagar</button>}
       <button onClick={() => logout()}>Sair</button>
     </>
   );
 }
 
-function renderSession() {
+function slowRequest() {
+  let answer: (profile: ProfileRead) => void = () => {};
+  const request = new Promise<ProfileRead>((resolve) => {
+    answer = resolve;
+  });
+  return { request, answer };
+}
+
+function renderSession(slowSave?: Promise<ProfileRead>) {
   render(
     <AuthProvider>
-      <ShowSession />
+      <ShowSession slowSave={slowSave} />
     </AuthProvider>,
   );
 }
@@ -152,5 +161,36 @@ describe("AuthProvider", () => {
 
     expect(await screen.findByText("Erro ao salvar: Conflito")).toBeInTheDocument();
     expect(screen.getByText("Perfil: nenhum")).toBeInTheDocument();
+  });
+
+  it("stays signed out when a save answers after the logout", async () => {
+    const slowSave = slowRequest();
+    stubFetch(jsonResponse(ana), jsonResponse({ ok: true }));
+    renderSession(slowSave.request);
+    await screen.findByText("Ana Souza");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar devagar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }));
+    await screen.findByText("Sem sessão");
+    await act(async () => slowSave.answer(farmer));
+
+    expect(screen.getByText("Sem sessão")).toBeInTheDocument();
+  });
+
+  it("keeps the account that signed in when an old save answers late", async () => {
+    const bia: ProfileRead = { ...ana, name: "Bia Lima", email: "bia@example.com" };
+    const slowSave = slowRequest();
+    stubFetch(jsonResponse(ana), jsonResponse({ ok: true }), jsonResponse(bia));
+    renderSession(slowSave.request);
+    await screen.findByText("Ana Souza");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar devagar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }));
+    await screen.findByText("Sem sessão");
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    await screen.findByText("Bia Lima");
+    await act(async () => slowSave.answer(farmer));
+
+    expect(screen.getByText("Bia Lima")).toBeInTheDocument();
   });
 });

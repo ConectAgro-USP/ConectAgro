@@ -13,6 +13,7 @@ from src.models.farmer import Farmer
 from src.models.purchase import Purchase
 from src.models.review import Review, ReviewCreate, ReviewRead, ReviewUpdate
 from src.models.user import User
+from tests.helpers import add_building, add_resident, add_user
 
 FUTURE = date(2030, 1, 1)
 
@@ -40,15 +41,7 @@ def farmer(session: Session) -> Farmer:
 
 @pytest.fixture
 def apartment(session: Session) -> Apartment:
-    apartment = Apartment(
-        building_name="Edifício Araraquara",
-        zip_code="01000-000",
-        manager_id="123",
-        building_cnpj="12.345.678/0001-90",
-    )
-    session.add(apartment)
-    session.commit()
-    return apartment
+    return add_building(session, add_user(session, "sindico@example.com"))
 
 
 @pytest.fixture
@@ -297,15 +290,7 @@ def test_different_buyers_can_review_same_purchase(
     farmer: Farmer,
     purchase: Purchase,
 ):
-    buyer2 = Buyer(
-        email="carlos@example.com",
-        name="Carlos",
-        apartment_id=apartment.id,
-        user_id=10,
-        unit="arara",
-    )
-    session.add(buyer2)
-    session.commit()
+    buyer2 = add_resident(session, apartment, add_user(session, "carlos@example.com"))
 
     review1 = Review(rating=4, buyer=buyer, farmer=farmer, purchase=purchase)
     review2 = Review(rating=5, buyer=buyer2, farmer=farmer, purchase=purchase)

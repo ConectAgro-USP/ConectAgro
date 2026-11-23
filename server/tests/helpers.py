@@ -1,3 +1,6 @@
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -5,6 +8,8 @@ from src.core.security import create_access_token
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
+from src.models.product import BUSINESS_TZ, Product
+from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
 from src.models.user import User
 
 # CNPJs reais com dígitos verificadores válidos
@@ -42,6 +47,23 @@ def add_farmer(session: Session, user: User) -> Farmer:
     return farmer
 
 
+def add_product(session: Session, farmer: Farmer, name: str = "Alface", **overrides) -> Product:
+    # permite adicionar produtos inválidos (expirados, por exemplo) para testes,
+    # pois os dados não passam por ProductCreate
+    data = {
+        "name": name,
+        "quantity": 10,
+        "price": Decimal("2.50"),
+        "expiration_date": datetime.now(BUSINESS_TZ).date() + timedelta(days=30),
+        "farmer_id": farmer.id,
+    }
+    product = Product(**{**data, **overrides})
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+    return product
+
+
 def add_building(
     session: Session,
     manager: User,
@@ -77,3 +99,40 @@ def add_resident(
     session.commit()
     session.refresh(resident)
     return resident
+
+
+def add_purchase(
+    session: Session,
+    building: Apartment,
+    *items: tuple[Product, int],
+    status: PurchaseStatus = PurchaseStatus.EM_PROGRESSO,
+    **overrides,
+) -> Purchase:
+    purchase = Purchase(
+        apartment_id=building.id, expected_delivery_date=date(2030, 1, 1), **overrides
+    )
+    parts = {}
+    for product, quantity in items:
+        if product.farmer_id not in parts:
+            parts[product.farmer_id] = PurchasePart(farmer_id=product.farmer_id, status=status)
+        parts[product.farmer_id].purchase_products.append(
+            PurchaseProduct(product=product, quantity=quantity, unit_price=product.price)
+        )
+    purchase.purchase_parts = list(parts.values())
+    session.add(purchase)
+    session.commit()
+    session.refresh(purchase)
+    return purchase
+
+
+def add_purchase_from(session: Session, building_id: int, *parts: tuple) -> Purchase:
+    purchase = Purchase(apartment_id=building_id, expected_delivery_date=date(2030, 1, 1))
+    for farmer, part_status in parts:
+        purchase.purchase_parts.append(PurchasePart(farmer_id=farmer.id, status=part_status))
+    session.add(purchase)
+    session.commit()
+    return purchase
+
+
+def reviews_url(purchase: Purchase, farmer: Farmer) -> str:
+    return f"/api/purchases/{purchase.public_id}/farmers/{farmer.public_id}/reviews"

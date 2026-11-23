@@ -3,9 +3,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.api.deps import ApartmentServiceDep, CurrentApartment, get_current_user
+from src.api.deps import (
+    ApartmentServiceDep,
+    CurrentApartment,
+    InterestServiceDep,
+    PurchaseServiceDep,
+    get_current_user,
+)
 from src.models.buyer import LinkStatus
+from src.models.interest import ApartmentNeedRead
 from src.models.profile import ApartmentMatch, Cnpj, ResidentRead
+from src.models.purchase_history import BuildingPurchasesFilters, BuildingPurchasesHistory
 from src.services.exceptions import InvalidCnpjError, ResidentNotFoundError
 
 router = APIRouter(prefix="/apartments", tags=["apartments"])
@@ -46,3 +54,21 @@ def reject_resident(
         return apartment_service.reject_resident(apartment, public_id)
     except ResidentNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Morador não encontrado") from None
+
+
+@router.get("/me/purchases", response_model=BuildingPurchasesHistory)
+def list_my_purchases(
+    filters: Annotated[BuildingPurchasesFilters, Query()],
+    apartment: CurrentApartment,
+    purchase_service: PurchaseServiceDep,
+):
+    return purchase_service.list_building_purchases(apartment, filters)
+    
+
+@router.get("/me/needs", response_model=list[ApartmentNeedRead])
+def list_apartment_needs(
+    apartment: CurrentApartment,
+    interest_service: InterestServiceDep,
+    descending: bool = Query(default=True),
+):
+    return interest_service.list_apartment_needs(apartment, descending=descending)

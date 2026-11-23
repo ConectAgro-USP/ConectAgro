@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from .product import INT4_MAX
+from .product import AVAILABLE, BUSINESS_TZ, INT4_MAX, UNAVAILABLE, ProductDetailRead
 
 if TYPE_CHECKING:
     from .buyer import Buyer
@@ -36,7 +36,11 @@ class Interest(InterestBase, table=True):
     )
 
     buyer_id: int = Field(foreign_key="buyers.id", index=True, ondelete="CASCADE")
-    product_id: int = Field(foreign_key="products.id", index=True, ondelete="CASCADE")
+    product_id: int | None = Field(
+        default=None, foreign_key="products.id", index=True, ondelete="SET NULL"
+    )
+    product_public_id_snapshot: UUID | None = None
+    product_name_snapshot: str | None = None
 
     buyer: Optional["Buyer"] = Relationship(back_populates="interests")
     product: Optional["Product"] = Relationship(back_populates="interests")
@@ -47,12 +51,38 @@ class Interest(InterestBase, table=True):
 
     @property
     def product_public_id(self) -> UUID | None:
-        return self.product.public_id if self.product else None
+        # produto removido não tem mais página, então o id não vai para a tela
+        return self.product.public_id if self.product is not None else None
+
+    @property
+    def product_name(self) -> str | None:
+        if self.product is not None:
+            return self.product.name
+        return self.product_name_snapshot
+
+    
+    @property
+    def product_status(self) -> str:
+        if self.product is None:
+            return UNAVAILABLE
+        today = datetime.now(BUSINESS_TZ).date()
+        if (
+            self.product.is_available
+            and self.product.quantity > 0
+            and self.product.expiration_date >= today
+        ):
+            return AVAILABLE
+        return UNAVAILABLE
 
 
 class InterestCreate(InterestBase):
-    buyer_public_id: UUID
     product_public_id: UUID
+
+
+class ApartmentNeedRead(SQLModel):
+    product: ProductDetailRead
+    total_quantity: int = Field(gt=0)
+    interested_buyers_count: int = Field(gt=0)
 
 
 class InterestUpdate(SQLModel):
@@ -63,6 +93,8 @@ class InterestUpdate(SQLModel):
 class InterestRead(InterestBase):
     public_id: UUID
     buyer_public_id: UUID
-    product_public_id: UUID
+    product_public_id: UUID | None
+    product_name: str | None
+    product_status: str
     created_at: datetime
     updated_at: datetime | None

@@ -1,12 +1,14 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from pydantic import field_validator
+from pydantic import AfterValidator, StringConstraints, field_validator
 from sqlalchemy import CheckConstraint, DateTime
 from sqlmodel import Field, Relationship, SQLModel
+
+from src.services.text_service import reject_null_character
 
 if TYPE_CHECKING:
     from .farmer import Farmer
@@ -14,6 +16,24 @@ if TYPE_CHECKING:
 
 INT4_MAX = 2_147_483_647
 BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
+AVAILABLE = "Disponível"
+UNAVAILABLE = "Indisponível"
+
+ProductName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(reject_null_character),
+]
+ProductDescription = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=1000),
+    AfterValidator(reject_null_character),
+]
+PictureUrl = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=2048),
+    AfterValidator(reject_null_character),
+]
 
 
 def _today() -> date:
@@ -25,6 +45,7 @@ class ProductBase(SQLModel):
     description: str | None = None
     picture_url: str | None = None
     quantity: int = Field(ge=0, le=INT4_MAX)
+    is_available: bool = Field(default=True)
     price: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
     expiration_date: date
 
@@ -45,7 +66,7 @@ class Product(ProductBase, table=True):
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
 
     farmer: Optional["Farmer"] = Relationship(back_populates="products")
-    interests: list["Interest"] = Relationship(back_populates="product", cascade_delete=True)
+    interests: list["Interest"] = Relationship(back_populates="product")
 
     @property
     def farmer_public_id(self) -> UUID | None:
@@ -53,7 +74,9 @@ class Product(ProductBase, table=True):
 
 
 class ProductCreate(ProductBase):
-    farmer_public_id: UUID
+    name: ProductName
+    description: ProductDescription | None = None
+    picture_url: PictureUrl | None = None
 
     @field_validator("expiration_date")
     @classmethod
@@ -65,10 +88,11 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(SQLModel):
     # o default None marca campo não enviado, e o tipo sem None recusa null explícito
-    name: str = Field(default=None, min_length=1)
-    description: str | None = None
-    picture_url: str | None = None
+    name: ProductName = Field(default=None)
+    description: ProductDescription | None = None
+    picture_url: PictureUrl | None = None
     quantity: int = Field(default=None, ge=0, le=INT4_MAX)
+    is_available: bool = Field(default=None)
     price: Decimal = Field(default=None, ge=0, max_digits=8, decimal_places=2)
     expiration_date: date = Field(default=None)
 
@@ -84,3 +108,27 @@ class ProductRead(ProductBase):
     public_id: UUID
     created_at: datetime
     farmer_public_id: UUID
+
+
+class ProductFarmerRead(SQLModel):
+    public_id: UUID
+    farm_name: str | None
+    short_name: str
+    picture_url: str | None
+
+
+class ProductDetailRead(ProductRead):
+    farmer: ProductFarmerRead
+
+
+class ProductCatalogRead(ProductRead):
+    farmer_short_name: str
+    farmer_farm_name: str | None
+    farmer_average_rating: float | None
+    farmer_reviews_count: int
+
+
+class ProductContactRead(SQLModel):
+    recipient_name: str
+    cellphone: str | None = None
+    message: str

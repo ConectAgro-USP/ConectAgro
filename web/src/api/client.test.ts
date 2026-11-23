@@ -1,5 +1,5 @@
 import { jsonResponse, stubFetch } from "../test/helpers";
-import { ApiError, apiFetch, errorMessage } from "./client";
+import { ApiError, apiFetch, errorMessage, lostAccess } from "./client";
 
 describe("apiFetch", () => {
   it("sends JSON with the session cookie and returns the body", async () => {
@@ -32,11 +32,35 @@ describe("apiFetch", () => {
   it.each([
     ["body", "cpf", "CPF inválido"],
     ["query", "cnpj", "CNPJ inválido"],
-  ])("explains the first %s field the API refused", async (place, field, message) => {
+    ["body", "building_cnpj", "CNPJ inválido"],
+    ["body", "rating", "Escolha uma nota de 1 a 5 estrelas"],
+    ["body", "comment", "O comentário pode ter até 500 caracteres"],
+    ["body", "expected_delivery_date", "Informe uma data de entrega válida"],
+  ])("explains the first %s field %s the API refused", async (place, field, message) => {
     const detail = [{ loc: [place, field], msg: "String should have at most 20 characters" }];
     stubFetch(jsonResponse({ detail }, 422));
 
     await expect(apiFetch("/profiles/farmer")).rejects.toMatchObject({ status: 422, message });
+  });
+
+  it("keeps the reason the API gave for an invalid character in the comment", async () => {
+    const msg = "Value error, O texto tem um caractere inválido";
+    stubFetch(jsonResponse({ detail: [{ loc: ["body", "comment"], msg }] }, 422));
+
+    await expect(apiFetch("/reviews/avaliacao-1")).rejects.toMatchObject({
+      status: 422,
+      message: "O texto tem um caractere inválido",
+    });
+  });
+
+  it("keeps the reason the API gave for a delivery date in the past", async () => {
+    const msg = "Value error, A data prevista de entrega não pode estar no passado";
+    stubFetch(jsonResponse({ detail: [{ loc: ["body", "expected_delivery_date"], msg }] }, 422));
+
+    await expect(apiFetch("/purchases")).rejects.toMatchObject({
+      status: 422,
+      message: "A data prevista de entrega não pode estar no passado",
+    });
   });
 
   it.each([
@@ -61,5 +85,16 @@ describe("errorMessage", () => {
     expect(errorMessage(new TypeError("Failed to fetch"))).toBe(
       "Não foi possível falar com o servidor. Tente novamente",
     );
+  });
+});
+
+describe("lostAccess", () => {
+  it.each([401, 403])("is true when the API answers %i", (status) => {
+    expect(lostAccess(new ApiError(status, "Sem acesso"))).toBe(true);
+  });
+
+  it("is false for other failures", () => {
+    expect(lostAccess(new ApiError(404, "Não encontrado"))).toBe(false);
+    expect(lostAccess(new TypeError("Failed to fetch"))).toBe(false);
   });
 });

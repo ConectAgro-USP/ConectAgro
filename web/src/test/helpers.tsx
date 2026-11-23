@@ -7,7 +7,11 @@ import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 export const ana: ProfileRead = {
   name: "Ana Souza",
   email: "ana@example.com",
+  cellphone: null,
+  homephone: null,
   profile_type: null,
+  farmer: null,
+  apartment: null,
   buyer: null,
 };
 
@@ -15,6 +19,7 @@ export const villageVilaVerde: ApartmentSummary = {
   public_id: "6f1c2b9e-3d4a-4e5f-8a7b-9c0d1e2f3a4b",
   building_name: "Cond. Village Vila Verde",
   building_cnpj: "50673649000144",
+  zip_code: "09450000",
   address: "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra",
 };
 
@@ -28,6 +33,18 @@ export function anaAsBuyer(linkStatus: LinkStatus): ProfileRead {
   const buyer = { block: "B", unit: "42", link_status: linkStatus, apartment: villageVilaVerde };
   return { ...ana, profile_type: "buyer", buyer };
 }
+
+export const anaAsFarmer: ProfileRead = {
+  ...ana,
+  profile_type: "farmer",
+  farmer: { farm_name: "Sítio Boa Vista", zip_code: "01310200" },
+};
+
+export const anaAsManager: ProfileRead = {
+  ...ana,
+  profile_type: "apartment",
+  apartment: villageVilaVerde,
+};
 
 export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   const user = overrides.user ?? null;
@@ -73,6 +90,13 @@ export function stubFetch(...responses: Response[]) {
   for (const response of responses) {
     fetchMock.mockResolvedValueOnce(response);
   }
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+// a página fica esperando a API, os testes só olham quem chega nela
+export function stubSilentApi() {
+  const fetchMock = vi.fn<typeof fetch>(() => new Promise(() => {}));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }

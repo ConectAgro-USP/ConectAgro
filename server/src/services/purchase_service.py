@@ -1,0 +1,231 @@
+from datetime import UTC, date, datetime, time, timedelta
+from uuid import UUID
+
+from src.models.apartment import Apartment
+from src.models.farmer import Farmer
+from src.models.product import BUSINESS_TZ, INT4_MAX
+from src.models.purchase import (
+    ZERO,
+    Purchase,
+    PurchaseCreate,
+    PurchasePart,
+    PurchaseProduct,
+    PurchaseRead,
+    PurchaseStatus,
+)
+from src.models.purchase_history import (
+    BuildingPurchaseRead,
+    BuildingPurchasesFilters,
+    BuildingPurchasesHistory,
+    CounterpartRead,
+    HistoryPage,
+    PurchaseHistoryFilters,
+    SaleRead,
+    SalesFilters,
+    SalesHistory,
+)
+from src.models.user import User
+from src.repository.purchase_repository import PurchaseRepository
+from src.services.exceptions import (
+    ProductExpiredError,
+    ProductNotFoundError,
+    ProductOutOfStockError,
+    ProductPriceChangedError,
+    ProductUnavailableError,
+    PurchaseAccessDeniedError,
+    PurchaseAlreadyDeliveredError,
+    PurchaseNotFoundError,
+    PurchasePartClosedError,
+)
+from src.services.text_service import short_name
+
+
+class PurchaseService:
+    def __init__(self, purchases: PurchaseRepository):
+        self.purchases = purchases
+
+    def create(self, apartment: Apartment, purchase_in: PurchaseCreate) -> Purchase:
+        items = {item.product_public_id: item for item in purchase_in.items}
+        products = self.purchases.lock_products(list(items))
+        if len(products) != len(items):
+            raise ProductNotFoundError
+
+        today = datetime.now(BUSINESS_TZ).date()
+        purchase = Purchase(
+            apartment_id=apartment.id,
+            expected_delivery_date=purchase_in.expected_delivery_date,
+        )
+        parts = {}
+        for product in products:
+            item = items[product.public_id]
+            if product.expiration_date < today:
+                raise ProductExpiredError(product.name)
+            if not product.is_available:
+                raise ProductUnavailableError(product.name)
+            if product.price != item.unit_price:
+                raise ProductPriceChangedError(product.name)
+            if product.quantity < item.quantity:
+                raise ProductOutOfStockError(product.name)
+            product.quantity -= item.quantity
+            if product.farmer_id not in parts:
+                part = PurchasePart(farmer_id=product.farmer_id)
+                parts[product.farmer_id] = part
+                purchase.purchase_parts.append(part)
+            purchase_product = PurchaseProduct(
+                product=product, quantity=item.quantity, unit_price=product.price
+            )
+            parts[product.farmer_id].purchase_products.append(purchase_product)
+
+        self.purchases.add(purchase)
+        self.purchases.commit()
+        return self.purchases.get_by_public_id(purchase.public_id)
+
+    def get_purchase(self, public_id: UUID, user: User) -> PurchaseRead:
+        purchase = self.purchases.get_by_public_id(public_id)
+        if purchase is None:
+            raise PurchaseNotFoundError
+        if user.apartment is not None and user.apartment.id == purchase.apartment_id:
+            return PurchaseRead.model_validate(purchase)
+        part = _part_of_farmer(purchase, user.farmer)
+        if part is None:
+            raise PurchaseAccessDeniedError
+        # o agricultor vê só a própria parte
+        return PurchaseRead.model_validate(purchase, update={"purchase_parts": [part]})
+
+    def change_own_part_status(
+        self, public_id: UUID, farmer: Farmer, new_status: PurchaseStatus
+    ) -> PurchasePart:
+        purchase = self._lock_purchase(public_id)
+        part = _part_of_farmer(purchase, farmer)
+        if part is None:
+            raise PurchaseAccessDeniedError
+        if part.status != PurchaseStatus.EM_PROGRESSO:
+            raise PurchasePartClosedError
+        self._close_parts(purchase, [part], new_status)
+        return part
+
+    def cancel(self, public_id: UUID, apartment: Apartment) -> Purchase:
+        purchase = self._lock_purchase(public_id)
+        if purchase.apartment_id != apartment.id:
+            raise PurchaseAccessDeniedError
+        open_parts = []
+        for part in purchase.purchase_parts:
+            if part.status == PurchaseStatus.ENTREGUE:
+                raise PurchaseAlreadyDeliveredError
+            if part.status == PurchaseStatus.EM_PROGRESSO:
+                open_parts.append(part)
+        self._close_parts(purchase, open_parts, PurchaseStatus.CANCELADA)
+        return purchase
+
+    def list_sales(self, farmer: Farmer, filters: SalesFilters) -> SalesHistory:
+        since, until = _period(filters)
+        parts, count = self.purchases.list_sales(farmer.id, filters, since, until)
+        totals = self.purchases.sales_totals(farmer.id, filters, since, until)
+        sales = [_sale_read(part) for part in parts]
+        buildings = [
+            CounterpartRead(public_id=building.public_id, name=building.building_name)
+            for building in self.purchases.list_sale_buildings(farmer.id)
+        ]
+        return _history_page(SalesHistory, sales, filters, count, totals, buildings)
+
+    def list_building_purchases(
+        self, apartment: Apartment, filters: BuildingPurchasesFilters
+    ) -> BuildingPurchasesHistory:
+        since, until = _period(filters)
+        purchases, count = self.purchases.list_building_purchases(
+            apartment.id, filters, since, until
+        )
+        totals = self.purchases.building_totals(apartment.id, filters, since, until)
+        items = [BuildingPurchaseRead.model_validate(purchase) for purchase in purchases]
+        farmers = [
+            CounterpartRead(public_id=farmer.public_id, name=short_name(farmer.user.name))
+            for farmer in self.purchases.list_purchase_farmers(apartment.id)
+        ]
+        farmers.sort(key=lambda farmer: farmer.name)
+        return _history_page(BuildingPurchasesHistory, items, filters, count, totals, farmers)
+
+    def _lock_purchase(self, public_id: UUID) -> Purchase:
+        purchase = self.purchases.lock_by_public_id(public_id)
+        if purchase is None:
+            raise PurchaseNotFoundError
+        return purchase
+
+    def _close_parts(
+        self, purchase: Purchase, parts: list[PurchasePart], new_status: PurchaseStatus
+    ) -> None:
+        if new_status == PurchaseStatus.CANCELADA:
+            self._return_stock(parts)
+        now = datetime.now(UTC)
+        for part in parts:
+            part.status = new_status
+            part.closed_at = now
+        # a compra fecha junto com a última parte que estava em progresso
+        if purchase.closed_at is None and purchase.status != PurchaseStatus.EM_PROGRESSO:
+            purchase.closed_at = now
+        self.purchases.commit()
+
+    def _return_stock(self, parts: list[PurchasePart]) -> None:
+        quantities = {}
+        for part in parts:
+            for item in part.purchase_products:
+                quantities[item.product_public_id] = item.quantity
+        for product in self.purchases.lock_products(list(quantities)):
+            new_quantity = product.quantity + quantities[product.public_id]
+            # o estoque não pode passar do limite da coluna
+            product.quantity = min(new_quantity, INT4_MAX)
+
+
+def _part_of_farmer(purchase: Purchase, farmer: Farmer | None) -> PurchasePart | None:
+    if farmer is None:
+        return None
+    for part in purchase.purchase_parts:
+        if part.farmer_id == farmer.id:
+            return part
+    return None
+
+
+def _period(filters: PurchaseHistoryFilters) -> tuple[datetime | None, datetime | None]:
+    since = until = None
+    if filters.date_from is not None:
+        since = _day_start(filters.date_from)
+    if filters.date_to is not None:
+        until = _day_start(filters.date_to + timedelta(days=1))
+    return since, until
+
+
+def _day_start(day: date) -> datetime:
+    # o dia começa no fuso de Brasília, e o banco compara as datas em UTC
+    return datetime.combine(day, time.min, BUSINESS_TZ).astimezone(UTC)
+
+
+def _sale_read(part: PurchasePart) -> SaleRead:
+    purchase = part.purchase
+    return SaleRead.model_validate(
+        part,
+        update={
+            "purchase_public_id": purchase.public_id,
+            "apartment_public_id": purchase.apartment_public_id,
+            "building_name": purchase.apartment.building_name,
+            "purchased_at": purchase.created_at,
+            "expected_delivery_date": purchase.expected_delivery_date,
+        },
+    )
+
+
+def _history_page(
+    model: type[HistoryPage],
+    items: list,
+    filters: PurchaseHistoryFilters,
+    count: int,
+    totals: dict,
+    counterparts: list[CounterpartRead],
+) -> HistoryPage:
+    return model.from_page(
+        items,
+        filters.page,
+        filters.page_size,
+        count,
+        realized_total=totals.get(PurchaseStatus.ENTREGUE, ZERO),
+        expected_total=totals.get(PurchaseStatus.EM_PROGRESSO, ZERO),
+        counterparts=counterparts,
+    )

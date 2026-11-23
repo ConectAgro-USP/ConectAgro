@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { Catalog } from "./Catalog";
 
 export function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, profileType, logout } = useAuth();
   const [logoutFailed, setLogoutFailed] = useState(false);
+
+  if (profileType === "buyer" || profileType === "apartment") {
+    return <Catalog />;
+  }
 
   const handleLogout = () => {
     logout().catch(() => setLogoutFailed(true));

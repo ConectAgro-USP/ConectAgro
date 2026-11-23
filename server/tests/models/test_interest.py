@@ -1,4 +1,3 @@
-from collections import Counter
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -13,6 +12,7 @@ from src.models.farmer import Farmer
 from src.models.interest import Interest, InterestCreate, InterestRead, InterestUpdate
 from src.models.product import BUSINESS_TZ, Product
 from src.models.user import User
+from src.repository.product_repository import ProductRepository
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -60,7 +60,6 @@ def create_interest_create_dict(**overrides) -> dict:
     # criação de dicionário para agilizar criação de instâncias de InterestCreate
     data = {
         "quantity": 1,
-        "buyer_public_id": uuid4(),
         "product_public_id": uuid4(),
     }
     return {**data, **overrides}
@@ -83,11 +82,10 @@ def interest_create(**overrides) -> InterestCreate:
 def test_interest_create_works_for_valid_data():
     interest = interest_create()
 
-    assert Counter(interest.__dict__.keys()) == Counter(
-        ["quantity", "buyer_public_id", "product_public_id"]
-    )
-    assert interest.quantity == 1
-    assert isinstance(interest.buyer_public_id, UUID)
+    assert interest.model_dump() == {
+        "quantity": 1,
+        "product_public_id": interest.product_public_id,
+    }
     assert isinstance(interest.product_public_id, UUID)
 
 
@@ -186,7 +184,6 @@ def test_interest_read_from_table_doesnt_expose_sensitive_information(
 @pytest.mark.parametrize(
     "field, value",
     [
-        ("buyer_public_id", 1),
         ("product_public_id", 1),
         ("quantity", -1),
         ("quantity", 0),
@@ -206,6 +203,8 @@ def test_interest_read_hides_internal_id():
         public_id=uuid4(),
         buyer_public_id=uuid4(),
         product_public_id=uuid4(),
+        product_name="Alface",
+        product_status="Disponível",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         id=1,
@@ -216,13 +215,19 @@ def test_interest_read_hides_internal_id():
 
 def test_interest_read_rejects_wrong_type():
     data = {
-        **interest_create().model_dump(),
+        "quantity": 1,
         "public_id": 1,
+        "buyer_public_id": uuid4(),
+        "product_public_id": uuid4(),
+        "product_name": "Alface",
+        "product_status": "Disponível",
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),
     }
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as exc_info:
         InterestRead(**data)
+
+    assert exc_info.value.errors()[0]["loc"] == ("public_id",)
 
 
 @pytest.mark.parametrize(
@@ -265,9 +270,8 @@ def test_interest_update_ignores_unknown_fields():
     assert interest_update.model_dump(exclude_unset=True) == {"quantity": 1}
 
 
-@pytest.mark.parametrize("owner", ["buyer", "product"])
-def test_deleting_owner_deletes_its_interests(
-    owner: str, session: Session, buyer: Buyer, product: Product
+def test_deleting_buyer_deletes_its_interests(
+    session: Session, buyer: Buyer, product: Product
 ):
     interest = Interest(quantity=1, buyer_id=buyer.id, product_id=product.id)
 
@@ -275,10 +279,34 @@ def test_deleting_owner_deletes_its_interests(
     session.commit()
     interest_id = interest.id
 
-    session.delete(buyer if owner == "buyer" else product)
+    session.delete(buyer)
     session.commit()
 
     assert session.get(Interest, interest_id) is None
+
+
+def test_deleting_product_preserves_interest_snapshot(
+    session: Session, buyer: Buyer, product: Product
+):
+    interest = Interest(
+        quantity=1,
+        buyer_id=buyer.id,
+        product_id=product.id,
+        product_public_id_snapshot=product.public_id,
+        product_name_snapshot=product.name,
+    )
+    session.add(interest)
+    session.commit()
+    interest_id = interest.id
+
+    ProductRepository(session).delete_product(product)
+    session.refresh(interest)
+
+    assert session.get(Product, product.id) is None
+    assert session.get(Interest, interest_id) is interest
+    assert interest.product_public_id is None
+    assert interest.product_name == product.name
+    assert interest.product_status == "Indisponível"
 
 
 def test_deleting_interest_doesnt_delete_its_owners(
@@ -296,3 +324,28 @@ def test_deleting_interest_doesnt_delete_its_owners(
 
     assert session.get(Product, product_id) is not None
     assert session.get(Buyer, buyer_id) is not None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("is_available", False),
+        ("quantity", 0),
+        ("expiration_date", TODAY - timedelta(days=1)),
+    ],
+)
+def test_interest_status_is_unavailable_for_unavailable_product(
+    field: str, value: object
+):
+    product = Product(
+        id=1,
+        name="Tomate",
+        quantity=12,
+        price=Decimal("3.00"),
+        expiration_date=FUTURE,
+        farmer_id=23,
+    )
+    setattr(product, field, value)
+    interest = Interest(quantity=1, buyer_id=1, product=product)
+
+    assert interest.product_status == "Indisponível"

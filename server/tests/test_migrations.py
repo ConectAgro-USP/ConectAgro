@@ -98,6 +98,68 @@ def test_upgrade_fills_link_requested_at_of_existing_buyers(db_url: str) -> None
     assert requested_at is not None
 
 
+def test_upgrade_closes_purchases_left_without_open_parts(db_url: str) -> None:
+    command.upgrade(alembic_config(), "fabf6295bb8b")
+    engine = create_engine(db_url)
+    with engine.begin() as connection:
+        # SQL cru, porque os models descrevem o schema do head
+        connection.execute(
+            text(
+                "INSERT INTO users (email, name, created_at) "
+                "VALUES (:email, 'Conta', CURRENT_TIMESTAMP)"
+            ),
+            [{"email": "sindico@example.com"}, {"email": "joao@example.com"}],
+        )
+        connection.execute(
+            text(
+                "INSERT INTO apartments "
+                "(public_id, zip_code, building_name, building_cnpj, manager_id) "
+                "VALUES (:public_id, '01310200', 'Edifício', '00000000000191', 1)"
+            ),
+            {"public_id": uuid4().hex},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO farmers (public_id, zip_code, user_id) "
+                "VALUES (:public_id, '01310200', :user_id)"
+            ),
+            [{"public_id": uuid4().hex, "user_id": user_id} for user_id in (1, 2)],
+        )
+        connection.execute(
+            text(
+                "INSERT INTO purchases "
+                "(public_id, expected_delivery_date, created_at, apartment_id) "
+                "VALUES (:public_id, '2026-12-01', CURRENT_TIMESTAMP, 1)"
+            ),
+            [{"public_id": uuid4().hex}, {"public_id": uuid4().hex}],
+        )
+        connection.execute(
+            text(
+                "INSERT INTO purchase_parts (public_id, purchase_id, farmer_id, status, closed_at) "
+                "VALUES (:public_id, :purchase_id, :farmer_id, :status, :closed_at)"
+            ),
+            [
+                {"public_id": uuid4().hex, "purchase_id": purchase_id, **part}
+                for purchase_id, part in [
+                    # a primeira compra fechou em partes, a segunda ainda espera uma entrega
+                    (1, {"farmer_id": 1, "status": "ENTREGUE", "closed_at": "2026-11-02"}),
+                    (1, {"farmer_id": 2, "status": "CANCELADA", "closed_at": "2026-11-05"}),
+                    (2, {"farmer_id": 1, "status": "ENTREGUE", "closed_at": "2026-11-03"}),
+                    (2, {"farmer_id": 2, "status": "EM_PROGRESSO", "closed_at": None}),
+                ]
+            ],
+        )
+
+    command.upgrade(alembic_config(), "head")
+
+    with engine.connect() as connection:
+        closed = connection.execute(text("SELECT closed_at FROM purchases ORDER BY id"))
+        closed_dates = closed.scalars().all()
+    engine.dispose()
+
+    assert closed_dates == ["2026-11-05", None]
+
+
 @pytest.mark.parametrize("table", ["users", "products"])
 def test_created_at_becomes_timestamptz_on_postgres(
     table: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]

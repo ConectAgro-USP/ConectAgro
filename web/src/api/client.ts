@@ -13,12 +13,21 @@ const INVALID_FIELD_MESSAGES = new Map([
   ["farm_name", "Informe o nome do sítio ou da horta, com 2 a 150 caracteres"],
   ["zip_code", "CEP inválido"],
   ["cnpj", "CNPJ inválido"],
+  ["building_cnpj", "CNPJ inválido"],
   ["block", "O bloco pode ter até 10 caracteres"],
   ["unit", "Informe o número do apartamento, com até 10 caracteres"],
+  ["quantity", "A quantidade deve ser um número não negativo"],
+  ["price", "O preço deve ser não negativo e ter até 2 casas decimais"],
+  ["expiration_date", "Informe uma data de validade válida"],
+  ["picture_url", "Informe uma URL de imagem válida"],
+  ["rating", "Escolha uma nota de 1 a 5 estrelas"],
+  ["comment", "O comentário pode ter até 500 caracteres"],
+  ["expected_delivery_date", "Informe uma data de entrega válida"],
 ]);
 
 interface InvalidField {
   loc: (string | number)[];
+  msg?: string;
 }
 
 interface ErrorBody {
@@ -50,7 +59,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response));
+    throw new ApiError(response.status, await readErrorMessage(response, path));
   }
 
   if (response.status === 204) {
@@ -60,7 +69,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return response.json() as Promise<T>;
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readErrorMessage(response: Response, path: string): Promise<string> {
   let detail: string | InvalidField[] | undefined;
   try {
     const body: ErrorBody = await response.json();
@@ -75,7 +84,32 @@ async function readErrorMessage(response: Response): Promise<string> {
   if (!Array.isArray(detail) || detail.length === 0) {
     return UNEXPECTED_ERROR;
   }
-  const field = String(detail[0].loc.at(-1));
+  const invalidField = detail[0];
+  const field = String(invalidField.loc.at(-1));
+  if (field === "name" && (path === "/products" || path.startsWith("/products/"))) {
+    return "Informe o nome do produto, com até 100 caracteres";
+  }
+  if (
+    field === "expiration_date" &&
+    invalidField.msg?.includes("Não é possível cadastrar produto vencido")
+  ) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
+  if (
+    field === "expiration_date" &&
+    invalidField.msg?.includes("Atualização faz com que o produto esteja fora da validade")
+  ) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
+  if (field === "comment" && invalidField.msg?.includes("O texto tem um caractere inválido")) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
+  if (
+    field === "expected_delivery_date" &&
+    invalidField.msg?.includes("A data prevista de entrega não pode estar no passado")
+  ) {
+    return invalidField.msg.replace(/^Value error,\s*/, "");
+  }
   return INVALID_FIELD_MESSAGES.get(field) ?? UNEXPECTED_ERROR;
 }
 
@@ -84,4 +118,18 @@ export function errorMessage(error: unknown): string {
     return error.message;
   }
   return CONNECTION_ERROR;
+}
+
+// 401 é sessão encerrada e 403 é outro perfil, nos dois a tela não serve mais
+export function lostAccess(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
+// apagar o que já saiu, em outra aba por exemplo, dá 404 e conta como feito
+export function ignoreNotFound(detail: string) {
+  return (error: unknown): void => {
+    if (!(error instanceof ApiError && error.status === 404 && error.message === detail)) {
+      throw error;
+    }
+  };
 }

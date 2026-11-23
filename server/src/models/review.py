@@ -1,9 +1,12 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Annotated, NamedTuple, Optional
 from uuid import UUID, uuid4
 
+from pydantic import AfterValidator, Strict
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
+
+from src.services.text_service import reject_null_character, short_name
 
 if TYPE_CHECKING:
     from .apartment import Apartment
@@ -11,14 +14,18 @@ if TYPE_CHECKING:
     from .farmer import Farmer
     from .purchase import Purchase
 
+Comment = Annotated[str, AfterValidator(reject_null_character)]
+# sem o Strict o pydantic converte booleano e texto em nota
+Rating = Annotated[int, Strict()]
+
 
 class ReviewBase(SQLModel):
-    rating: int = Field(
+    rating: Rating = Field(
         ge=1,
         le=5,
     )
 
-    comment: str = Field(
+    comment: Comment = Field(
         default="",
         max_length=500,
         description="Comentário deixado pelo autor da avaliação",
@@ -106,6 +113,10 @@ class Review(ReviewBase, table=True):
         return self.farmer.public_id if self.farmer else None
 
     @property
+    def farmer_short_name(self) -> str | None:
+        return short_name(self.farmer.user.name) if self.farmer else None
+
+    @property
     def purchase_public_id(self) -> UUID | None:
         return self.purchase.public_id if self.purchase else None
 
@@ -116,8 +127,8 @@ class ReviewCreate(ReviewBase):
 
 class ReviewUpdate(SQLModel):
     # o default None marca campo não enviado, e o tipo sem None recusa null explícito
-    rating: int = Field(default=None, ge=1, le=5)
-    comment: str = Field(default=None, max_length=500)
+    rating: Rating = Field(default=None, ge=1, le=5)
+    comment: Comment = Field(default=None, max_length=500)
 
 
 class ReviewRead(ReviewBase):
@@ -128,3 +139,35 @@ class ReviewRead(ReviewBase):
     buyer_public_id: UUID | None
     created_at: datetime
     updated_at: datetime | None
+
+
+class AuthorReviewRead(ReviewRead):
+    farmer_short_name: str
+
+
+class ReviewAuthor(NamedTuple):
+    building_id: int
+    # o síndico avalia pelo prédio e o morador pelo próprio cadastro, só um dos dois é preenchido
+    apartment_id: int | None = None
+    buyer_id: int | None = None
+
+
+class ReviewableRead(SQLModel):
+    purchase_public_id: UUID
+    farmer_public_id: UUID
+    farmer_short_name: str
+    delivered_at: datetime | None
+    product_names: list[str]
+
+
+class FarmerReviewRead(ReviewBase):
+    # sem os ids da compra e do autor, para a lista não mostrar quem compra de cada agricultor
+    public_id: UUID
+    created_at: datetime
+    updated_at: datetime | None
+
+
+class FarmerReviewsRead(SQLModel):
+    average_rating: float | None
+    reviews_count: int
+    reviews: list[FarmerReviewRead]

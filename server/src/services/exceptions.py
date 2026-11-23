@@ -1,11 +1,10 @@
-# reexportadas para as rotas tratarem os erros dos connectors sem importá-los
+# Reexportadas para as rotas tratarem os erros dos connectors sem importá-los
 from src.connectors.exceptions import CepNotFoundError as CepNotFoundError
 from src.connectors.exceptions import CnpjNotFoundError as CnpjNotFoundError
 from src.connectors.exceptions import ExternalServiceError as ExternalServiceError
 from src.connectors.exceptions import InvalidCepError as InvalidCepError
 from src.connectors.exceptions import InvalidCnpjError as InvalidCnpjError
 from src.connectors.exceptions import RateLimitedError as RateLimitedError
-from src.connectors.exceptions import RouteNotFoundError as RouteNotFoundError
 
 
 class EmailAlreadyRegisteredError(Exception):
@@ -45,4 +44,84 @@ class ResidentNotFoundError(Exception):
 
 
 class FieldNotInProfileError(Exception):
+    pass
+
+
+class ProductNotFoundError(Exception):
+    pass
+
+
+class NotProductOwnerError(Exception):
+    pass
+
+
+class ProductHasPurchasesError(Exception):
+    pass
+
+
+class ProductExpiredError(Exception):
+    pass
+
+
+class ProductUnavailableError(Exception):
+    pass
+
+
+class ProductPriceChangedError(Exception):
+    pass
+
+
+class ProductOutOfStockError(Exception):
+    pass
+
+
+class PurchaseNotFoundError(Exception):
+    pass
+
+
+class PurchaseAccessDeniedError(Exception):
+    pass
+
+
+class PurchasePartClosedError(Exception):
+    pass
+
+
+class PurchaseAlreadyDeliveredError(Exception):
+    pass
+
+
+class PurchasePartNotDeliveredError(Exception):
+    pass
+
+
+class FarmerNotFoundError(Exception):
+    pass
+
+
+class ReviewNotFoundError(Exception):
+    pass
+
+
+class NotReviewAuthorError(Exception):
+    pass
+
+
+class ReviewAlreadyExistsError(Exception):
+    pass
+
+
+class InterestAlreadyExistsError(Exception):
+    pass
+
+
+class InterestNotFoundError(Exception):
+    pass
+
+
+class NotInterestOwnerDeleteError(Exception):
+    pass
+
+
+class NotInterestOwnerUpdateError(Exception):
     pass
