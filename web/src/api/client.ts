@@ -124,3 +124,12 @@ export function errorMessage(error: unknown): string {
 export function lostAccess(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
+
+// apagar o que já saiu, em outra aba por exemplo, dá 404 e conta como feito
+export function ignoreNotFound(detail: string) {
+  return (error: unknown): void => {
+    if (!(error instanceof ApiError && error.status === 404 && error.message === detail)) {
+      throw error;
+    }
+  };
+}

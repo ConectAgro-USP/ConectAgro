@@ -9,6 +9,7 @@ import {
 } from "../api/products";
 import { errorMessage, lostAccess } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { useWriteGuard } from "./useWriteGuard";
 
 interface UseProductsState {
   data: Product[];
@@ -22,6 +23,7 @@ interface UseProductsState {
 
 export function useProducts(): UseProductsState {
   const { refreshUser } = useAuth();
+  const guard = useWriteGuard();
   const [data, setData] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,19 +61,19 @@ export function useProducts(): UseProductsState {
   }, [refreshUser, reloadKey]);
 
   async function create(product: ProductInput): Promise<Product> {
-    const saved = await sendCreateProduct(product);
+    const saved = await guard(sendCreateProduct(product));
     setData((current) => [...current, saved]);
     return saved;
   }
 
   async function update(publicId: string, changes: ProductInput): Promise<Product> {
-    const saved = await sendUpdateProduct(publicId, changes);
+    const saved = await guard(sendUpdateProduct(publicId, changes));
     setData((current) => current.map((product) => (product.public_id === publicId ? saved : product)));
     return saved;
   }
 
   async function remove(publicId: string): Promise<void> {
-    await sendDeleteProduct(publicId);
+    await guard(sendDeleteProduct(publicId));
     setData((current) => current.filter((product) => product.public_id !== publicId));
   }
 

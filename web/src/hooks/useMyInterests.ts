@@ -7,6 +7,7 @@ import {
   type Interest,
 } from "../api/interests";
 import { useAuth } from "../auth/AuthContext";
+import { useWriteGuard } from "./useWriteGuard";
 
 interface UseMyInterestsState {
   data: Interest[];
@@ -19,6 +20,7 @@ interface UseMyInterestsState {
 
 export function useMyInterests(): UseMyInterestsState {
   const { refreshUser } = useAuth();
+  const guard = useWriteGuard();
   const [data, setData] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -56,14 +58,14 @@ export function useMyInterests(): UseMyInterestsState {
   }, [refreshUser, reloadKey]);
 
   async function update(publicId: string, quantity: number): Promise<void> {
-    const saved = await updateInterest(publicId, quantity);
+    const saved = await guard(updateInterest(publicId, quantity));
     setData((current) =>
       current.map((interest) => (interest.public_id === publicId ? saved : interest)),
     );
   }
 
   async function remove(publicId: string): Promise<void> {
-    await deleteInterest(publicId);
+    await guard(deleteInterest(publicId));
     setData((current) => current.filter((interest) => interest.public_id !== publicId));
   }
 

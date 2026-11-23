@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, ignoreNotFound } from "./client";
 import type { ProductDetail } from "./products";
 
 export interface InterestInput {
@@ -42,7 +42,9 @@ export function updateInterest(publicId: string, quantity: number): Promise<Inte
 }
 
 export function deleteInterest(publicId: string): Promise<void> {
-  return apiFetch<void>(`/interests/${publicId}`, { method: "DELETE" });
+  return apiFetch<void>(`/interests/${publicId}`, { method: "DELETE" }).catch(
+    ignoreNotFound("Interesse não encontrado"),
+  );
 }
 
 export function listBuildingNeeds(descending: boolean): Promise<BuildingNeed[]> {
