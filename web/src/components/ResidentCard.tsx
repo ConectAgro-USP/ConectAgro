@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import type { LinkStatus } from "../api/profiles";
 import type { Resident } from "../api/residents";
 import { formatDay } from "../format";
+import { useFocusWithoutScroll } from "../hooks/useFocusWithoutScroll";
 import { DangerButton, PrimaryButton, SecondaryButton } from "./Button";
 
 const AVATAR_CLASSES =
@@ -74,6 +75,7 @@ export function ResidentCard({
   const { name, email } = resident.user;
   const status = resident.link_status;
   const confirming = confirmingAt === status;
+  const backId = useFocusWithoutScroll(confirming);
   // só quem mudou de situação nesta visita mostra a resposta, o resto da lista já é igual
   const answer = status === listStatus ? "" : answerText(resident);
   const confirmation = CONFIRMATIONS[status];
@@ -106,9 +108,11 @@ export function ResidentCard({
       <div className={ACTIONS_CLASSES}>
         {confirming && (
           <>
-            <p>
-              <span className="font-bold">{confirmation.ask(name)}</span> {confirmation.hint}
-            </p>
+            {/* em duas linhas os botões descem, longe do primeiro clique */}
+            <div className="w-full space-y-3 sm:text-right">
+              <p className="font-bold">{confirmation.ask(name)}</p>
+              <p>{confirmation.hint}</p>
+            </div>
             <div className={CONFIRM_ROW_CLASSES}>
               {status === "RECUSADO" ? (
                 <PrimaryButton type="button" {...buttonProps} onClick={onApprove}>
@@ -119,8 +123,7 @@ export function ResidentCard({
                   {confirmation.confirm}
                 </DangerButton>
               )}
-              {/* fica à direita e com o foco, onde um clique dobrado não confirma nada */}
-              <SecondaryButton autoFocus {...buttonProps} onClick={() => setConfirmingAt(null)}>
+              <SecondaryButton id={backId} {...buttonProps} onClick={() => setConfirmingAt(null)}>
                 Voltar
               </SecondaryButton>
             </div>

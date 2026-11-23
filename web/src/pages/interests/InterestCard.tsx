@@ -1,9 +1,10 @@
-import { useEffect, useId, useState, type SubmitEvent } from "react";
+import { useId, useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
 import type { Interest } from "../../api/interests";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 import { useAction } from "../../hooks/useAction";
+import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
 
 const CARD_CLASSES = "rounded-3xl border border-stone-200 bg-stone-100 p-5 sm:px-6";
 const NAME_LINK_CLASSES =
@@ -38,17 +39,12 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
   const removal = useAction();
   const nameId = useId();
   const quantityId = useId();
-  const backId = useId();
+  const backId = useFocusWithoutScroll(confirming);
   const requested = Number(quantity);
   const invalid = requested < 1;
   const removalProps = { "aria-describedby": nameId, disabled: removal.pending };
   // abaixo do rótulo, o Remover fica na altura do campo e não das mensagens
   const idleActions = available ? "sm:self-start sm:mt-7" : "sm:mt-0";
-
-  useEffect(() => {
-    // rolar a tela traria o Remover vermelho para baixo do segundo toque
-    if (confirming) document.getElementById(backId)?.focus({ preventScroll: true });
-  }, [confirming, backId]);
 
   function change(value: string) {
     if (/\D/.test(value)) {
