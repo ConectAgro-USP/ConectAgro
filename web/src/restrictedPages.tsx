@@ -1,6 +1,7 @@
 import {
   ClipboardListIcon,
   HandCoinsIcon,
+  HeartIcon,
   MapPinIcon,
   PackageIcon,
   ReceiptTextIcon,
@@ -13,6 +14,7 @@ import type { ProfileType } from "./api/profiles";
 import { REVIEWS_PATH } from "./components/reviews/paths";
 import { BuildingNeeds } from "./pages/BuildingNeeds";
 import { BuildingPurchases } from "./pages/BuildingPurchases";
+import { MyInterests } from "./pages/MyInterests";
 import { MyReviews } from "./pages/MyReviews";
 import { MySales } from "./pages/MySales";
 import { MyProducts } from "./pages/MyProducts";
@@ -58,6 +60,13 @@ export const RESTRICTED_PAGES: RestrictedPage[] = [
     icon: ReceiptTextIcon,
     profiles: ["apartment"],
     element: <BuildingPurchases />,
+  },
+  {
+    path: "/interesses",
+    label: "Meus interesses",
+    icon: HeartIcon,
+    profiles: ["buyer"],
+    element: <MyInterests />,
   },
   {
     path: REVIEWS_PATH,

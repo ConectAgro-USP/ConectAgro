@@ -30,6 +30,21 @@ export function createInterest(interest: InterestInput): Promise<Interest> {
   });
 }
 
+export function listMyInterests(): Promise<Interest[]> {
+  return apiFetch<Interest[]>("/interests/me");
+}
+
+export function updateInterest(publicId: string, quantity: number): Promise<Interest> {
+  return apiFetch<Interest>(`/interests/${publicId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export function deleteInterest(publicId: string): Promise<void> {
+  return apiFetch<void>(`/interests/${publicId}`, { method: "DELETE" });
+}
+
 export function listBuildingNeeds(descending: boolean): Promise<BuildingNeed[]> {
   return apiFetch<BuildingNeed[]>(`/apartments/me/needs?descending=${descending}`);
 }
