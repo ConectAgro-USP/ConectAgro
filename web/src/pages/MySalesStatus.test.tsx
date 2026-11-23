@@ -67,6 +67,19 @@ describe("MySales, delivering and cancelling", () => {
     expect(within(card).getByRole("button", { name: DELIVER })).toBeInTheDocument();
   });
 
+  it("focuses Voltar without scrolling the page under the finger", async () => {
+    renderSales(pageOf(pendingSale));
+    const card = await findCard(VILLAGE);
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
+    await press(card, CANCEL);
+    const lastFocus = focus.mock.lastCall;
+    focus.mockRestore();
+
+    expect(within(card).getByRole("button", { name: "Voltar" })).toHaveFocus();
+    expect(lastFocus).toEqual([{ preventScroll: true }]);
+  });
+
   it("cancels the sale after the confirmation", async () => {
     const fetchMock = renderSales(
       pageOf(pendingSale),

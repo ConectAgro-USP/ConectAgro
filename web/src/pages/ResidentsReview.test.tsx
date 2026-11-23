@@ -29,6 +29,19 @@ describe("Residents review", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("focuses Voltar without scrolling the page under the finger", async () => {
+    renderResidents(jsonResponse([tita]));
+    const card = await findCard("Tita Russell");
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
+    await press(card, "Recusar");
+    const lastFocus = focus.mock.lastCall;
+    focus.mockRestore();
+
+    expect(within(card).getByRole("button", { name: "Voltar" })).toHaveFocus();
+    expect(lastFocus).toEqual([{ preventScroll: true }]);
+  });
+
   it("keeps the request when the manager goes back", async () => {
     const { fetchMock } = renderResidents(jsonResponse([tita]));
     const card = await findCard("Tita Russell");
