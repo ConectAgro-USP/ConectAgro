@@ -8,10 +8,11 @@ from httpx import Response
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
+from src.models.buyer import Buyer
 from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase
 from src.models.user import User
-from tests.helpers import add_farmer, add_product, add_user, login
+from tests.helpers import add_farmer, add_interest, add_product, add_user, login
 
 FUTURE = datetime.now(BUSINESS_TZ).date() + timedelta(days=7)
 
@@ -22,9 +23,9 @@ def logged_manager(client: TestClient, manager: User, building: Apartment) -> No
 
 
 @pytest.fixture
-def lettuce(session: Session) -> Product:
+def lettuce(session: Session, resident: Buyer) -> Product:
     joao = add_farmer(session, add_user(session, "joao@example.com"))
-    return add_product(session, joao, name="Alface")
+    return add_interest(session, resident, add_product(session, joao, name="Alface")).product
 
 
 def item(product: Product, unit_price: str = "2.50") -> dict:
