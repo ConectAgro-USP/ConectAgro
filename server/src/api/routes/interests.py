@@ -10,12 +10,17 @@ from src.services.exceptions import (
     NotInterestOwnerDeleteError,
     NotInterestOwnerUpdateError,
     ProductNotFoundError,
+    ProductUnavailableError,
 )
 
 router = APIRouter(prefix="/interests", tags=["interests"])
 
 HTTP_ERRORS = {
     ProductNotFoundError: (status.HTTP_404_NOT_FOUND, "Produto não encontrado"),
+    ProductUnavailableError: (
+        status.HTTP_409_CONFLICT,
+        "Este produto não está mais disponível no catálogo",
+    ),
     InterestNotFoundError: (status.HTTP_404_NOT_FOUND, "Interesse não encontrado"),
     InterestAlreadyExistsError: (
         status.HTTP_409_CONFLICT,

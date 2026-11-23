@@ -8,7 +8,7 @@ from src.models.interest import (
     InterestCreate,
     InterestUpdate,
 )
-from src.models.product import ProductDetailRead
+from src.models.product import UNAVAILABLE, ProductDetailRead
 from src.repository.interest_repository import InterestRepository
 from src.repository.profile_repository import DuplicateValueError
 from src.services.exceptions import (
@@ -17,6 +17,7 @@ from src.services.exceptions import (
     NotInterestOwnerDeleteError,
     NotInterestOwnerUpdateError,
     ProductNotFoundError,
+    ProductUnavailableError,
 )
 from src.services.product_service import _farmer_summary
 
@@ -44,6 +45,8 @@ class InterestService:
                 "quantity": interest_in.quantity,
             },
         )
+        if interest.product_status == UNAVAILABLE:
+            raise ProductUnavailableError
 
         self.interests.create(interest)
         try:
