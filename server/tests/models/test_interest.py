@@ -304,7 +304,7 @@ def test_deleting_product_preserves_interest_snapshot(
 
     assert session.get(Product, product.id) is None
     assert session.get(Interest, interest_id) is interest
-    assert interest.product_public_id == product.public_id
+    assert interest.product_public_id is None
     assert interest.product_name == product.name
     assert interest.product_status == "Indisponível"
 

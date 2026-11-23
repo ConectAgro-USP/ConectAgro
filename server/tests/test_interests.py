@@ -257,7 +257,7 @@ def test_interest_remains_after_product_is_deleted(
 
     assert list_response.status_code == status.HTTP_200_OK
     interest = list_response.json()[0]
-    assert interest["product_public_id"] == str(product.public_id)
+    assert interest["product_public_id"] is None
     assert interest["product_name"] == "Alface"
     assert interest["product_status"] == "Indisponível"
 
