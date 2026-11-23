@@ -7,6 +7,7 @@ import { PrimaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 import { daysUntil, formatCount } from "../../format";
 import { useAction } from "../../hooks/useAction";
+import { useWriteGuard } from "../../hooks/useWriteGuard";
 import { ProductContact } from "./ProductContact";
 
 const QUANTITY_CLASSES =
@@ -27,16 +28,16 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
   const requestedQuantity = Number(selectedQuantity);
   const quantityExceedsStock = requestedQuantity > product.quantity;
   const interest = useAction();
+  const guard = useWriteGuard();
   const [interestSuccess, setInterestSuccess] = useState(false);
   const canRegisterInterest =
     isAvailable && requestedQuantity > 0 && !quantityExceedsStock && !interestSuccess;
 
   function handleRegisterInterest() {
     interest.run(async () => {
-      await createInterest({
-        product_public_id: product.public_id,
-        quantity: requestedQuantity,
-      });
+      await guard(
+        createInterest({ product_public_id: product.public_id, quantity: requestedQuantity }),
+      );
       setInterestSuccess(true);
     });
   }

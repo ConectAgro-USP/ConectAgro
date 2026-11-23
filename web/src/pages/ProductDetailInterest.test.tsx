@@ -1,6 +1,13 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { anaAsManager, fakeAuth, jsonResponse, sentBody, stubFetch } from "../test/helpers";
+import {
+  anaAsBuyer,
+  anaAsManager,
+  fakeAuth,
+  jsonResponse,
+  sentBody,
+  stubFetch,
+} from "../test/helpers";
 import { pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
 
 const interest = {
@@ -63,6 +70,18 @@ describe("ProductDetail, interest", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Registrar interesse" }));
 
     expect(await screen.findByText("Interesse nesse produto já registrado")).toBeInTheDocument();
+  });
+
+  it("reloads the user when the session ended before the interest", async () => {
+    stubFetch(...pageLoad(), jsonResponse({ detail: "Não autenticado" }, 401));
+    const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
+    renderDetail(auth);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar interesse" }));
+
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
+    expect(await screen.findByText("Não autenticado")).toBeInTheDocument();
+    expect(screen.queryByText("Interesse registrado com sucesso!")).not.toBeInTheDocument();
   });
 
   it.each([

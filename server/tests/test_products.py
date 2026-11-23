@@ -1078,7 +1078,7 @@ def test_removing_a_product_preserves_its_interest_as_unavailable(
         interest for interest in interests if interest.product_id == kale.id
     )
     assert len(interests) == 2
-    assert removed_product_interest.product_public_id == lettuce_public_id
+    assert removed_product_interest.product_public_id is None
     assert removed_product_interest.product_name == lettuce_name
     assert removed_product_interest.product_status == "Indisponível"
     assert remaining_product_interest.product_name == "Couve"

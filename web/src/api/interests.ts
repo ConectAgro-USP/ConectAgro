@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, ignoreNotFound } from "./client";
 import type { ProductDetail } from "./products";
 
 export interface InterestInput {
@@ -28,6 +28,23 @@ export function createInterest(interest: InterestInput): Promise<Interest> {
     method: "POST",
     body: JSON.stringify(interest),
   });
+}
+
+export function listMyInterests(): Promise<Interest[]> {
+  return apiFetch<Interest[]>("/interests/me");
+}
+
+export function updateInterest(publicId: string, quantity: number): Promise<Interest> {
+  return apiFetch<Interest>(`/interests/${publicId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export function deleteInterest(publicId: string): Promise<void> {
+  return apiFetch<void>(`/interests/${publicId}`, { method: "DELETE" }).catch(
+    ignoreNotFound("Interesse não encontrado"),
+  );
 }
 
 export function listBuildingNeeds(descending: boolean): Promise<BuildingNeed[]> {

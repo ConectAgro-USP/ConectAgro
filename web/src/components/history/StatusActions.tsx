@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useAction } from "../../hooks/useAction";
+import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
+import { useWriteGuard } from "../../hooks/useWriteGuard";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
 
@@ -30,11 +32,13 @@ export function StatusActions({
   const [confirming, setConfirming] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const { error, setError, pending, run } = useAction();
+  const backId = useFocusWithoutScroll(open && confirming);
+  const guard = useWriteGuard();
   const buttonProps = { "aria-describedby": describedBy, disabled: disabled || pending };
 
   function send(request: () => Promise<unknown>, done: string) {
     run(async () => {
-      await request();
+      await guard(request());
       setAnnouncement(done);
       reload();
     });
@@ -66,8 +70,7 @@ export function StatusActions({
           <DangerButton {...buttonProps} onClick={() => send(onCancel, cancel.done)}>
             {cancel.label}
           </DangerButton>
-          {/* fica por último, onde um toque duplo não muda nada */}
-          <SecondaryButton autoFocus {...buttonProps} onClick={goBack}>
+          <SecondaryButton id={backId} {...buttonProps} onClick={goBack}>
             Voltar
           </SecondaryButton>
         </div>

@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, ignoreNotFound } from "./client";
 import type { Page } from "./pagination";
 
 export interface Product {
@@ -77,5 +77,7 @@ export function updateProduct(publicId: string, changes: ProductInput): Promise<
 }
 
 export function deleteProduct(publicId: string): Promise<void> {
-  return apiFetch<void>(`/products/${publicId}`, { method: "DELETE" });
+  return apiFetch<void>(`/products/${publicId}`, { method: "DELETE" }).catch(
+    ignoreNotFound("Produto não encontrado"),
+  );
 }
