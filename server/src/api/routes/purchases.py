@@ -12,6 +12,7 @@ from src.models.purchase import (
 from src.services.exceptions import (
     ProductExpiredError,
     ProductNotFoundError,
+    ProductNotNeededError,
     ProductOutOfStockError,
     ProductPriceChangedError,
     ProductUnavailableError,
@@ -46,6 +47,9 @@ def create_purchase(
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
     except ProductOutOfStockError as error:
         message = f"O produto {error} não tem a quantidade pedida"
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
+    except ProductNotNeededError as error:
+        message = f"O produto {error} não está nas necessidades do prédio"
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
 

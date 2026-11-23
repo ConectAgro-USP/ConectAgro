@@ -7,7 +7,9 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
+from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
+from src.models.interest import Interest
 from src.models.product import Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
 from src.models.purchase_history import (
@@ -44,6 +46,15 @@ class PurchaseRepository:
         statement = statement.order_by(Product.id).with_for_update()
         # lê de novo o produto já carregado, para ter o estoque atual
         statement = statement.execution_options(populate_existing=True)
+        return list(self.session.exec(statement).all())
+
+    def list_building_interests(self, apartment_id: int, product_ids: list[int]) -> list[Interest]:
+        statement = select(Interest).join(Buyer)
+        statement = statement.where(
+            Buyer.apartment_id == apartment_id,
+            Buyer.link_status == LinkStatus.APROVADO,
+            Interest.product_id.in_(product_ids),
+        )
         return list(self.session.exec(statement).all())
 
     def list_sales(
