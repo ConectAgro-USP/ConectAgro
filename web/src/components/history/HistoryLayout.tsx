@@ -16,10 +16,17 @@ const FILTER_BUTTON_CLASSES =
 const CLEAR_BUTTON_CLASSES =
   "mt-2 rounded py-2 font-bold text-lime-800 underline focus-visible:outline-2 " +
   "focus-visible:outline-lime-800";
-const HOME_LINK_CLASSES =
+const EMPTY_LINK_CLASSES =
   "flex h-14 items-center rounded-full bg-lime-800 px-8 text-base font-bold text-white " +
   "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-lime-800";
+
+interface EmptyLink {
+  to: string;
+  label: string;
+}
+
+const HOME: EmptyLink = { to: "/", label: "Ir para a página inicial" };
 
 function countActive(filters: HistoryFilters): number {
   return Object.values(filters).filter((value) => value !== "").length;
@@ -40,6 +47,7 @@ interface HistoryLayoutProps {
   statusLabels: Record<PurchaseStatus, string>;
   counterpartLabel: string;
   emptyMessage: string;
+  emptyLink?: EmptyLink;
   children: ReactNode;
 }
 
@@ -49,6 +57,7 @@ export function HistoryLayout({
   statusLabels,
   counterpartLabel,
   emptyMessage,
+  emptyLink = HOME,
   children,
 }: Readonly<HistoryLayoutProps>) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -107,8 +116,8 @@ export function HistoryLayout({
               {activeFilters === 0 ? emptyMessage : "Nenhum pedido com esses filtros"}
             </p>
             {activeFilters === 0 && (
-              <Link to="/" className={HOME_LINK_CLASSES}>
-                Ir para a página inicial
+              <Link to={emptyLink.to} className={EMPTY_LINK_CLASSES}>
+                {emptyLink.label}
               </Link>
             )}
           </div>
