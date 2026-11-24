@@ -1,15 +1,12 @@
 import time
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.api.deps import get_distance_service
-from src.main import app
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.farmer_search import FarmerSearchFilters
@@ -17,7 +14,7 @@ from src.models.product import Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
-from src.services.distance_service import DistanceService
+from tests.geo import PRACA_DA_SE, km_north
 from tests.helpers import login
 
 TODAY = date.today()
@@ -156,15 +153,15 @@ def test_api_filter_by_multiple_products(client: TestClient, session: Session):
     assert data["items"][0]["name"] == "Horta C."
 
 
-def test_api_filter_by_distance_allowed_values(client: TestClient, session: Session):
-    mock_distance = MagicMock(spec=DistanceService)
-    create_farmer(session, name="Perto 4km", email="perto@example.com", zip_code="01001-000")
-    create_farmer(session, name="Longe 12km", email="longe@example.com", zip_code="02002-000")
-
-    distances = {"01001-000": 4.0, "02002-000": 12.0}
-    mock_distance.km_between.side_effect = lambda orig, dest: distances[dest.zip_code]
-
-    app.dependency_overrides[get_distance_service] = lambda: mock_distance
+def test_api_filter_by_distance_allowed_values(
+    client: TestClient, session: Session, building: Apartment
+):
+    building.latitude, building.longitude = PRACA_DA_SE
+    near = create_farmer(session, name="Perto 4km", email="perto@example.com")
+    far = create_farmer(session, name="Longe 12km", email="longe@example.com")
+    near.latitude, near.longitude = km_north(4)
+    far.latitude, far.longitude = km_north(12)
+    session.commit()
 
     res_5km = client.get(
         "/api/farmers",

@@ -10,7 +10,7 @@ from src.api.deps import (
 )
 from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse
 from src.models.purchase_history import SalesFilters, SalesHistory
-from src.services.exceptions import ExternalServiceError
+from src.services.exceptions import BuildingWithoutCoordinatesError, ExternalServiceError
 
 router = APIRouter(prefix="/farmers", tags=["farmers"])
 
@@ -24,6 +24,12 @@ def search_farmers(
     # Executa a busca e retorna os agricultores filtrados e ordenados
     try:
         return search_service.search(filters, building)
+    except BuildingWithoutCoordinatesError:
+        message = (
+            "Não foi possível localizar o CEP do prédio para calcular as distâncias. "
+            "O síndico deve revisar o CEP em Meu perfil"
+        )
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
     except ExternalServiceError:
         message = "Não foi possível calcular as distâncias agora. Tente novamente mais tarde"
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, message) from None

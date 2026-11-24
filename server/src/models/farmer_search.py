@@ -1,5 +1,5 @@
-from enum import IntEnum
-from typing import Annotated
+from enum import IntEnum, StrEnum
+from typing import Annotated, NamedTuple
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -15,12 +15,25 @@ class AllowedDistance(IntEnum):
     FIFTEEN = 15
 
 
+class FarmerSort(StrEnum):
+    REPUTATION = "reputation"
+    DISTANCE = "distance"
+
+
+class BoundingBox(NamedTuple):
+    min_latitude: float
+    max_latitude: float
+    min_longitude: float
+    max_longitude: float
+
+
 class FarmerSearchFilters(BaseModel):
     name: str | None = Field(default=None, max_length=200)
     products: list[Annotated[str, Field(max_length=200)]] = Field(
         default_factory=list, max_length=10
     )
     max_distance_km: AllowedDistance | None = None
+    sort: FarmerSort = FarmerSort.REPUTATION
     page: int = Field(default=1, ge=1, le=INT4_MAX)
     page_size: int = Field(default=20, ge=1, le=100)
 

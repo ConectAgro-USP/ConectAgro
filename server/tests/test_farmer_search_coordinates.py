@@ -33,11 +33,13 @@ def test_search_uses_the_saved_coordinates_without_the_brasilapi(
     assert cep_requests == []
 
 
-def test_search_saves_the_coordinates_it_looks_up_for_old_profiles(
+def test_search_saves_the_building_coordinates_it_looks_up(
     client: TestClient, session: Session, manager: User, building: Apartment
 ):
-    # o prédio e o agricultor têm o CEP 01310200, mas nenhuma coordenada salva
+    # o prédio tem o CEP 01310200, mas nenhuma coordenada salva
     farmer = add_farmer(session, add_user(session, "carlos@example.com", name="Carlos Souza"))
+    farmer.latitude, farmer.longitude = PAULISTA_POINT
+    session.commit()
     cep_requests = answer_cep(httpx.Response(200, json=PAULISTA))
     login(client, manager)
 
@@ -46,11 +48,9 @@ def test_search_saves_the_coordinates_it_looks_up_for_old_profiles(
     cep_requests.clear()
     second = client.get("/api/farmers", params=SEARCH_5KM)
 
-    assert first_lookups == ["/api/cep/v2/01310200"] * 2
+    assert first_lookups == ["/api/cep/v2/01310200"]
     assert cep_requests == []
     assert second.json() == first.json()
     assert [item["distance_km"] for item in second.json()["items"]] == [0.0]
     session.refresh(building)
-    session.refresh(farmer)
     assert (building.latitude, building.longitude) == PAULISTA_POINT
-    assert (farmer.latitude, farmer.longitude) == PAULISTA_POINT

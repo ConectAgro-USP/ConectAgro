@@ -1,40 +1,42 @@
 from datetime import datetime
 
+from src.core.search_text import fold
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer, FarmerSearchRead
-from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse
+from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse, FarmerSort
 from src.models.product import BUSINESS_TZ
 from src.repository.farmer_search_repository import FarmerSearchRepository
-from src.services.distance_service import DistanceService
-from src.services.exceptions import (
-    CepNotFoundError,
-    CepWithoutCoordinatesError,
-    InvalidCepError,
+from src.services.distance_service import (
+    DistanceService,
+    Point,
+    bounding_box,
+    km_between,
+    saved_point,
 )
 from src.services.text_service import short_name
 
-# o agricultor com esses problemas no CEP fica de fora, sem derrubar a busca
-SKIPPED_CEP_ERRORS = (
-    CepNotFoundError,
-    CepWithoutCoordinatesError,
-    InvalidCepError,
-)
-
 
 class FarmerSearchService:
-    def __init__(
-        self, repository: FarmerSearchRepository, distance_service: DistanceService | None = None
-    ):
+    def __init__(self, repository: FarmerSearchRepository, distance_service: DistanceService):
         self.repository = repository
         self.distance_service = distance_service
 
     def search(self, filters: FarmerSearchFilters, building: Apartment) -> FarmerSearchResponse:
         today = datetime.now(BUSINESS_TZ).date()
-        farmers = self.repository.search(filters.name, filters.products, today)
+        radius = filters.max_distance_km
+        if radius is not None or filters.sort == FarmerSort.DISTANCE:
+            origin = self._locate(building)
+        else:
+            origin = saved_point(building)
+        box = bounding_box(origin, radius) if radius is not None else None
+        farmers = self.repository.search(filters.products, today, box)
+        if filters.name:
+            query = fold(filters.name)
+            farmers = [farmer for farmer in farmers if self.matches_name(farmer, query)]
 
-        farmers, distances = self._filter_by_distance(
-            farmers, building, filters.max_distance_km
-        )
+        distances = self._distances(origin, farmers)
+        if radius is not None:
+            farmers = [farmer for farmer in farmers if distances[farmer.id] <= radius]
 
         farmer_ids = [farmer.id for farmer in farmers]
 
@@ -45,14 +47,20 @@ class FarmerSearchService:
             reviews=self.repository.get_review_summaries_by_id(farmer_ids),
             delivery_rates=self._get_on_time_delivery_rates(farmer_ids),
         )
-        # salva as coordenadas dos perfis antigos só agora, porque o commit expira os agricultores
-        self.repository.commit()
 
         return FarmerSearchResponse.paginate(
-            self._sort_by_reputation(items),
+            self._sort(items, filters.sort),
             filters.page,
             filters.page_size,
         )
+
+    def _locate(self, building: Apartment) -> Point:
+        point = saved_point(building)
+        if point is None:
+            point = self.distance_service.look_up_building(building)
+            # salva as coordenadas antes de carregar os agricultores
+            self.repository.commit()
+        return point
 
     def create_farmer_pages(
         self,
@@ -82,31 +90,22 @@ class FarmerSearchService:
 
         return items
 
-    def _filter_by_distance(
-        self,
-        farmers: list[Farmer],
-        building: Apartment,
-        max_distance_km: int | None,
-    ) -> tuple[list[Farmer], dict[int, float]]:
-        if max_distance_km is None:
-            return farmers, {}
-        if self.distance_service is None:
-            raise RuntimeError("O serviço de distância não está disponível")
+    @staticmethod
+    def matches_name(farmer: Farmer, query: str) -> bool:
+        # o email salvo como nome fica de fora, para a busca não revelar o endereço
+        name = "" if "@" in farmer.user.name else farmer.user.name
+        return query in fold(name) or query in fold(farmer.farm_name)
 
-        close_farmers: list[Farmer] = []
-        farmer_distances: dict[int, float] = {}
-
+    @staticmethod
+    def _distances(origin: Point | None, farmers: list[Farmer]) -> dict[int, float]:
+        if origin is None:
+            return {}
+        distances: dict[int, float] = {}
         for farmer in farmers:
-            try:
-                distance_km = self.distance_service.km_between(building, farmer)
-            except SKIPPED_CEP_ERRORS:
-                continue
-            # Filtra pelo raio
-            if distance_km <= max_distance_km:
-                farmer_distances[farmer.id] = distance_km
-                close_farmers.append(farmer)
-
-        return close_farmers, farmer_distances
+            point = saved_point(farmer)
+            if point is not None:
+                distances[farmer.id] = round(km_between(origin, point), 2)
+        return distances
 
     def _get_on_time_delivery_rates(
         self,
@@ -122,15 +121,22 @@ class FarmerSearchService:
     def delivery_rate(on_time: int, total_delivered: int) -> float | None:
         return round((on_time / total_delivered) * 100.0, 1) if (total_delivered > 0) else None
 
-    def _sort_by_reputation(self, items: list[FarmerSearchRead]) -> list[FarmerSearchRead]:
+    def _sort(self, items: list[FarmerSearchRead], sort: FarmerSort) -> list[FarmerSearchRead]:
+        if sort == FarmerSort.DISTANCE:
+            return sorted(items, key=self.distance_key)
         return sorted(items, key=self.reputation_key)
 
-    """Ordenação por avaliação, entregas no prazo, distância, qauntidade de reviews e nome."""
+    @classmethod
+    def distance_key(cls, farmer: FarmerSearchRead) -> tuple:
+        # quem não tem distância vai para o fim, e o empate segue a reputação
+        distance = farmer.distance_km if farmer.distance_km is not None else float("inf")
+        return (distance, *cls.reputation_key(farmer))
+
     @staticmethod
     def reputation_key(farmer: FarmerSearchRead) -> tuple[float, float, float, int, str]:
         rating = farmer.average_rating or 0.0
         delivery_rate = farmer.on_time_delivery_percentage or 0.0
-        distance = farmer.distance_km or 0.0
+        distance = farmer.distance_km if farmer.distance_km is not None else float("inf")
 
         # o sinal negativo põe os maiores valores na frente
         return (-rating, -delivery_rate, distance, -farmer.reviews_count, farmer.name.lower())

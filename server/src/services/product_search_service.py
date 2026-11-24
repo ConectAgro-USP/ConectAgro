@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from src.core.search_text import fold
 from src.models.product import BUSINESS_TZ, ProductCatalogRead
 from src.models.product_search import (
     PRODUCTS_PER_PAGE,
@@ -16,7 +17,9 @@ class ProductSearchService:
 
     def search(self, filters: ProductSearchFilters) -> ProductSearchResponse:
         today = datetime.now(BUSINESS_TZ).date()
-        products, total = self.products.search(filters, today)
+        # o texto buscado é comparado com as cópias sem acentos do produto
+        query = fold(filters.q) or None
+        products, total = self.products.search(filters.model_copy(update={"q": query}), today)
         items = []
         for product, average, count in products:
             farmer_summary = {

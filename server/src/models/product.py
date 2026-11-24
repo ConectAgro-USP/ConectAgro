@@ -64,6 +64,9 @@ class Product(ProductBase, table=True):
     )
 
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
+    # cópias sem acentos nem maiúsculas, preenchidas pelo serviço para a busca
+    name_search: str = Field(default="", index=True)
+    description_search: str = Field(default="")
 
     farmer: Optional["Farmer"] = Relationship(back_populates="products")
     interests: list["Interest"] = Relationship(back_populates="product")

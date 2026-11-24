@@ -19,6 +19,12 @@ from tests.helpers import add_farmer, add_resident, add_user, login
 KM_PER_DEGREE = haversine((0, 0), (1, 0))
 
 
+def place_north_of_building(farmer: Farmer, meters: float) -> None:
+    # a busca usa só as coordenadas salvas do agricultor
+    farmer.latitude = -23.5505 + meters / 1000.0 / KM_PER_DEGREE
+    farmer.longitude = -46.6333
+
+
 def setup_fake_http_connectors(
     monkeypatch,
     building_cep: str,
@@ -93,7 +99,9 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
     create_approved_buyer(session, ana, building)
 
     # Agricultor 1 (Ana) - CEP 05508-020
-    farmer_1 = Farmer(user_id=ana.id, zip_code="05508-020")
+    farmer_1 = Farmer(
+        user_id=ana.id, zip_code="05508-020", latitude=-23.62245, longitude=-46.6333
+    )
     session.add(farmer_1)
 
     # Agricultor 2 (Carlos) - CEP 01311-000
@@ -101,7 +109,9 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
     session.add(carlos)
     session.flush()
 
-    farmer_2 = Farmer(user_id=carlos.id, zip_code="01311-000")
+    farmer_2 = Farmer(
+        user_id=carlos.id, zip_code="01311-000", latitude=-23.52802, longitude=-46.6333
+    )
     session.add(farmer_2)
     session.commit()
 
@@ -152,6 +162,7 @@ def test_list_farmers_counts_only_available_products(client, ana, building, sess
     """
     create_approved_buyer(session, ana, building)
     farmer = Farmer(user_id=ana.id, zip_code="05508-020")
+    place_north_of_building(farmer, 3500.0)
     session.add(farmer)
     session.flush()
 
@@ -217,6 +228,7 @@ def test_list_farmers_returns_expected_fields_and_values(
     ):
     create_approved_buyer(session, ana, building)
     farmer = Farmer(user_id=ana.id, zip_code="05508-020")
+    place_north_of_building(farmer, 3500.0)
     session.add(farmer)
     session.commit()
 
@@ -252,6 +264,7 @@ def test_list_farmers_returns_expected_fields_and_values(
 def test_list_farmers_excludes_farmer_outside_radius(client, ana, building, session, monkeypatch):
     create_approved_buyer(session, ana, building)
     farmer = Farmer(user_id=ana.id, zip_code="05508-020")
+    place_north_of_building(farmer, 6000.0)
     session.add(farmer)
     session.commit()
 
@@ -325,6 +338,8 @@ def test_list_farmers_rejects_unsupported_max_distance_values(
 
 def test_manager_lists_farmers_near_the_building(client, manager, building, session, monkeypatch):
     farmer = add_farmer(session, add_user(session, "carlos@example.com", name="Carlos Souza"))
+    place_north_of_building(farmer, 0.0)
+    session.commit()
     login(client, manager)
     setup_fake_http_connectors(
         monkeypatch,
@@ -367,6 +382,8 @@ def test_list_farmers_hides_email_saved_as_farmer_name(
 ):
     email = "carlos@example.com"
     farmer = add_farmer(session, add_user(session, email, name=email))
+    place_north_of_building(farmer, 0.0)
+    session.commit()
     login(client, manager)
     setup_fake_http_connectors(
         monkeypatch,

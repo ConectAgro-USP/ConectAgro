@@ -23,6 +23,10 @@ class CepWithoutCoordinatesError(Exception):
     pass
 
 
+class BuildingWithoutCoordinatesError(Exception):
+    pass
+
+
 class CnpjNotActiveError(Exception):
     pass
 

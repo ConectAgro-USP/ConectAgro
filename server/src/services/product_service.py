@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from src.core.search_text import fold
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import (
@@ -27,6 +28,7 @@ class ProductService:
     def create(self, farmer: Farmer, product_in: ProductCreate) -> Product:
         # o dono vem do perfil logado, e não do corpo, para ninguém cadastrar em nome de outro
         product = Product.model_validate(product_in, update={"farmer_id": farmer.id})
+        fill_search_text(product)
         return self.products.save(product)
 
     def get_current_farmer_products(self, farmer: Farmer) -> list[Product]:
@@ -49,6 +51,7 @@ class ProductService:
         if product.farmer_id != farmer.id:
             raise NotProductOwnerError
         product.sqlmodel_update(product_update.model_dump(exclude_unset=True))
+        fill_search_text(product)
         return self.products.save(product)
 
     def delete_product(self, public_id: UUID, farmer: Farmer) -> None:
@@ -96,6 +99,12 @@ class ProductService:
         if product is None:
             raise ProductNotFoundError
         return product
+
+
+def fill_search_text(product: Product) -> None:
+    product.name_search = fold(product.name)
+    product.description_search = fold(product.description)
+
 
 def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
     return ProductFarmerRead(
