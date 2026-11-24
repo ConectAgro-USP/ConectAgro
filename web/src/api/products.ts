@@ -13,6 +13,11 @@ export interface Product {
   created_at: string;
 }
 
+// o produto visto pelo dono, que pode pausar o anúncio
+export interface MyProduct extends Product {
+  is_available: boolean;
+}
+
 export interface ProductInput {
   name: string;
   description: string | null;
@@ -47,8 +52,8 @@ export interface CatalogProduct extends Product {
   farmer_reviews_count: number;
 }
 
-export function listMyProducts(): Promise<Product[]> {
-  return apiFetch<Product[]>("/products/me");
+export function listMyProducts(): Promise<MyProduct[]> {
+  return apiFetch<MyProduct[]>("/products/me");
 }
 
 // o usePages manda a busca antes da página, e o catálogo não tem busca
@@ -65,15 +70,32 @@ export function getProductContact(publicId: string): Promise<ProductContact> {
   return apiFetch<ProductContact>(`/products/${publicId}/contact`);
 }
 
-export function createProduct(product: ProductInput): Promise<Product> {
-  return apiFetch<Product>("/products", { method: "POST", body: JSON.stringify(product) });
+export function createProduct(product: ProductInput): Promise<MyProduct> {
+  return apiFetch<MyProduct>("/products", { method: "POST", body: JSON.stringify(product) });
 }
 
-export function updateProduct(publicId: string, changes: ProductInput): Promise<Product> {
-  return apiFetch<Product>(`/products/${publicId}`, {
+export function updateProduct(
+  publicId: string,
+  changes: ProductInput | { is_available: boolean },
+): Promise<MyProduct> {
+  return apiFetch<MyProduct>(`/products/${publicId}`, {
     method: "PATCH",
     body: JSON.stringify(changes),
   });
+}
+
+// o corpo é a própria foto, sem formulário, e o servidor confere o tipo pelos bytes
+export function uploadProductPicture(publicId: string, picture: Blob): Promise<MyProduct> {
+  return apiFetch<MyProduct>(`/products/${publicId}/picture`, {
+    method: "POST",
+    body: picture,
+    headers: { "Content-Type": "image/jpeg" },
+  });
+}
+
+// a foto enviada fica na API, as outras são links de fora
+export function isUploadedPicture(url: string | null | undefined): url is string {
+  return url?.startsWith("/api/products/") ?? false;
 }
 
 export function deleteProduct(publicId: string): Promise<void> {

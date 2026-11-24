@@ -6,6 +6,7 @@ import { MySales } from "./MySales";
 const VILLAGE = "Cond. Village Vila Verde";
 const DELIVER = "Marcar como entregue";
 const CANCEL = "Cancelar venda";
+const CONFIRM = "Confirmar entrega";
 const CLOSED = "Esta parte da compra já foi encerrada";
 
 describe("MySales, refused status changes", () => {
@@ -15,10 +16,11 @@ describe("MySales, refused status changes", () => {
     const card = await findCard(VILLAGE);
 
     await press(card, DELIVER);
+    await press(card, CONFIRM);
 
     expect(await within(card).findByRole("alert")).toHaveTextContent(CLOSED);
-    await waitFor(() => expect(within(card).getByRole("button", { name: DELIVER })).toBeEnabled());
-    expect(within(card).getByRole("button", { name: CANCEL })).toBeEnabled();
+    await waitFor(() => expect(within(card).getByRole("button", { name: CONFIRM })).toBeEnabled());
+    expect(within(card).getByRole("button", { name: "Voltar" })).toBeEnabled();
     expect(within(card).getByText("A entregar")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -30,6 +32,7 @@ describe("MySales, refused status changes", () => {
     const card = await findCard(VILLAGE);
 
     await press(card, DELIVER);
+    await press(card, CONFIRM);
 
     await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
     expect(await within(card).findByRole("alert")).toHaveTextContent("Não autenticado");
@@ -51,12 +54,14 @@ describe("MySales, refused status changes", () => {
     expect(within(card).getByRole("button", { name: DELIVER })).toBeInTheDocument();
   });
 
-  it("forgets the refusal when asking to cancel", async () => {
+  it("forgets the refused delivery when asking to cancel", async () => {
     renderSales(pageOf(pendingSale), jsonResponse({ detail: CLOSED }, 409));
     const card = await findCard(VILLAGE);
     await press(card, DELIVER);
+    await press(card, CONFIRM);
     await within(card).findByRole("alert");
-    await waitFor(() => expect(within(card).getByRole("button", { name: CANCEL })).toBeEnabled());
+    await waitFor(() => expect(within(card).getByRole("button", { name: "Voltar" })).toBeEnabled());
+    await press(card, "Voltar");
 
     await press(card, CANCEL);
 

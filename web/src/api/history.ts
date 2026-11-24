@@ -19,6 +19,8 @@ export interface Counterpart {
 
 export interface HistoryPage<Item> {
   items: Item[];
+  // quantos pedidos há em todas as páginas
+  total: number;
   page: number;
   total_pages: number;
   realized_total: string;

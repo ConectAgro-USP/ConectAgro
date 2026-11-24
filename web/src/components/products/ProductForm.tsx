@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState, type SubmitEvent } from "react";
-import type { Product, ProductInput } from "../../api/products";
+import { useEffect, useRef, type SubmitEvent } from "react";
+import { isUploadedPicture, type Product, type ProductInput } from "../../api/products";
 import { useAction } from "../../hooks/useAction";
+import { usePictureChoice } from "../../hooks/usePictureChoice";
 import { PrimaryButton, SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
-import { ProductPicture } from "../ProductPicture";
 import { TextField } from "../TextField";
+import { PictureField } from "./PictureField";
 
 const DESCRIPTION_CLASSES =
   "min-h-28 w-full rounded-lg border border-stone-400 bg-white px-4 py-3 " +
   "focus:border-lime-800 focus:outline-1 focus:outline-lime-800";
 
-function readProduct(form: FormData): ProductInput {
+function readProduct(form: FormData, current: string | null): ProductInput {
   const text = (key: string) => {
     const value = form.get(key);
     return typeof value === "string" ? value.trim() : "";
@@ -18,7 +19,8 @@ function readProduct(form: FormData): ProductInput {
   return {
     name: text("name"),
     description: text("description") || null,
-    picture_url: text("picture_url") || null,
+    // sem link novo, a foto enviada antes continua
+    picture_url: text("picture_url") || (isUploadedPicture(current) ? current : null),
     quantity: Number(text("quantity")),
     price: text("price"),
     expiration_date: text("expiration_date"),
@@ -27,13 +29,14 @@ function readProduct(form: FormData): ProductInput {
 
 interface ProductFormProps {
   product: Product | null;
-  onSave: (input: ProductInput) => Promise<unknown>;
+  onSave: (input: ProductInput, picture: Blob | null) => Promise<unknown>;
   onClose: () => void;
 }
 
 export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormProps>) {
   const { error, pending, run } = useAction();
-  const [pictureUrl, setPictureUrl] = useState(product?.picture_url ?? "");
+  const choice = usePictureChoice();
+  const current = product?.picture_url ?? null;
   const title = useRef<HTMLHeadingElement>(null);
 
   // a lista sai da tela e o foco no título leva ao começo do formulário
@@ -43,9 +46,12 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const input = readProduct(new FormData(event.currentTarget));
+    const picture = choice.chosen?.blob ?? null;
+    const input = readProduct(new FormData(event.currentTarget), current);
+    // a foto nova só troca o link depois de enviada
+    if (picture) input.picture_url = current;
     run(async () => {
-      await onSave(input);
+      await onSave(input, picture);
       onClose();
     });
   }
@@ -60,24 +66,7 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
         className="mt-6 rounded-4xl border border-stone-200 bg-stone-100 px-6 sm:px-10"
       >
         <fieldset disabled={pending} className="divide-y divide-stone-300">
-          <div className="flex flex-col gap-6 py-8 sm:flex-row sm:items-end">
-            <ProductPicture
-              key={pictureUrl}
-              url={pictureUrl.trim() || null}
-              className="w-48 shrink-0 rounded-2xl"
-            />
-            <div className="flex-1">
-              <TextField
-                label="Link para a imagem"
-                name="picture_url"
-                type="url"
-                maxLength={2048}
-                optional
-                defaultValue={product?.picture_url ?? ""}
-                onBlur={(event) => setPictureUrl(event.target.value)}
-              />
-            </div>
-          </div>
+          <PictureField current={current} choice={choice} />
           <div className="space-y-6 py-8">
             <TextField
               label="Nome do produto"
@@ -131,7 +120,9 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
             <SecondaryButton disabled={pending} onClick={onClose}>
               Cancelar
             </SecondaryButton>
-            <PrimaryButton disabled={pending}>{pending ? "Salvando..." : "Salvar"}</PrimaryButton>
+            <PrimaryButton disabled={pending || choice.preparing}>
+              {pending ? "Salvando..." : "Salvar"}
+            </PrimaryButton>
           </div>
         </div>
       </form>

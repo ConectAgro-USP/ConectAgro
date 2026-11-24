@@ -5,6 +5,7 @@ import { HistoryCard } from "../components/history/HistoryCard";
 import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
 import { ItemLines } from "../components/history/ItemLines";
+import { SaleDelivery } from "../components/history/SaleDelivery";
 import { StatusActions } from "../components/history/StatusActions";
 import { FARMER_STATUS_LABELS } from "../format";
 import { useHistory } from "../hooks/useHistory";
@@ -50,6 +51,7 @@ function SaleCard({ sale, busy, reload }: Readonly<SaleCardProps>) {
       closedAt={sale.closed_at}
       total={sale.total}
     >
+      <SaleDelivery sale={sale} />
       <ItemLines items={sale.purchase_products} />
     </HistoryCard>
   );

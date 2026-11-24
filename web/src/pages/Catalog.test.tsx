@@ -99,9 +99,9 @@ describe("Dashboard, catalog of the resident and the manager", () => {
   it("keeps the farmer's home without the catalog", () => {
     const fetchMock = renderHome(anaAsFarmer);
 
-    expect(screen.getByRole("heading", { name: "Olá, Ana Souza" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
     expect(screen.queryByText("Produtos em destaque")).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/products?page=1", expect.anything());
   });
 
   it("shows more products when asked", async () => {

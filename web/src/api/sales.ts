@@ -10,6 +10,11 @@ export interface Sale {
   purchase_public_id: string;
   apartment_public_id: string;
   building_name: string;
+  delivery_address: string | null;
+  // só os dígitos, como 01310200
+  delivery_zip_code: string;
+  manager_name: string;
+  manager_cellphone: string | null;
   purchased_at: string;
   expected_delivery_date: string;
   status: PurchaseStatus;
