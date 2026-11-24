@@ -1,11 +1,10 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
-import { orange, renderProducts } from "../test/products";
+import { orange, productsResponse, renderProducts } from "../test/products";
 
 describe("back arrow of the forms opened from a list", () => {
   it("takes the farmer from the product form back to the products", async () => {
-    renderProducts(jsonResponse([orange]));
+    renderProducts(productsResponse([orange]));
     await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
 
     expect(screen.getByRole("heading", { level: 1, name: "Meus produtos" })).toBeInTheDocument();

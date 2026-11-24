@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CART_LIMIT } from "../hooks/useCart";
 import { item, storeCart, storedCart } from "../test/cart";
-import { jsonResponse } from "../test/helpers";
+import { pageResponse } from "../test/helpers";
 import { alface, laranja, mandioca, renderNeeds, soldOutAlface } from "../test/needs";
 
 const ADD = { name: "Adicionar ao carrinho" };
@@ -18,7 +18,7 @@ describe("BuildingNeeds cart", () => {
   beforeEach(() => localStorage.clear());
 
   it("keeps the selection in a bar fixed above the bottom menu on phones", async () => {
-    renderNeeds(jsonResponse([mandioca, alface, laranja]));
+    renderNeeds(pageResponse([mandioca, alface, laranja]));
     await select("Mandioca", "Laranja");
 
     const bar = screen.getByRole("region", { name: "Seleção" });
@@ -32,7 +32,7 @@ describe("BuildingNeeds cart", () => {
   });
 
   it("hides the bar when nothing is selected", async () => {
-    renderNeeds(jsonResponse([mandioca]));
+    renderNeeds(pageResponse([mandioca]));
     await select("Mandioca", "Mandioca");
 
     expect(screen.queryByRole("region", { name: "Seleção" })).not.toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("BuildingNeeds cart", () => {
   });
 
   it("puts the requested total in the cart, up to the stock, and opens it", async () => {
-    renderNeeds(jsonResponse([mandioca, alface, laranja]));
+    renderNeeds(pageResponse([mandioca, alface, laranja]));
     await select("Mandioca", "Alface");
 
     await userEvent.click(screen.getByRole("button", ADD));
@@ -51,7 +51,7 @@ describe("BuildingNeeds cart", () => {
 
   it("keeps what was already in the cart and updates the selected products", async () => {
     storeCart([item("produto-9", 2, "8.00"), item("produto-1", 30, "20.00")]);
-    renderNeeds(jsonResponse([mandioca]));
+    renderNeeds(pageResponse([mandioca]));
     await select("Mandioca");
 
     await userEvent.click(screen.getByRole("button", ADD));
@@ -60,7 +60,7 @@ describe("BuildingNeeds cart", () => {
   });
 
   it("leaves a sold out need out of the cart", async () => {
-    renderNeeds(jsonResponse([mandioca, alface]), jsonResponse([mandioca, soldOutAlface]));
+    renderNeeds(pageResponse([mandioca, alface]), pageResponse([mandioca, soldOutAlface]));
     await select("Mandioca", "Alface");
     await userEvent.click(screen.getByRole("button", { name: "Menor primeiro" }));
     await screen.findByText("Sem estoque");
@@ -74,7 +74,7 @@ describe("BuildingNeeds cart", () => {
 
   it(`stays on the needs when the cart reaches ${CART_LIMIT} products`, async () => {
     storeCart(Array.from({ length: CART_LIMIT - 1 }, (_, index) => item(`outro-${index}`)));
-    renderNeeds(jsonResponse([mandioca, alface]));
+    renderNeeds(pageResponse([mandioca, alface]));
     await select("Mandioca", "Alface");
 
     await userEvent.click(screen.getByRole("button", ADD));

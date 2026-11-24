@@ -4,11 +4,10 @@ import App from "../App";
 import {
   anaAsManager,
   fakeAuth,
-  jsonResponse,
   renderWithAuth,
   stubSilentApi,
 } from "../test/helpers";
-import { findCard, orange, renderProducts } from "../test/products";
+import { findCard, orange, productsResponse, renderProducts } from "../test/products";
 
 describe("MyProducts", () => {
   afterEach(() => {
@@ -16,10 +15,10 @@ describe("MyProducts", () => {
   });
 
   it("lists the farmer's products with picture, stock, price and expiration", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]));
+    const fetchMock = renderProducts(productsResponse([orange]));
 
     const card = await findCard("Laranja");
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/products/me");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/products/me?page=1");
     expect(card.querySelector("img")).toHaveAttribute("src", orange.picture_url);
     expect(card).toHaveTextContent("Estoque: 12 kg");
     expect(card).toHaveTextContent("Valor R$ 4,99");
@@ -31,7 +30,7 @@ describe("MyProducts", () => {
     // ainda é 20 de novembro em Brasília
     vi.setSystemTime(new Date("2026-11-21T02:00:00Z"));
     renderProducts(
-      jsonResponse([
+      productsResponse([
         { ...orange, public_id: "a", name: "Vencida", expiration_date: "2026-11-19" },
         { ...orange, public_id: "b", name: "Em uma semana", expiration_date: "2026-11-27" },
         { ...orange, public_id: "c", name: "Em oito dias", expiration_date: "2026-11-28" },
@@ -44,13 +43,13 @@ describe("MyProducts", () => {
   });
 
   it("tells the farmer when there are no products yet", async () => {
-    renderProducts(jsonResponse([]));
+    renderProducts(productsResponse([]));
 
     expect(await screen.findByText("Você ainda não cadastrou produtos.")).toBeInTheDocument();
   });
 
   it("lets the farmer try again when the list does not load", async () => {
-    const fetchMock = renderProducts(new Response("", { status: 500 }), jsonResponse([orange]));
+    const fetchMock = renderProducts(new Response("", { status: 500 }), productsResponse([orange]));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Algo deu errado");
     await userEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));

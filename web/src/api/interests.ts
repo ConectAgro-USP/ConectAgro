@@ -1,4 +1,5 @@
 import { apiFetch, ignoreNotFound } from "./client";
+import { fetchAllPages, LARGEST_PAGE, pageQuery, type Page } from "./pagination";
 import type { ProductDetail } from "./products";
 
 export interface InterestInput {
@@ -52,8 +53,25 @@ export function createInterest(interest: InterestInput): Promise<Interest> {
   });
 }
 
-export function listMyInterests(): Promise<Interest[]> {
-  return apiFetch<Interest[]>("/interests/me");
+export interface MyInterestsPage extends Page<Interest> {
+  // soma dos interesses abertos em produtos à venda, de todas as páginas
+  estimated_total: string;
+}
+
+export function listMyInterests(page: number, pageSize?: number): Promise<MyInterestsPage> {
+  return apiFetch<MyInterestsPage>(`/interests/me?${pageQuery(page, pageSize)}`);
+}
+
+export function listAllMyInterests(): Promise<Interest[]> {
+  return fetchAllPages((page) => listMyInterests(page, LARGEST_PAGE));
+}
+
+// o morador tem no máximo um interesse por produto
+export async function findMyInterest(productPublicId: string): Promise<Interest | null> {
+  const query = pageQuery(1);
+  query.set("product_public_id", productPublicId);
+  const { items } = await apiFetch<MyInterestsPage>(`/interests/me?${query}`);
+  return items[0] ?? null;
 }
 
 export function updateInterest(publicId: string, quantity: number): Promise<Interest> {
@@ -69,6 +87,8 @@ export function deleteInterest(publicId: string): Promise<void> {
   );
 }
 
-export function listBuildingNeeds(descending: boolean): Promise<BuildingNeed[]> {
-  return apiFetch<BuildingNeed[]>(`/apartments/me/needs?descending=${descending}`);
+export function listBuildingNeeds(descending: boolean, page: number): Promise<Page<BuildingNeed>> {
+  const query = pageQuery(page);
+  query.set("descending", String(descending));
+  return apiFetch<Page<BuildingNeed>>(`/apartments/me/needs?${query}`);
 }

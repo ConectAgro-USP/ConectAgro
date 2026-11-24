@@ -3,6 +3,7 @@ import { approveResident, rejectResident, type Resident } from "../api/residents
 import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ResidentCard } from "../components/ResidentCard";
+import { ShowMore } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
 import { useAction } from "../hooks/useAction";
 import { useResidents } from "../hooks/useResidents";
@@ -52,8 +53,6 @@ export function Residents() {
   const list = useResidents();
   const answer = useAction();
   const residents = list.residents ?? [];
-  // quem acabou de receber outra resposta continua na tela, mas sai da conta
-  const count = residents.filter((resident) => resident.link_status === list.status).length;
 
   function changeStatus(status: LinkStatus) {
     // o aviso de uma resposta que falhou não vale para a outra lista
@@ -101,7 +100,7 @@ export function Residents() {
           {list.loading ? "Carregando..." : ""}
         </output>
         {list.residents && (
-          <p className="text-lg text-stone-600">{summarize(list.status, count)}</p>
+          <p className="text-lg text-stone-600">{summarize(list.status, list.count)}</p>
         )}
         {list.status === "PENDENTE" && list.residents?.length === 0 && (
           <p className="mt-2 text-lg text-stone-600">
@@ -127,6 +126,9 @@ export function Residents() {
             ))}
           </ul>
         )}
+        <div className="flex justify-center pt-6 empty:hidden">
+          <ShowMore list={list} label="Mostrar mais moradores" />
+        </div>
       </div>
     </main>
   );

@@ -7,7 +7,13 @@ import pytest
 
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer
-from src.models.interest import Interest, InterestCreate, InterestUpdate
+from src.models.interest import (
+    ApartmentNeedsFilters,
+    Interest,
+    InterestCreate,
+    InterestUpdate,
+    MyInterestsFilters,
+)
 from src.models.product import Product
 from src.repository.interest_repository import InterestRepository
 from src.services.exceptions import (
@@ -107,9 +113,13 @@ def test_list_interests_uses_buyer_profile_id(
     interests: InterestRepository,
     buyer: Buyer,
 ):
-    service.list_interests(buyer)
+    filters = MyInterestsFilters()
+    interests.list_by_buyer_id.return_value = ([], 0)
+    interests.estimated_total.return_value = Decimal("0.00")
 
-    interests.list_by_buyer_id.assert_called_once_with(buyer.id)
+    service.list_interests(buyer, filters)
+
+    interests.list_by_buyer_id.assert_called_once_with(buyer.id, filters)
 
 
 def test_update_changes_quantity_for_owner(
@@ -205,6 +215,9 @@ def test_apartment_needs_forwards_sort_direction(
         building_cnpj="00000000000191",
     )
 
-    service.list_apartment_needs(apartment, descending=descending)
+    filters = ApartmentNeedsFilters(descending=descending)
+    interests.list_apartment_needs.return_value = ([], 0)
 
-    interests.list_apartment_needs.assert_called_once_with(apartment, descending=descending)
+    service.list_apartment_needs(apartment, filters)
+
+    interests.list_apartment_needs.assert_called_once_with(apartment, filters)

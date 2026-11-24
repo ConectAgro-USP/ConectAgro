@@ -2,7 +2,13 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReceivedReview } from "../api/reviews";
 import { jsonResponse, stubFetch } from "../test/helpers";
-import { managerContact, pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
+import {
+  farmerReviews,
+  managerContact,
+  pageLoad,
+  renderDetail,
+  sampleProduct,
+} from "../test/productDetail";
 
 const HEADING = "Avaliações com comentário";
 
@@ -28,7 +34,7 @@ const reviews = [
 ];
 
 function renderReviews(list: ReceivedReview[]) {
-  const summary = { average_rating: 4, reviews_count: list.length, reviews: list };
+  const summary = farmerReviews(list, 4, list.length);
   stubFetch(...pageLoad(sampleProduct, summary));
   renderDetail();
 }

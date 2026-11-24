@@ -1,7 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import type { MyProduct } from "../api/products";
-import { jsonResponse } from "../test/helpers";
-import { findCard, orange, press, renderProducts } from "../test/products";
+import { findCard, orange, press, productsResponse, renderProducts } from "../test/products";
 
 const HIDDEN = "Compradores não veem este produto";
 
@@ -23,7 +22,7 @@ describe("MyProducts, state of each product", () => {
   ])("labels %s as %s", async (name, changes, label) => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-20T15:00:00Z"));
-    renderProducts(jsonResponse([product(name, changes)]));
+    renderProducts(productsResponse([product(name, changes)]));
 
     const card = await findCard(name);
 
@@ -32,7 +31,7 @@ describe("MyProducts, state of each product", () => {
 
   it("tells when buyers cannot see the product", async () => {
     renderProducts(
-      jsonResponse([product("Laranja", {}), product("Couve", { quantity: 0 })]),
+      productsResponse([product("Laranja", {}), product("Couve", { quantity: 0 })]),
     );
 
     expect(within(await findCard("Laranja")).queryByText(HIDDEN)).not.toBeInTheDocument();
@@ -40,7 +39,7 @@ describe("MyProducts, state of each product", () => {
   });
 
   it("links the name to the page buyers see", async () => {
-    renderProducts(jsonResponse([orange]));
+    renderProducts(productsResponse([orange]));
 
     const card = await findCard("Laranja");
 
@@ -51,7 +50,7 @@ describe("MyProducts, state of each product", () => {
   });
 
   it("focuses Voltar without scrolling when asking to remove", async () => {
-    renderProducts(jsonResponse([orange]));
+    renderProducts(productsResponse([orange]));
     const card = await findCard("Laranja");
     const focus = vi.spyOn(HTMLElement.prototype, "focus");
 

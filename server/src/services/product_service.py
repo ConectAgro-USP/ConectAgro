@@ -1,14 +1,18 @@
+from datetime import datetime
 from uuid import UUID
 
 from src.core.search_text import fold
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
+from src.models.my_products import MyProductsFilters, MyProductsPage
 from src.models.product import (
+    BUSINESS_TZ,
     Product,
     ProductContactRead,
     ProductCreate,
     ProductDetailRead,
     ProductFarmerRead,
+    ProductRead,
     ProductUpdate,
 )
 from src.models.user import User
@@ -31,8 +35,17 @@ class ProductService:
         fill_search_text(product)
         return self.products.save(product)
 
-    def get_current_farmer_products(self, farmer: Farmer) -> list[Product]:
-        return self.products.list_products_by_farmer_id(farmer.id)
+    def get_current_farmer_products(
+        self, farmer: Farmer, filters: MyProductsFilters
+    ) -> MyProductsPage:
+        today = datetime.now(BUSINESS_TZ).date()
+        products, total = self.products.list_products_by_farmer_id(farmer.id, filters, today)
+        return MyProductsPage.from_params(
+            [ProductRead.model_validate(product) for product in products],
+            filters,
+            total,
+            counts=self.products.count_products_of_farmer(farmer.id, today),
+        )
 
     def get_product_by_public_id(self, public_id: UUID) -> ProductDetailRead:
         product = self.products.get_product_by_public_id(public_id)

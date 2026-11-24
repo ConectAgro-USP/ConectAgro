@@ -1,7 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jsonResponse, sentBody } from "../test/helpers";
-import { findCard, orange, press, renderProducts } from "../test/products";
+import { findCard, orange, press, productsResponse, renderProducts } from "../test/products";
 
 const LINK = /^Link para a imagem/;
 
@@ -24,7 +24,7 @@ function refusal(field: string, msg: string): Response {
 
 describe("MyProducts form", () => {
   it("creates a product with all fields and shows it in the list", async () => {
-    const fetchMock = renderProducts(jsonResponse([]), jsonResponse(orange, 201));
+    const fetchMock = renderProducts(productsResponse([]), jsonResponse(orange, 201));
     await openNewForm();
 
     expect(screen.getByRole("heading", { name: "Cadastrar produto" })).toHaveFocus();
@@ -48,7 +48,7 @@ describe("MyProducts form", () => {
 
   it("adds the new product at the end of the list, in the API's order", async () => {
     const cassava = { ...orange, public_id: "produto-2", name: "Mandioca" };
-    renderProducts(jsonResponse([orange]), jsonResponse(cassava, 201));
+    renderProducts(productsResponse([orange]), jsonResponse(cassava, 201));
     await openNewForm();
     await fillRequired("Mandioca");
 
@@ -61,7 +61,7 @@ describe("MyProducts form", () => {
 
   it("opens the product's data for editing and saves the changes", async () => {
     const changed = { ...orange, name: "Laranja doce" };
-    const fetchMock = renderProducts(jsonResponse([orange]), jsonResponse(changed));
+    const fetchMock = renderProducts(productsResponse([orange]), jsonResponse(changed));
     await press(await findCard("Laranja"), "Editar");
 
     expect(screen.getByRole("heading", { name: "Editar produto" })).toHaveFocus();
@@ -78,7 +78,7 @@ describe("MyProducts form", () => {
   });
 
   it("previews the picture once the farmer leaves the link", async () => {
-    renderProducts(jsonResponse([]));
+    renderProducts(productsResponse([]));
     await openNewForm();
     await userEvent.type(screen.getByLabelText(LINK), "https://example.com/quebrada.png");
     expect(document.querySelector("form img")).not.toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("MyProducts form", () => {
   });
 
   it("goes back to the list without saving", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]));
+    const fetchMock = renderProducts(productsResponse([orange]));
     await press(await findCard("Laranja"), "Editar");
 
     await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
@@ -114,7 +114,7 @@ describe("MyProducts form", () => {
       "O preço deve ser não negativo e ter até 2 casas decimais",
     ],
   ])("shows in the form why the API refused the %s", async (field, msg, message) => {
-    renderProducts(jsonResponse([]), refusal(field, msg));
+    renderProducts(productsResponse([]), refusal(field, msg));
     await openNewForm();
     await fillRequired("Laranja");
 

@@ -38,13 +38,13 @@ def close_part(client: TestClient, product: Product, purchase: dict, new_status:
 
 def needs(client: TestClient, manager: User) -> dict[str, int]:
     login(client, manager)
-    rows = client.get("/api/apartments/me/needs").json()
+    rows = client.get("/api/apartments/me/needs").json()["items"]
     return {row["product"]["name"]: row["total_quantity"] for row in rows}
 
 
 def my_purchase(client: TestClient, resident: Buyer) -> dict | None:
     login(client, resident.user)
-    [interest] = client.get("/api/interests/me").json()
+    [interest] = client.get("/api/interests/me").json()["items"]
     return interest["purchase"]
 
 
@@ -121,7 +121,7 @@ def test_linking_the_interest_keeps_its_edit_date(
     client: TestClient, resident: Buyer, purchase: dict
 ):
     login(client, resident.user)
-    [interest] = client.get("/api/interests/me").json()
+    [interest] = client.get("/api/interests/me").json()["items"]
 
     assert interest["updated_at"] is None
 

@@ -1,13 +1,13 @@
 import { waitFor, within } from "@testing-library/react";
 import { jsonResponse } from "../test/helpers";
-import { findCard, orange, press, renderProducts } from "../test/products";
+import { findCard, orange, press, productsResponse, renderProducts } from "../test/products";
 
 const SOLD =
   "Este produto já foi vendido e não pode ser removido. Zere a quantidade para tirá-lo do catálogo";
 
 describe("MyProducts removal", () => {
   it("asks inside the card before removing a product", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]));
+    const fetchMock = renderProducts(productsResponse([orange]));
     const card = await findCard("Laranja");
 
     await press(card, "Remover");
@@ -18,7 +18,10 @@ describe("MyProducts removal", () => {
   });
 
   it("removes the product after the confirmation", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]), new Response(null, { status: 204 }));
+    const fetchMock = renderProducts(
+      productsResponse([orange]),
+      new Response(null, { status: 204 }),
+    );
     const card = await findCard("Laranja");
     await press(card, "Remover");
 
@@ -30,7 +33,8 @@ describe("MyProducts removal", () => {
   });
 
   it("drops the card when another tab already removed the product", async () => {
-    renderProducts(jsonResponse([orange]), jsonResponse({ detail: "Produto não encontrado" }, 404));
+    const refusal = jsonResponse({ detail: "Produto não encontrado" }, 404);
+    renderProducts(productsResponse([orange]), refusal);
     const card = await findCard("Laranja");
     await press(card, "Remover");
 
@@ -40,7 +44,7 @@ describe("MyProducts removal", () => {
   });
 
   it("keeps the card when the 404 does not come from the product route", async () => {
-    renderProducts(jsonResponse([orange]), new Response("Not Found", { status: 404 }));
+    renderProducts(productsResponse([orange]), new Response("Not Found", { status: 404 }));
     const card = await findCard("Laranja");
     await press(card, "Remover");
 
@@ -51,7 +55,7 @@ describe("MyProducts removal", () => {
   });
 
   it("explains inside the card why a sold product can't be removed", async () => {
-    renderProducts(jsonResponse([orange]), jsonResponse({ detail: SOLD }, 409));
+    renderProducts(productsResponse([orange]), jsonResponse({ detail: SOLD }, 409));
     const card = await findCard("Laranja");
     await press(card, "Remover");
 
@@ -62,7 +66,8 @@ describe("MyProducts removal", () => {
   });
 
   it("goes back without removing and forgets the refusal", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]), jsonResponse({ detail: SOLD }, 409));
+    const refusal = jsonResponse({ detail: SOLD }, 409);
+    const fetchMock = renderProducts(productsResponse([orange]), refusal);
     const card = await findCard("Laranja");
     await press(card, "Remover");
     await press(card, "Remover");

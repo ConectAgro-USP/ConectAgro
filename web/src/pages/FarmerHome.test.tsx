@@ -48,7 +48,7 @@ describe("FarmerHome, with sales and products", () => {
 
     const urls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(urls).toContain("/api/farmers/me/sales?page=1&status=EM+PROGRESSO");
-    expect(urls).toContain("/api/products/me");
+    expect(urls).toContain("/api/products/me?page=1&page_size=1");
     expect(urls).toContain("/api/farmers/me/reviews");
   });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   createProduct as sendCreateProduct,
   deleteProduct as sendDeleteProduct,
@@ -6,93 +6,96 @@ import {
   updateProduct as sendUpdateProduct,
   uploadProductPicture,
   type MyProduct,
+  type MyProductCounts,
   type ProductInput,
 } from "../api/products";
-import { errorMessage, lostAccess } from "../api/client";
-import { useAuth } from "../auth/AuthContext";
+import { availabilityOf, recount, type ProductTab } from "../components/products/productState";
+import { addItem, removeItem, replaceItem } from "./pageEdits";
+import { usePages } from "./usePages";
 import { useWriteGuard } from "./useWriteGuard";
 
-interface UseProductsState {
-  data: MyProduct[];
-  loading: boolean;
-  error: string;
-  retry: () => void;
-  create: (product: ProductInput) => Promise<MyProduct>;
-  update: (publicId: string, changes: ProductInput) => Promise<MyProduct>;
-  remove: (publicId: string) => Promise<void>;
-  setAvailable: (publicId: string, available: boolean) => Promise<void>;
-  uploadPicture: (publicId: string, picture: Blob) => Promise<void>;
+function loadMyProducts(tab: ProductTab, page: number) {
+  return listMyProducts(availabilityOf(tab), page);
 }
 
-export function useProducts(): UseProductsState {
-  const { refreshUser } = useAuth();
+function keyOf(product: MyProduct): string {
+  return product.public_id;
+}
+
+// a contagem que chegou da API e a que segue as escritas feitas depois
+interface Counted {
+  from: MyProductCounts;
+  value: MyProductCounts;
+}
+
+export function useProducts() {
   const guard = useWriteGuard();
-  const [data, setData] = useState<MyProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const retry = useCallback(() => {
-    setError("");
-    setReloadKey((key) => key + 1);
-  }, []);
-
-  useEffect(() => {
-    let outdated = false;
-
-    async function load() {
-      setLoading(true);
-      setError("");
-      try {
-        const products = await listMyProducts();
-        if (!outdated) setData(products);
-      } catch (loadError) {
-        if (outdated) return;
-        setError(errorMessage(loadError));
-        if (lostAccess(loadError)) {
-          await refreshUser();
-        }
-      } finally {
-        if (!outdated) setLoading(false);
-      }
-    }
-
-    load().catch((refreshError: unknown) => console.error(refreshError));
-    return () => {
-      outdated = true;
-    };
-  }, [refreshUser, reloadKey]);
-
-  async function create(product: ProductInput): Promise<MyProduct> {
-    const saved = await guard(sendCreateProduct(product));
-    setData((current) => [...current, saved]);
-    return saved;
+  const pages = usePages(loadMyProducts, "all" as ProductTab, { keyOf });
+  const [counted, setCounted] = useState<Counted | null>(null);
+  const latest = pages.lastPage?.counts;
+  if (latest !== undefined && latest !== counted?.from) {
+    setCounted({ from: latest, value: latest });
   }
 
-  function replace(saved: MyProduct) {
-    setData((current) =>
-      current.map((product) => (product.public_id === saved.public_id ? saved : product)),
+  function track(before: MyProduct | null, after: MyProduct | null) {
+    setCounted(
+      (current) => current && { ...current, value: recount(current.value, before, after) },
     );
   }
 
-  async function update(publicId: string, changes: ProductInput): Promise<MyProduct> {
-    const saved = await guard(sendUpdateProduct(publicId, changes));
-    replace(saved);
+  const same = (publicId: string) => (product: MyProduct) => product.public_id === publicId;
+
+  async function create(product: ProductInput): Promise<MyProduct> {
+    const saved = await guard(sendCreateProduct(product));
+    // a lista vem da mais antiga para a mais nova
+    pages.editPages(addItem(saved, "last"));
+    track(null, saved);
     return saved;
   }
 
-  async function setAvailable(publicId: string, available: boolean): Promise<void> {
-    replace(await guard(sendUpdateProduct(publicId, { is_available: available })));
+  // quem chama passa o produto como estava, para a contagem descontar
+  function replace(before: MyProduct, saved: MyProduct) {
+    pages.editPages(replaceItem(same(saved.public_id), saved));
+    track(before, saved);
+  }
+
+  async function update(before: MyProduct, changes: ProductInput): Promise<MyProduct> {
+    const saved = await guard(sendUpdateProduct(before.public_id, changes));
+    replace(before, saved);
+    return saved;
+  }
+
+  async function setAvailable(before: MyProduct, available: boolean): Promise<void> {
+    const changes = { is_available: available };
+    replace(before, await guard(sendUpdateProduct(before.public_id, changes)));
   }
 
   async function uploadPicture(publicId: string, picture: Blob): Promise<void> {
-    replace(await guard(uploadProductPicture(publicId, picture)));
+    // a foto não muda a situação do produto, então a contagem fica igual
+    const saved = await guard(uploadProductPicture(publicId, picture));
+    pages.editPages(replaceItem(same(publicId), saved));
   }
 
-  async function remove(publicId: string): Promise<void> {
-    await guard(sendDeleteProduct(publicId));
-    setData((current) => current.filter((product) => product.public_id !== publicId));
+  async function remove(before: MyProduct): Promise<void> {
+    await guard(sendDeleteProduct(before.public_id));
+    pages.editPages(removeItem(same(before.public_id)));
+    track(before, null);
   }
 
-  return { data, loading, error, retry, create, update, remove, setAvailable, uploadPicture };
+  return {
+    items: pages.items,
+    counts: counted?.value ?? null,
+    tab: pages.search,
+    changeTab: pages.changeSearch,
+    loading: pages.loading,
+    error: pages.error,
+    hasMore: pages.hasMore,
+    loadMore: pages.loadMore,
+    retry: pages.retry,
+    create,
+    update,
+    remove,
+    setAvailable,
+    uploadPicture,
+  };
 }

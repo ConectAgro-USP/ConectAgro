@@ -4,7 +4,14 @@ import type { PurchaseItem } from "../api/history";
 import type { BuildingPurchase, PurchasePart } from "../api/purchases";
 import type { Reviewable } from "../api/reviews";
 import { BuildingPurchases } from "../pages/BuildingPurchases";
-import { anaAsManager, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
+import {
+  anaAsManager,
+  fakeAuth,
+  jsonResponse,
+  pageResponse,
+  renderWithAuth,
+  stubFetch,
+} from "./helpers";
 
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
@@ -83,7 +90,7 @@ export function renderPurchases(firstPage: Response, ...more: Response[]) {
 }
 
 export function renderRating(firstPage: Response, reviewables: Reviewable[], ...more: Response[]) {
-  const fetchMock = stubFetch(firstPage, jsonResponse(reviewables), ...more);
+  const fetchMock = stubFetch(firstPage, pageResponse(reviewables), ...more);
   renderWithAuth(<BuildingPurchases />, fakeAuth({ user: anaAsManager }));
   return fetchMock;
 }

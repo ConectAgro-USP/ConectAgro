@@ -1,8 +1,16 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { MyProduct } from "../api/products";
+import type { MyProduct, MyProductCounts } from "../api/products";
+import { recount } from "../components/products/productState";
 import { MyProducts } from "../pages/MyProducts";
-import { anaAsFarmer, fakeAuth, renderWithAuth, stubFetch } from "./helpers";
+import {
+  anaAsFarmer,
+  fakeAuth,
+  jsonResponse,
+  pageBody,
+  renderWithAuth,
+  stubFetch,
+} from "./helpers";
 
 export const orange: MyProduct = {
   public_id: "produto-1",
@@ -16,6 +24,23 @@ export const orange: MyProduct = {
   farmer_public_id: "agricultor-1",
   created_at: "2026-11-12T12:00:00Z",
 };
+
+const NO_PRODUCTS: MyProductCounts = {
+  all: 0,
+  available: 0,
+  hidden: 0,
+  sold_out: 0,
+  expiring_soon: 0,
+};
+
+// a contagem da API, de todos os produtos e não só os da página
+export function countsOf(products: MyProduct[]): MyProductCounts {
+  return products.reduce((counts, product) => recount(counts, null, product), NO_PRODUCTS);
+}
+
+export function productsResponse(products: MyProduct[], extra: object = {}): Response {
+  return jsonResponse(pageBody(products, { counts: countsOf(products), ...extra }));
+}
 
 export function renderProducts(...responses: Response[]) {
   const fetchMock = stubFetch(...responses);

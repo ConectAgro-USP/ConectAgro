@@ -45,6 +45,8 @@ export interface Pages<Search, P extends PageOf> {
   errorStatus: number | null;
   loadMore: () => void;
   retry: () => void;
+  // muda as páginas na tela depois de uma escrita, sem pedir de novo
+  editPages: (edit: (pages: P[]) => P[]) => void;
 }
 
 // a busca é o que muda a lista inteira, como a distância; as páginas só a continuam
@@ -82,6 +84,10 @@ export function usePages<Search, P extends PageOf>(
     setErrorStatus(null);
     // a cópia faz o efeito pedir a mesma página de novo
     setQuery({ ...query });
+  }
+
+  function editPages(edit: (pages: P[]) => P[]) {
+    setLoaded((previous) => ({ ...previous, pages: edit(previous.pages) }));
   }
 
   useEffect(() => {
@@ -131,5 +137,6 @@ export function usePages<Search, P extends PageOf>(
     errorStatus,
     loadMore,
     retry,
+    editPages,
   };
 }

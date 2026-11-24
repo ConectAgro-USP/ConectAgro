@@ -1,4 +1,4 @@
-import { startTransition, useId } from "react";
+import { startTransition, useEffect, useId } from "react";
 import {
   Link,
   useLocation,
@@ -16,6 +16,7 @@ import {
 import { SecondaryButton } from "../components/Button";
 import { CARD_SURFACE } from "../components/surface";
 import { FormError } from "../components/FormError";
+import { ShowMore, type PagedList } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
 import { FarmerAvatar } from "../components/reviews/FarmerAvatar";
 import {
@@ -151,9 +152,18 @@ function AuthoredCard({ review }: Readonly<{ review: AuthoredReview }>) {
 interface ListsProps {
   reviewables: Reviewable[];
   authored: AuthoredReview[];
+  pendingPages: PagedList;
+  authoredPages: PagedList;
 }
 
-function ReviewLists({ reviewables, authored }: Readonly<ListsProps>) {
+const MORE_CLASSES = "mt-6";
+
+function ReviewLists({
+  reviewables,
+  authored,
+  pendingPages,
+  authoredPages,
+}: Readonly<ListsProps>) {
   const pendingId = useId();
   const authoredId = useId();
 
@@ -178,6 +188,7 @@ function ReviewLists({ reviewables, authored }: Readonly<ListsProps>) {
             ))}
           </ul>
         )}
+        <ShowMore list={pendingPages} label="Mostrar mais entregas" className={MORE_CLASSES} />
       </section>
       <section className="pt-12">
         <h2 id={authoredId} className="text-3xl font-bold">
@@ -192,6 +203,7 @@ function ReviewLists({ reviewables, authored }: Readonly<ListsProps>) {
             ))}
           </ul>
         )}
+        <ShowMore list={authoredPages} label="Mostrar mais avaliações" className={MORE_CLASSES} />
       </section>
     </>
   );
@@ -216,6 +228,26 @@ export function Reviews() {
   const navigationType = useNavigationType();
   const view = viewOf(params);
   const { fromApp, message = "" } = reviewsStateOf(location.state);
+  const reviewable =
+    view.kind === "create"
+      ? reviews.reviewables.find(
+          (item) =>
+            item.purchase_public_id === view.purchase && item.farmer_public_id === view.farmer,
+        )
+      : undefined;
+  const review =
+    view.kind === "edit"
+      ? reviews.authored.find((item) => item.public_id === view.review)
+      : undefined;
+  // o link pode levar a um item de outra página, que é buscada até achar
+  let searched: PagedList | null = null;
+  if (view.kind === "create" && !reviewable) searched = reviews.pendingPages;
+  if (view.kind === "edit" && !review) searched = reviews.authoredPages;
+  const searching = reviews.loaded && searched !== null && searched.hasMore && !searched.error;
+
+  useEffect(() => {
+    if (searching && searched && !searched.loading) searched.loadMore();
+  });
 
   function leave() {
     if (fromApp) {
@@ -239,14 +271,10 @@ export function Reviews() {
   }
 
   function content() {
-    if (!reviews.loaded) {
+    if (!reviews.loaded || searching) {
       return null;
     }
     if (view.kind === "create") {
-      const reviewable = reviews.reviewables.find(
-        (item) =>
-          item.purchase_public_id === view.purchase && item.farmer_public_id === view.farmer,
-      );
       if (!reviewable) {
         return <Unavailable message={NOT_WAITING} />;
       }
@@ -270,7 +298,6 @@ export function Reviews() {
       );
     }
     if (view.kind === "edit") {
-      const review = reviews.authored.find((item) => item.public_id === view.review);
       if (!review) {
         return <Unavailable message={NOT_FOUND} />;
       }
@@ -291,7 +318,14 @@ export function Reviews() {
         />
       );
     }
-    return <ReviewLists reviewables={reviews.reviewables} authored={reviews.authored} />;
+    return (
+      <ReviewLists
+        reviewables={reviews.reviewables}
+        authored={reviews.authored}
+        pendingPages={reviews.pendingPages}
+        authoredPages={reviews.authoredPages}
+      />
+    );
   }
 
   return (
@@ -299,7 +333,7 @@ export function Reviews() {
       <TitleBar title={TITLES[view.kind]} back={view.kind === "list" ? undefined : BACK_TO_LIST} />
       <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         <output className="block text-lg text-stone-600">
-          {reviews.loading ? "Carregando..." : ""}
+          {reviews.loading || searching ? "Carregando..." : ""}
         </output>
         <output className="block text-lg font-bold text-lime-800">
           {view.kind === "list" && navigationType !== "POP" ? message : ""}

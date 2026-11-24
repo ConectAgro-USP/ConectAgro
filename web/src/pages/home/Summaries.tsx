@@ -1,11 +1,10 @@
 import { Link } from "react-router";
 import type { HistoryPage } from "../../api/history";
-import type { MyProduct } from "../../api/products";
+import type { MyProductCounts } from "../../api/products";
 import type { ReceivedReviews } from "../../api/reviews";
 import type { Sale } from "../../api/sales";
-import { stateOf } from "../../components/products/productState";
 import { RatingStars } from "../../components/reviews/StarRating";
-import { daysUntil, formatCount, formatDate, formatMoney, formatRating } from "../../format";
+import { formatCount, formatDate, formatMoney, formatRating } from "../../format";
 
 const SHOWN_SALES = 3;
 const SALE_LINK_CLASSES =
@@ -50,27 +49,19 @@ export function SalesSummary({ page }: Readonly<{ page: HistoryPage<Sale> }>) {
   );
 }
 
-function countProducts(products: MyProduct[]) {
-  const available = products.filter((product) => stateOf(product) === "available");
+// a API conta todos os produtos, não só os da primeira página
+function countLines(counts: MyProductCounts) {
   return [
-    { label: "Disponíveis", count: available.length, dot: "bg-lime-700" },
-    {
-      label: "Esgotados",
-      count: products.filter((product) => stateOf(product) === "soldOut").length,
-      dot: "bg-amber-700",
-    },
-    {
-      label: "Vencem em até 7 dias",
-      count: available.filter((product) => daysUntil(product.expiration_date) <= 7).length,
-      dot: "bg-red-700",
-    },
+    { label: "Disponíveis", count: counts.available, dot: "bg-lime-700" },
+    { label: "Esgotados", count: counts.sold_out, dot: "bg-amber-700" },
+    { label: "Vencem em até 7 dias", count: counts.expiring_soon, dot: "bg-red-700" },
   ];
 }
 
-export function ProductsSummary({ products }: Readonly<{ products: MyProduct[] }>) {
+export function ProductsSummary({ counts }: Readonly<{ counts: MyProductCounts }>) {
   return (
     <dl className="divide-y divide-stone-200 text-lg">
-      {countProducts(products).map((line) => (
+      {countLines(counts).map((line) => (
         <div key={line.label} className="flex items-center justify-between gap-4 py-2">
           <dt className="flex items-center gap-3">
             <span aria-hidden="true" className={`size-3 shrink-0 rounded-full ${line.dot}`} />

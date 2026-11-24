@@ -1,94 +1,81 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError, errorMessage, lostAccess } from "../api/client";
+import { useState } from "react";
+import { ApiError } from "../api/client";
 import {
-  createInterest,
   deleteInterest,
   listMyInterests,
   updateInterest,
   type Interest,
+  type MyInterestsPage,
 } from "../api/interests";
-import { useAuth } from "../auth/AuthContext";
+import { openCostInCents } from "../interestState";
+import { removeItem, replaceItem } from "./pageEdits";
+import { usePages } from "./usePages";
 import { useWriteGuard } from "./useWriteGuard";
 
-interface UseMyInterestsState {
-  data: Interest[];
-  loading: boolean;
-  error: string;
-  retry: () => void;
-  register: (productPublicId: string, quantity: number) => Promise<void>;
-  update: (publicId: string, quantity: number) => Promise<void>;
-  remove: (publicId: string) => Promise<void>;
+// a busca é só um contador, que relê a lista da primeira página
+function loadMyInterests(_reading: number, page: number): Promise<MyInterestsPage> {
+  return listMyInterests(page);
 }
 
-// desligado, nada é pedido, para quem não é morador aprovado
-export function useMyInterests(enabled = true): UseMyInterestsState {
-  const { refreshUser } = useAuth();
+function keyOf(interest: Interest): string {
+  return interest.public_id;
+}
+
+// o total que chegou da API e o que segue as escritas feitas depois
+interface Total {
+  from: string;
+  cents: number;
+}
+
+export function useMyInterests() {
   const guard = useWriteGuard();
-  const [data, setData] = useState<Interest[]>([]);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
+  const pages = usePages(loadMyInterests, 0 as number, { keepPrevious: true, keyOf });
+  const [total, setTotal] = useState<Total | null>(null);
+  const latest = pages.lastPage?.estimated_total;
+  if (latest !== undefined && latest !== total?.from) {
+    setTotal({ from: latest, cents: Math.round(Number(latest) * 100) });
+  }
 
-  const retry = useCallback(() => {
-    setError("");
-    setReloadKey((key) => key + 1);
-  }, []);
+  function track(before: Interest, after: Interest | null) {
+    const change = (after ? openCostInCents(after) : 0) - openCostInCents(before);
+    setTotal((current) => current && { ...current, cents: current.cents + change });
+  }
 
-  useEffect(() => {
-    if (!enabled) return;
-    let outdated = false;
-
-    async function load() {
-      setLoading(true);
-      setError("");
-      try {
-        const interests = await listMyInterests();
-        if (!outdated) setData(interests);
-      } catch (loadError) {
-        if (outdated) return;
-        setError(errorMessage(loadError));
-        if (lostAccess(loadError)) {
-          await refreshUser();
-        }
-      } finally {
-        if (!outdated) setLoading(false);
-      }
-    }
-
-    load().catch((refreshError: unknown) => console.error(refreshError));
-    return () => {
-      outdated = true;
-    };
-  }, [enabled, refreshUser, reloadKey]);
+  const same = (publicId: string) => (interest: Interest) => interest.public_id === publicId;
 
   // outra aba ou a compra mudou o interesse, então a lista é relida
   async function rereadOnConflict<T>(request: Promise<T>): Promise<T> {
     try {
       return await guard(request);
     } catch (writeError) {
-      if (writeError instanceof ApiError && writeError.status === 409) retry();
+      if (writeError instanceof ApiError && writeError.status === 409) {
+        pages.changeSearch(pages.search + 1);
+      }
       throw writeError;
     }
   }
 
-  async function register(productPublicId: string, quantity: number): Promise<void> {
-    const created = await rereadOnConflict(
-      createInterest({ product_public_id: productPublicId, quantity }),
-    );
-    setData((current) => [created, ...current]);
+  async function update(before: Interest, quantity: number): Promise<void> {
+    const saved = await rereadOnConflict(updateInterest(before.public_id, quantity));
+    pages.editPages(replaceItem(same(before.public_id), saved));
+    track(before, saved);
   }
 
-  async function update(publicId: string, quantity: number): Promise<void> {
-    const saved = await rereadOnConflict(updateInterest(publicId, quantity));
-    setData((current) =>
-      current.map((interest) => (interest.public_id === publicId ? saved : interest)),
-    );
+  async function remove(before: Interest): Promise<void> {
+    await guard(deleteInterest(before.public_id));
+    pages.editPages(removeItem(same(before.public_id)));
+    track(before, null);
   }
 
-  async function remove(publicId: string): Promise<void> {
-    await guard(deleteInterest(publicId));
-    setData((current) => current.filter((interest) => interest.public_id !== publicId));
-  }
-
-  return { data, loading: enabled && loading, error, retry, register, update, remove };
+  return {
+    items: pages.items,
+    totalInCents: total?.cents ?? 0,
+    loading: pages.loading,
+    error: pages.error,
+    hasMore: pages.hasMore,
+    loadMore: pages.loadMore,
+    retry: pages.retry,
+    update,
+    remove,
+  };
 }

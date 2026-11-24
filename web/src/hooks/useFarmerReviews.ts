@@ -1,32 +1,21 @@
-import { useEffect, useState } from "react";
-import { getFarmerReviews, type FarmerReviews } from "../api/farmers";
+import { getFarmerReviews } from "../api/farmers";
+import type { ReceivedReview } from "../api/reviews";
+import { usePages } from "./usePages";
 
-interface FarmerReviewsResult {
-  farmerPublicId: string;
-  reviews: FarmerReviews | null;
+function keyOf(review: ReceivedReview): string {
+  return review.public_id;
 }
 
+// lê o id só ao montar, outro agricultor pede outra key no componente
 export function useFarmerReviews(farmerPublicId: string) {
-  const [result, setResult] = useState<FarmerReviewsResult | null>(null);
+  const pages = usePages(getFarmerReviews, farmerPublicId, { keyOf });
+  const page = pages.lastPage;
 
-  useEffect(() => {
-    let outdated = false;
-    getFarmerReviews(farmerPublicId)
-      .then((reviews) => {
-        if (!outdated) setResult({ farmerPublicId, reviews });
-      })
-      .catch(() => {
-        if (!outdated) setResult({ farmerPublicId, reviews: null });
-      });
-
-    return () => {
-      outdated = true;
-    };
-  }, [farmerPublicId]);
-
-  const currentResult = result?.farmerPublicId === farmerPublicId ? result : null;
   return {
-    reviews: currentResult?.reviews ?? null,
-    loading: currentResult === null,
+    // a média e a contagem valem para todas, e vêm em qualquer página
+    rating: page ? { average: page.average_rating, count: page.reviews_count } : null,
+    written: pages.items,
+    loading: page === undefined && pages.error === "",
+    pages,
   };
 }

@@ -28,6 +28,6 @@ def test_apartment_needs_sums_interests_past_the_largest_single_interest(
     response = client.get("/api/apartments/me/needs")
 
     assert response.status_code == status.HTTP_200_OK
-    need = response.json()[0]
+    need = response.json()["items"][0]
     assert need["total_quantity"] == 4_294_967_294
     assert need["interested_buyers_count"] == 2

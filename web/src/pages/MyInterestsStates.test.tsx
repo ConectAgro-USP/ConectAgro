@@ -2,7 +2,7 @@ import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Interest } from "../api/interests";
 import { jsonResponse, sentBody } from "../test/helpers";
-import { findCard, mandioca, renderInterests } from "../test/interests";
+import { findCard, interestsResponse, mandioca, renderInterests } from "../test/interests";
 import { press } from "../test/products";
 import { delivered, inPurchase } from "../test/productInterest";
 
@@ -13,7 +13,7 @@ const received: Interest = { ...mandioca, purchase: delivered.purchase };
 
 describe("MyInterests, states of the interest", () => {
   it("shows an interest in a purchase without editing, but removable", async () => {
-    renderInterests(jsonResponse([bought]));
+    renderInterests(interestsResponse([bought]));
 
     const card = await findCard("Mandioca");
     expect(card).toHaveTextContent(IN_PURCHASE);
@@ -24,7 +24,7 @@ describe("MyInterests, states of the interest", () => {
   });
 
   it("explains what the removal does to an interest in a purchase", async () => {
-    renderInterests(jsonResponse([bought]));
+    renderInterests(interestsResponse([bought]));
     const card = await findCard("Mandioca");
 
     await press(card, "Remover");
@@ -35,7 +35,7 @@ describe("MyInterests, states of the interest", () => {
 
   it("orders a delivered interest again, which reopens it", async () => {
     const reopened = { ...mandioca, quantity: 2 };
-    const fetchMock = renderInterests(jsonResponse([received]), jsonResponse(reopened));
+    const fetchMock = renderInterests(interestsResponse([received]), jsonResponse(reopened));
     const card = await findCard("Mandioca");
     expect(card).toHaveTextContent("Entregue em 25/11");
     expect(within(card).getByText("Entregue")).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe("MyInterests, states of the interest", () => {
   });
 
   it("orders again with the same quantity", async () => {
-    renderInterests(jsonResponse([received]));
+    renderInterests(interestsResponse([received]));
 
     const card = await findCard("Mandioca");
 
@@ -62,7 +62,7 @@ describe("MyInterests, states of the interest", () => {
   });
 
   it("keeps a delivered interest only removable when the product is off sale", async () => {
-    renderInterests(jsonResponse([{ ...received, product_status: "Indisponível" }]));
+    renderInterests(interestsResponse([{ ...received, product_status: "Indisponível" }]));
 
     const card = await findCard("Mandioca");
 
@@ -73,7 +73,7 @@ describe("MyInterests, states of the interest", () => {
 
   it("rereads the list when the interest joined a purchase meanwhile", async () => {
     const refusal = jsonResponse({ detail: "Este interesse já está numa compra do prédio" }, 409);
-    renderInterests(jsonResponse([mandioca]), refusal, jsonResponse([bought]));
+    renderInterests(interestsResponse([mandioca]), refusal, interestsResponse([bought]));
     const card = await findCard("Mandioca");
     const field = within(card).getByLabelText(QUANTITY);
     await userEvent.clear(field);

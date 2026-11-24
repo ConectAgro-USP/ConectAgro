@@ -6,8 +6,9 @@ import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductCard } from "../components/products/ProductCard";
 import { ProductForm } from "../components/products/ProductForm";
-import { inTab, type ProductTab } from "../components/products/productState";
+import { inTab } from "../components/products/productState";
 import { ProductTabs } from "../components/products/ProductTabs";
+import { ShowMore } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
 import { useProducts } from "../hooks/useProducts";
 
@@ -17,9 +18,10 @@ export function MyProducts() {
   // a página inicial abre o cadastro direto pelo endereço
   const [showForm, setShowForm] = useState(params.get("novo") === "1");
   const [editing, setEditing] = useState<MyProduct | null>(null);
-  const [tab, setTab] = useState<ProductTab>("all");
-  const empty = !products.loading && products.error === "" && products.data.length === 0;
-  const shown = products.data.filter((product) => inTab(tab, product));
+  const { tab, counts } = products;
+  const empty = counts?.all === 0;
+  // quem sai da aba por uma escrita some na hora, sem pedir a lista de novo
+  const shown = products.items.filter((product) => inTab(tab, product));
 
   function openForm(product: MyProduct | null) {
     setEditing(product);
@@ -32,9 +34,7 @@ export function MyProducts() {
   }
 
   async function save(input: ProductInput, picture: Blob | null) {
-    const saved = editing
-      ? await products.update(editing.public_id, input)
-      : await products.create(input);
+    const saved = editing ? await products.update(editing, input) : await products.create(input);
     // salvar de novo depois de a foto falhar altera o produto, sem duplicar
     setEditing(saved);
     if (picture) {
@@ -74,10 +74,10 @@ export function MyProducts() {
               )}
             </div>
             {empty && <p className="text-lg">Você ainda não cadastrou produtos.</p>}
-            {products.data.length > 0 && (
+            {counts !== null && counts.all > 0 && (
               <>
-                <ProductTabs products={products.data} chosen={tab} onChoose={setTab} />
-                {shown.length === 0 && (
+                <ProductTabs counts={counts} chosen={tab} onChoose={products.changeTab} />
+                {shown.length === 0 && !products.loading && !products.hasMore && (
                   <p className="mt-6 text-lg">
                     {tab === "available"
                       ? "Nenhum produto à venda agora."
@@ -90,13 +90,14 @@ export function MyProducts() {
                       key={product.public_id}
                       product={product}
                       onEdit={() => openForm(product)}
-                      onRemove={() => products.remove(product.public_id)}
-                      onSetAvailable={(available) =>
-                        products.setAvailable(product.public_id, available)
-                      }
+                      onRemove={() => products.remove(product)}
+                      onSetAvailable={(available) => products.setAvailable(product, available)}
                     />
                   ))}
                 </ul>
+                <div className="flex justify-center pt-8">
+                  <ShowMore list={products} label="Mostrar mais produtos" />
+                </div>
               </>
             )}
           </>

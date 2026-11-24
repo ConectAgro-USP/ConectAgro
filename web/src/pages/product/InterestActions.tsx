@@ -5,7 +5,7 @@ import type { ProductDetail } from "../../api/products";
 import { SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 import { useAction } from "../../hooks/useAction";
-import { useMyInterests } from "../../hooks/useMyInterests";
+import { useProductInterest } from "../../hooks/useProductInterest";
 import { chosenText, interestState, purchaseText } from "../../interestState";
 import { InterestForm } from "./InterestForm";
 import { NOTE_CLASSES, TEXT_LINK_CLASSES } from "./buyBox";
@@ -20,10 +20,10 @@ interface InterestActionsProps {
 }
 
 export function InterestActions({ product, isAvailable, stock }: Readonly<InterestActionsProps>) {
-  const interests = useMyInterests();
+  const interests = useProductInterest(product.public_id);
   const action = useAction();
   const [notice, setNotice] = useState("");
-  const interest = interests.data.find((item) => item.product_public_id === product.public_id);
+  const interest = interests.interest ?? undefined;
   const state = interest ? interestState(interest) : "none";
   const purchase = interest?.purchase;
 
@@ -37,7 +37,7 @@ export function InterestActions({ product, isAvailable, stock }: Readonly<Intere
 
   function submit(quantity: number) {
     if (!interest) {
-      run(() => interests.register(product.public_id, quantity), "Interesse registrado");
+      run(() => interests.register(quantity), "Interesse registrado");
     } else {
       const done = state === "delivered" ? "Interesse registrado de novo" : "Interesse atualizado";
       run(() => interests.update(interest.public_id, quantity), done);

@@ -1,7 +1,14 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jsonResponse, sentBody } from "../test/helpers";
-import { findCard, orange, press, renderProducts } from "../test/products";
+import {
+  countsOf,
+  findCard,
+  orange,
+  press,
+  productsResponse,
+  renderProducts,
+} from "../test/products";
 
 const paused = { ...orange, is_available: false };
 const soldOut = { ...orange, public_id: "produto-2", name: "Couve", quantity: 0 };
@@ -12,7 +19,7 @@ function tab(name: RegExp) {
 
 describe("MyProducts, pausing and the tabs", () => {
   it("pauses the sales of a product", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]), jsonResponse(paused));
+    const fetchMock = renderProducts(productsResponse([orange]), jsonResponse(paused));
     const card = await findCard("Laranja");
 
     await press(card, "Pausar vendas");
@@ -25,7 +32,7 @@ describe("MyProducts, pausing and the tabs", () => {
   });
 
   it("resumes the sales of a paused product", async () => {
-    const fetchMock = renderProducts(jsonResponse([paused]), jsonResponse(orange));
+    const fetchMock = renderProducts(productsResponse([paused]), jsonResponse(orange));
     const card = await findCard("Laranja");
 
     await press(card, "Retomar vendas");
@@ -35,7 +42,7 @@ describe("MyProducts, pausing and the tabs", () => {
   });
 
   it("blocks the buttons while the change is on its way", async () => {
-    const fetchMock = renderProducts(jsonResponse([orange]));
+    const fetchMock = renderProducts(productsResponse([orange]));
     fetchMock.mockReturnValueOnce(new Promise(() => {}));
     const card = await findCard("Laranja");
 
@@ -48,7 +55,8 @@ describe("MyProducts, pausing and the tabs", () => {
   });
 
   it("shows why the change was refused and keeps the product as it was", async () => {
-    renderProducts(jsonResponse([orange]), jsonResponse({ detail: "Produto não encontrado" }, 404));
+    const refusal = jsonResponse({ detail: "Produto não encontrado" }, 404);
+    renderProducts(productsResponse([orange]), refusal);
     const card = await findCard("Laranja");
 
     await press(card, "Pausar vendas");
@@ -61,7 +69,7 @@ describe("MyProducts, pausing and the tabs", () => {
   });
 
   it("counts the products of each tab", async () => {
-    renderProducts(jsonResponse([orange, soldOut]));
+    renderProducts(productsResponse([orange, soldOut]));
     await findCard("Laranja");
 
     expect(tab(/^Todos/)).toHaveTextContent("Todos2");
@@ -70,28 +78,39 @@ describe("MyProducts, pausing and the tabs", () => {
     expect(tab(/^Todos/)).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("splits the products between the tabs", async () => {
-    renderProducts(jsonResponse([orange, soldOut]));
+  it("asks the API for the products of each tab", async () => {
+    const counts = countsOf([orange, soldOut]);
+    const fetchMock = renderProducts(
+      productsResponse([orange, soldOut]),
+      productsResponse([soldOut], { counts }),
+      productsResponse([orange], { counts }),
+    );
     await findCard("Laranja");
 
     await userEvent.click(tab(/^Fora do catálogo/));
 
     expect(tab(/^Fora do catálogo/)).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("heading", { name: "Couve" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Couve" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Laranja" })).not.toBeInTheDocument();
 
     await userEvent.click(tab(/^Disponíveis/));
 
-    expect(screen.getByRole("heading", { name: "Laranja" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Laranja" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Couve" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/products/me?page=1",
+      "/api/products/me?page=1&availability=hidden",
+      "/api/products/me?page=1&availability=available",
+    ]);
   });
 
   it("says when a tab has no products", async () => {
-    renderProducts(jsonResponse([orange]));
+    const counts = countsOf([orange]);
+    renderProducts(productsResponse([orange]), productsResponse([], { counts }));
     await findCard("Laranja");
 
     await userEvent.click(tab(/^Fora do catálogo/));
 
-    expect(screen.getByText("Todos os seus produtos estão à venda.")).toBeVisible();
+    expect(await screen.findByText("Todos os seus produtos estão à venda.")).toBeVisible();
   });
 });

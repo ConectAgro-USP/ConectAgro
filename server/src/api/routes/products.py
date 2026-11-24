@@ -12,6 +12,7 @@ from src.api.deps import (
     ProductServiceDep,
     get_current_user,
 )
+from src.models.my_products import MyProductsFilters, MyProductsPage
 from src.models.product import (
     ProductContactRead,
     ProductCreate,
@@ -65,9 +66,13 @@ def create_product(
     return product_service.create(farmer, product_in)
 
 
-@router.get("/me", response_model=list[ProductRead])
-def get_farmer_products(farmer: CurrentFarmer, product_service: ProductServiceDep):
-    return product_service.get_current_farmer_products(farmer)
+@router.get("/me", response_model=MyProductsPage)
+def get_farmer_products(
+    filters: Annotated[MyProductsFilters, Query()],
+    farmer: CurrentFarmer,
+    product_service: ProductServiceDep,
+):
+    return product_service.get_current_farmer_products(farmer, filters)
 
 
 @router.get("", response_model=ProductSearchResponse, dependencies=[Depends(get_current_user)])

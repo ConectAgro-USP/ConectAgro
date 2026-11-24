@@ -7,6 +7,7 @@ import {
   findCard,
   openNewForm,
   orange,
+  productsResponse,
   renderProducts,
   save,
   SHRUNK,
@@ -30,7 +31,7 @@ describe("MyProducts, when the photo does not go", () => {
     [415, "Envie uma foto em JPEG, PNG ou WebP"],
   ])("shows in the form why the API refused the photo with %i", async (status, detail) => {
     renderProducts(
-      jsonResponse([]),
+      productsResponse([]),
       jsonResponse(withoutPicture, 201),
       jsonResponse({ detail }, status),
     );
@@ -46,7 +47,7 @@ describe("MyProducts, when the photo does not go", () => {
 
   it("saves the same product again instead of creating another", async () => {
     const fetchMock = renderProducts(
-      jsonResponse([]),
+      productsResponse([]),
       jsonResponse(withoutPicture, 201),
       jsonResponse({ detail: "A foto deve ter no máximo 1 MB" }, 413),
       jsonResponse(withoutPicture),
@@ -69,7 +70,7 @@ describe("MyProducts, when the photo does not go", () => {
 
   it("tells when the browser cannot open the chosen file", async () => {
     vi.mocked(shrinkPicture).mockRejectedValue(new Error("formato desconhecido"));
-    const fetchMock = renderProducts(jsonResponse([]));
+    const fetchMock = renderProducts(productsResponse([]));
     await openNewForm();
 
     await choosePicture();
@@ -83,7 +84,7 @@ describe("MyProducts, when the photo does not go", () => {
 
   it("waits for the photo to be ready before saving", async () => {
     vi.mocked(shrinkPicture).mockReturnValue(new Promise(() => {}));
-    renderProducts(jsonResponse([]));
+    renderProducts(productsResponse([]));
     await openNewForm();
 
     await choosePicture();

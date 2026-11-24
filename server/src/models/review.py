@@ -8,6 +8,8 @@ from sqlmodel import Field, Relationship, SQLModel
 
 from src.services.text_service import reject_null_character, short_name
 
+from .pagination import PageParams, PaginatedResponse
+
 if TYPE_CHECKING:
     from .apartment import Apartment
     from .buyer import Buyer
@@ -171,3 +173,18 @@ class FarmerReviewsRead(SQLModel):
     average_rating: float | None
     reviews_count: int
     reviews: list[FarmerReviewRead]
+
+
+class FarmerReviewsFilters(PageParams):
+    # a página do produto só mostra as avaliações escritas
+    with_comment: bool = False
+
+
+class FarmerReviewsPage(PaginatedResponse[FarmerReviewRead]):
+    # a média e a contagem valem para todas as avaliações do agricultor
+    average_rating: float | None
+    reviews_count: int
+
+
+AuthorReviewsPage = PaginatedResponse[AuthorReviewRead]
+ReviewablesPage = PaginatedResponse[ReviewableRead]

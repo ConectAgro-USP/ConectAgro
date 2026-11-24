@@ -37,7 +37,8 @@ def buy(client: TestClient, product: Product, quantity: int = 2) -> Response:
 
 
 def needs(client: TestClient) -> list[str]:
-    return [need["product"]["name"] for need in client.get("/api/apartments/me/needs").json()]
+    rows = client.get("/api/apartments/me/needs").json()["items"]
+    return [need["product"]["name"] for need in rows]
 
 
 def test_purchase_clears_the_bought_product_from_the_needs(
@@ -54,7 +55,7 @@ def test_purchase_clears_the_bought_product_from_the_needs(
     assert response.status_code == status.HTTP_201_CREATED
     assert needs(client) == ["Batata"]
     login(client, resident.user)
-    mine = {item["product_name"]: item for item in client.get("/api/interests/me").json()}
+    mine = {item["product_name"]: item for item in client.get("/api/interests/me").json()["items"]}
     assert mine["Batata"]["purchase"] is None
     assert mine["Alface"]["quantity"] == 3
     assert mine["Alface"]["purchase"]["public_id"] == response.json()["public_id"]

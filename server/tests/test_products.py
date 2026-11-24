@@ -201,7 +201,7 @@ def test_farmer_lists_own_products(client: TestClient, session: Session, farmer:
 
     response = client.get("/api/products/me")
 
-    body = response.json()
+    body = response.json()["items"]
     assert response.status_code == status.HTTP_200_OK
     assert sorted(product["name"] for product in body) == ["Alface", "Couve"]
     listed_lettuce = next(product for product in body if product["name"] == "Alface")
@@ -221,7 +221,7 @@ def test_list_my_products_is_empty_when_farmer_has_none(
     response = client.get("/api/products/me")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_list_my_products_includes_expired_and_sold_out(
@@ -233,7 +233,7 @@ def test_list_my_products_includes_expired_and_sold_out(
     response = client.get("/api/products/me")
 
     assert response.status_code == status.HTTP_200_OK
-    assert sorted(product["name"] for product in response.json()) == [
+    assert sorted(product["name"] for product in response.json()["items"]) == [
         "Alface vencida",
         "Couve esgotada",
     ]
@@ -261,7 +261,8 @@ def test_list_my_products_orders_by_creation_date(
 
     response = client.get("/api/products/me")
 
-    assert [product["name"] for product in response.json()] == ["Alface", "Rúcula", "Couve"]
+    names = [product["name"] for product in response.json()["items"]]
+    assert names == ["Alface", "Rúcula", "Couve"]
 
 
 def test_list_my_products_requires_login(client: TestClient):
@@ -1028,7 +1029,7 @@ def test_farmer_follows_the_409_message_to_hide_a_sold_product(
     assert response.status_code == status.HTTP_200_OK
     assert client.get("/api/products").json()["items"] == []
     # some do catálogo, mas continua com o agricultor e no histórico da compra
-    assert [product["public_id"] for product in client.get("/api/products/me").json()] == [
+    assert [product["public_id"] for product in client.get("/api/products/me").json()["items"]] == [
         str(lettuce.public_id)
     ]
     assert len(session.exec(select(PurchaseProduct)).all()) == 1
@@ -1046,7 +1047,8 @@ def test_owner_removes_product(client: TestClient, session: Session, farmer: Far
     session.expire_all()
     assert session.get(Product, lettuce_id) is None
     assert session.get(Product, kale.id) is not None
-    assert [product["name"] for product in client.get("/api/products/me").json()] == ["Couve"]
+    mine = client.get("/api/products/me").json()["items"]
+    assert [product["name"] for product in mine] == ["Couve"]
     assert [product["name"] for product in client.get("/api/products").json()["items"]] == ["Couve"]
     assert client.get(lettuce_url).status_code == status.HTTP_404_NOT_FOUND
 

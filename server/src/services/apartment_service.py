@@ -4,7 +4,7 @@ from uuid import UUID
 from src.core.search_text import fold
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
-from src.models.profile import ApartmentMatch
+from src.models.profile import ApartmentMatch, ResidentRead, ResidentsFilters, ResidentsPage
 from src.repository.profile_repository import ProfileRepository
 from src.services.cnpj_service import normalize_cnpj
 from src.services.exceptions import BuildingNameTooShortError, ResidentNotFoundError
@@ -29,8 +29,10 @@ class ApartmentService:
         apartments = self.profiles.search_apartments_by_name(folded_name, MAX_NAME_MATCHES)
         return [_match(apartment) for apartment in apartments]
 
-    def list_residents(self, apartment: Apartment, link_status: LinkStatus | None) -> list[Buyer]:
-        return self.profiles.list_buyers_of_apartment(apartment.id, link_status)
+    def list_residents(self, apartment: Apartment, filters: ResidentsFilters) -> ResidentsPage:
+        residents, total = self.profiles.list_buyers_of_apartment(apartment.id, filters)
+        items = [ResidentRead.model_validate(resident) for resident in residents]
+        return ResidentsPage.from_params(items, filters, total)
 
     def approve_resident(self, apartment: Apartment, resident_public_id: UUID) -> Buyer:
         return self._review_resident(apartment, resident_public_id, LinkStatus.APROVADO)

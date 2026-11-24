@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { deferred } from "../test/farmers";
-import { jsonResponse } from "../test/helpers";
+import { jsonResponse, pageResponse } from "../test/helpers";
 import { lastDelivery, OSVALDO_URL, renderReviews, savedReview } from "../test/reviews";
 
 const created = { ...savedReview, public_id: "nova", purchase_public_id: "compra-2", rating: 5 };
@@ -71,8 +71,8 @@ describe("Reviews, messages after saving", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
     expect(await screen.findByText(SENT)).toBeVisible();
 
-    reviewables.resolve(jsonResponse([lastDelivery]));
-    authored.resolve(jsonResponse([]));
+    reviewables.resolve(pageResponse([lastDelivery]));
+    authored.resolve(pageResponse([]));
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
     expect(screen.getByRole("list", { name: "Suas avaliações" })).toBeVisible();

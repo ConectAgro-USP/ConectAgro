@@ -2,8 +2,19 @@ import { cleanup, screen } from "@testing-library/react";
 import type { CatalogProduct } from "../api/products";
 import { CARD_SURFACE } from "../components/surface";
 import { laranja, pageOf as productsPage } from "../test/farmers";
-import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
-import { findCard as findInterest, mandioca, renderInterests } from "../test/interests";
+import {
+  anaAsBuyer,
+  fakeAuth,
+  pageResponse,
+  renderWithAuth,
+  stubFetch,
+} from "../test/helpers";
+import {
+  findCard as findInterest,
+  interestsResponse,
+  mandioca,
+  renderInterests,
+} from "../test/interests";
 import { pageLoad, renderDetail } from "../test/productDetail";
 import { findCard as findResident, renderResidents, tita } from "../test/residents";
 import { findCard as findSale, pageOf, pendingSale, renderSales } from "../test/sales";
@@ -51,11 +62,11 @@ describe("superfície dos cartões", () => {
   });
 
   it("vale para os cartões de moradores e de interesses", async () => {
-    renderResidents(jsonResponse([tita]));
+    renderResidents(pageResponse([tita]));
     expectSurface(await findResident("Tita Russell"));
     cleanup();
 
-    renderInterests(jsonResponse([mandioca]));
+    renderInterests(interestsResponse([mandioca]));
     expectSurface(await findInterest("Mandioca"));
   });
 });

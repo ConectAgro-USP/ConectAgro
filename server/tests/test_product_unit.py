@@ -43,7 +43,7 @@ def test_every_unit_is_accepted_and_shown_everywhere(client: TestClient, farmer:
 
     detail = client.get(f"/api/products/{public_id}").json()
     catalog = client.get("/api/products").json()["items"]
-    mine = client.get("/api/products/me").json()
+    mine = client.get("/api/products/me").json()["items"]
 
     assert created["unit"] == unit
     assert detail["unit"] == unit

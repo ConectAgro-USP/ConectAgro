@@ -1,31 +1,18 @@
-import type { Interest } from "../api/interests";
 import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
+import { ShowMore } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
 import { formatMoney } from "../format";
 import { useMyInterests } from "../hooks/useMyInterests";
-import { AVAILABLE, costInCents, interestState } from "../interestState";
 import { InterestCard } from "./interests/InterestCard";
 
 const TOTAL_CLASSES =
   "mt-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t " +
   "border-stone-300 pt-5";
 
-// só o que ainda pode entrar na próxima compra do prédio
-function openCosts(interests: Interest[]): number[] {
-  return interests.flatMap((interest) => {
-    const { product } = interest;
-    const open = interestState(interest) === "open";
-    const counts = product !== null && open && interest.product_status === AVAILABLE;
-    return counts ? [costInCents(interest.quantity, product.price)] : [];
-  });
-}
-
 export function MyInterests() {
   const list = useMyInterests();
-  const empty = !list.loading && list.error === "" && list.data.length === 0;
-  const costs = openCosts(list.data);
-  const total = costs.reduce((sum, cost) => sum + cost, 0);
+  const empty = !list.loading && list.error === "" && list.items.length === 0;
 
   return (
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
@@ -37,19 +24,23 @@ export function MyInterests() {
             quantidade que quer.
           </p>
         )}
-        {list.data.length > 0 && (
+        {list.items.length > 0 && (
           <ul className="space-y-4 pt-8">
-            {list.data.map((interest) => (
+            {list.items.map((interest) => (
               <InterestCard
                 key={interest.public_id}
                 interest={interest}
-                onSave={(quantity) => list.update(interest.public_id, quantity)}
-                onRemove={() => list.remove(interest.public_id)}
+                onSave={(quantity) => list.update(interest, quantity)}
+                onRemove={() => list.remove(interest)}
               />
             ))}
           </ul>
         )}
-        {costs.length > 0 && (
+        <div className="flex justify-center pt-6 empty:hidden">
+          <ShowMore list={list} label="Mostrar mais interesses" />
+        </div>
+        {/* a API soma os interesses de todas as páginas */}
+        {list.totalInCents > 0 && (
           <div className={TOTAL_CLASSES}>
             <div>
               <p className="text-xl font-bold">Total estimado</p>
@@ -58,7 +49,9 @@ export function MyInterests() {
                 prédio.
               </p>
             </div>
-            <p className="text-2xl font-bold tabular-nums">{formatMoney(total / 100)}</p>
+            <p className="text-2xl font-bold tabular-nums">
+              {formatMoney(list.totalInCents / 100)}
+            </p>
           </div>
         )}
         <div className="flex flex-col items-center gap-4 pt-10">

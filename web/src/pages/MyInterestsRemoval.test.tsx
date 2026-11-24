@@ -1,7 +1,7 @@
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
-import { findCard, laranja, mandioca, renderInterests } from "../test/interests";
+import { findCard, interestsResponse, laranja, mandioca, renderInterests } from "../test/interests";
 import { press } from "../test/products";
 import { MyInterests } from "./MyInterests";
 
@@ -11,7 +11,7 @@ const QUESTION = "Remover o interesse em Mandioca?";
 
 describe("MyInterests, removal", () => {
   it("asks inside the card before removing an interest", async () => {
-    const fetchMock = renderInterests(jsonResponse([mandioca]));
+    const fetchMock = renderInterests(interestsResponse([mandioca]));
     const card = await findCard("Mandioca");
 
     await press(card, "Remover");
@@ -23,7 +23,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("focuses Voltar without scrolling the page under the finger", async () => {
-    renderInterests(jsonResponse([mandioca]));
+    renderInterests(interestsResponse([mandioca]));
     const card = await findCard("Mandioca");
     const focus = vi.spyOn(HTMLElement.prototype, "focus");
 
@@ -37,7 +37,7 @@ describe("MyInterests, removal", () => {
 
   it("removes only the confirmed interest", async () => {
     const removed = new Response(null, { status: 204 });
-    const fetchMock = renderInterests(jsonResponse([laranja, mandioca]), removed);
+    const fetchMock = renderInterests(interestsResponse([laranja, mandioca]), removed);
     const card = await findCard("Mandioca");
     await press(card, "Remover");
 
@@ -50,7 +50,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("sends one removal while it is pending", async () => {
-    const fetchMock = renderInterests(jsonResponse([mandioca]));
+    const fetchMock = renderInterests(interestsResponse([mandioca]));
     fetchMock.mockReturnValueOnce(new Promise(() => {}));
     const card = await findCard("Mandioca");
     await press(card, "Remover");
@@ -62,7 +62,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("removes an interest in an unavailable product too", async () => {
-    renderInterests(jsonResponse([laranja]), new Response(null, { status: 204 }));
+    renderInterests(interestsResponse([laranja]), new Response(null, { status: 204 }));
     const card = await findCard("Laranja");
     await press(card, "Remover");
 
@@ -72,7 +72,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("drops the card when another tab already removed the interest", async () => {
-    renderInterests(jsonResponse([mandioca]), jsonResponse({ detail: NOT_FOUND }, 404));
+    renderInterests(interestsResponse([mandioca]), jsonResponse({ detail: NOT_FOUND }, 404));
     const card = await findCard("Mandioca");
     await press(card, "Remover");
 
@@ -82,7 +82,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("reloads the user when the session ended before the removal", async () => {
-    stubFetch(jsonResponse([mandioca]), jsonResponse({ detail: "Não autenticado" }, 401));
+    stubFetch(interestsResponse([mandioca]), jsonResponse({ detail: "Não autenticado" }, 401));
     const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
     renderWithAuth(<MyInterests />, auth);
     const card = await findCard("Mandioca");
@@ -94,7 +94,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("keeps the confirmation and shows why the removal failed", async () => {
-    renderInterests(jsonResponse([mandioca]), jsonResponse({}, 500));
+    renderInterests(interestsResponse([mandioca]), jsonResponse({}, 500));
     const card = await findCard("Mandioca");
     await press(card, "Remover");
 
@@ -105,7 +105,7 @@ describe("MyInterests, removal", () => {
   });
 
   it("goes back without removing and forgets the refusal", async () => {
-    const fetchMock = renderInterests(jsonResponse([mandioca]), jsonResponse({}, 500));
+    const fetchMock = renderInterests(interestsResponse([mandioca]), jsonResponse({}, 500));
     const card = await findCard("Mandioca");
     await press(card, "Remover");
     await press(card, "Remover");

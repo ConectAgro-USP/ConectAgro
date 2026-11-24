@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
+import { jsonResponse, pageResponse } from "../test/helpers";
 import {
   fromMaria,
   lastDelivery,
@@ -21,8 +21,8 @@ describe("Reviews", () => {
     expect(screen.getByText("Carregando...")).toBeInTheDocument();
     expect(await screen.findByText(/Nenhuma entrega esperando sua avaliação/)).toBeVisible();
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      "/api/purchases/reviewable",
-      "/api/reviews/me",
+      "/api/purchases/reviewable?page=1",
+      "/api/reviews/me?page=1",
     ]);
   });
 
@@ -83,9 +83,9 @@ describe("Reviews", () => {
     renderReviewsAnswering(
       "/avaliar",
       jsonResponse({}, 500),
-      jsonResponse([]),
-      jsonResponse([lastDelivery]),
-      jsonResponse([]),
+      pageResponse([]),
+      pageResponse([lastDelivery]),
+      pageResponse([]),
     );
 
     expect(await screen.findByRole("alert")).toBeVisible();
@@ -99,7 +99,7 @@ describe("Reviews", () => {
     const { auth } = renderReviewsAnswering(
       "/avaliar",
       jsonResponse({ detail: "Não autenticado" }, 401),
-      jsonResponse([]),
+      pageResponse([]),
     );
 
     expect(await screen.findByRole("alert")).toBeVisible();

@@ -1,5 +1,5 @@
 import { apiFetch, ignoreNotFound } from "./client";
-import type { Page } from "./pagination";
+import { pageQuery, type Page } from "./pagination";
 
 export interface Product {
   public_id: string;
@@ -52,8 +52,35 @@ export interface CatalogProduct extends Product {
   farmer_reviews_count: number;
 }
 
-export function listMyProducts(): Promise<MyProduct[]> {
-  return apiFetch<MyProduct[]>("/products/me");
+// fora do catálogo junta os pausados, os vencidos e os esgotados
+export type Availability = "available" | "hidden";
+
+// contam todos os produtos do agricultor, seja qual for a página
+export interface MyProductCounts {
+  all: number;
+  available: number;
+  hidden: number;
+  sold_out: number;
+  expiring_soon: number;
+}
+
+export interface MyProductsPage extends Page<MyProduct> {
+  counts: MyProductCounts;
+}
+
+export function listMyProducts(
+  availability: Availability | null,
+  page: number,
+  pageSize?: number,
+): Promise<MyProductsPage> {
+  const query = pageQuery(page, pageSize);
+  if (availability) query.set("availability", availability);
+  return apiFetch<MyProductsPage>(`/products/me?${query}`);
+}
+
+export async function countMyProducts(): Promise<MyProductCounts> {
+  const { counts } = await listMyProducts(null, 1, 1);
+  return counts;
 }
 
 export const CATALOG_SORTS = [

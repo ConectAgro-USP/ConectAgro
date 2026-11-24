@@ -1,84 +1,38 @@
-import { useEffect, useState } from "react";
-import { errorMessage, lostAccess } from "../api/client";
 import type { LinkStatus } from "../api/profiles";
 import { listResidents, type Resident } from "../api/residents";
-import { useAuth } from "../auth/AuthContext";
+import { replaceItem } from "./pageEdits";
+import { usePages } from "./usePages";
 
-interface Query {
-  status: LinkStatus;
-}
-
-// a lista na tela e o pedido que ela responde
-interface Loaded {
-  query: Query;
-  residents: Resident[];
+function keyOf(resident: Resident): string {
+  return resident.public_id;
 }
 
 export function useResidents() {
-  const { refreshUser } = useAuth();
-  const [query, setQuery] = useState<Query>({ status: "PENDENTE" });
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [error, setError] = useState("");
+  const pages = usePages(listResidents, "PENDENTE" as LinkStatus, { keyOf });
+  const status = pages.search;
   // ao trocar de situação a lista antiga some, ao recarregar a mesma ela fica na tela
-  const sameStatus = loaded?.query.status === query.status;
-
-  function changeStatus(status: LinkStatus) {
-    setError("");
-    setQuery({ status });
-  }
-
-  function reload() {
-    setError("");
-    // a cópia faz o efeito pedir de novo a lista que estiver na tela
-    setQuery((current) => ({ ...current }));
-  }
+  const residents = pages.lastPage === undefined ? null : pages.items;
 
   // quem recebe a resposta fica na lista, para os outros não mudarem de lugar
   function markAnswered(answered: Resident, linkStatus: LinkStatus) {
-    setLoaded((current) => {
-      if (current === null) {
-        return null;
-      }
-      const residents = current.residents.map((resident) => {
-        if (resident.public_id === answered.public_id) {
-          return { ...resident, link_status: linkStatus };
-        }
-        return resident;
-      });
-      return { ...current, residents };
-    });
+    const same = (resident: Resident) => resident.public_id === answered.public_id;
+    pages.editPages(replaceItem(same, { ...answered, link_status: linkStatus }));
   }
 
-  useEffect(() => {
-    let outdated = false;
-
-    async function load() {
-      try {
-        const residents = await listResidents(query.status);
-        if (!outdated) setLoaded({ query, residents });
-      } catch (loadError) {
-        if (outdated) return;
-        setError(errorMessage(loadError));
-        if (lostAccess(loadError)) {
-          // sem sessão ou com outra conta, recarregar o usuário tira a pessoa da tela
-          await refreshUser();
-        }
-      }
-    }
-
-    load().catch((refreshError: unknown) => console.error(refreshError));
-    return () => {
-      outdated = true;
-    };
-  }, [query, refreshUser]);
+  // quem acabou de receber outra resposta continua na tela, mas sai da conta
+  const answeredHere = pages.items.filter((resident) => resident.link_status !== status).length;
 
   return {
-    status: query.status,
-    changeStatus,
-    residents: sameStatus ? loaded.residents : null,
-    loading: loaded?.query !== query && error === "",
-    error,
-    reload,
+    status,
+    changeStatus: pages.changeSearch,
+    residents,
     markAnswered,
+    count: (pages.lastPage?.total ?? 0) - answeredHere,
+    loading: pages.loading,
+    error: pages.error,
+    hasMore: pages.hasMore,
+    loadMore: pages.loadMore,
+    // relê a última página pedida, e a lista na tela fica até a resposta
+    reload: pages.retry,
   };
 }

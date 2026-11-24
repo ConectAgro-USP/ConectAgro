@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { listReviewable, type Reviewable } from "../api/reviews";
+import { listAllReviewables, type Reviewable } from "../api/reviews";
 
 export function useReviewables(): Reviewable[] {
   const [reviewables, setReviewables] = useState<Reviewable[]>([]);
 
   useEffect(() => {
     let outdated = false;
-    listReviewable()
+    // todas as páginas, para cada compra na tela achar a sua entrega
+    listAllReviewables()
       .then((list) => {
         if (!outdated) setReviewables(list);
       })

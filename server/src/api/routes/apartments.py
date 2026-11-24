@@ -10,9 +10,15 @@ from src.api.deps import (
     PurchaseServiceDep,
     get_current_user,
 )
-from src.models.buyer import LinkStatus
-from src.models.interest import ApartmentNeedRead
-from src.models.profile import ApartmentMatch, BuildingNameQuery, Cnpj, ResidentRead
+from src.models.interest import ApartmentNeedsFilters, ApartmentNeedsPage
+from src.models.profile import (
+    ApartmentMatch,
+    BuildingNameQuery,
+    Cnpj,
+    ResidentRead,
+    ResidentsFilters,
+    ResidentsPage,
+)
 from src.models.purchase_history import BuildingPurchasesFilters, BuildingPurchasesHistory
 from src.services.exceptions import (
     BuildingNameTooShortError,
@@ -43,13 +49,13 @@ def list_apartments(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, message) from None
 
 
-@router.get("/me/buyers", response_model=list[ResidentRead])
+@router.get("/me/buyers", response_model=ResidentsPage)
 def list_my_residents(
+    filters: Annotated[ResidentsFilters, Query()],
     apartment: CurrentApartment,
     apartment_service: ApartmentServiceDep,
-    link_status: Annotated[LinkStatus | None, Query(alias="status")] = None,
 ):
-    return apartment_service.list_residents(apartment, link_status)
+    return apartment_service.list_residents(apartment, filters)
 
 
 @router.post("/me/buyers/{public_id}/approve", response_model=ResidentRead)
@@ -81,10 +87,10 @@ def list_my_purchases(
     return purchase_service.list_building_purchases(apartment, filters)
 
 
-@router.get("/me/needs", response_model=list[ApartmentNeedRead])
+@router.get("/me/needs", response_model=ApartmentNeedsPage)
 def list_apartment_needs(
+    filters: Annotated[ApartmentNeedsFilters, Query()],
     apartment: CurrentApartment,
     interest_service: InterestServiceDep,
-    descending: bool = Query(default=True),
 ):
-    return interest_service.list_apartment_needs(apartment, descending=descending)
+    return interest_service.list_apartment_needs(apartment, filters)

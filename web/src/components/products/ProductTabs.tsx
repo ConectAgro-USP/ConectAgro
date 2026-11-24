@@ -1,5 +1,5 @@
-import type { MyProduct } from "../../api/products";
-import { inTab, type ProductTab } from "./productState";
+import type { MyProductCounts } from "../../api/products";
+import type { ProductTab } from "./productState";
 
 const TAB_CLASSES =
   "flex h-12 items-center gap-2 rounded-full border px-5 font-bold focus-visible:outline-2 " +
@@ -13,12 +13,12 @@ const TABS: { id: ProductTab; label: string }[] = [
 ];
 
 interface ProductTabsProps {
-  products: MyProduct[];
+  counts: MyProductCounts;
   chosen: ProductTab;
   onChoose: (tab: ProductTab) => void;
 }
 
-export function ProductTabs({ products, chosen, onChoose }: Readonly<ProductTabsProps>) {
+export function ProductTabs({ counts, chosen, onChoose }: Readonly<ProductTabsProps>) {
   return (
     <div role="group" aria-label="Mostrar produtos" className="flex flex-wrap gap-2">
       {TABS.map((tab) => (
@@ -30,9 +30,7 @@ export function ProductTabs({ products, chosen, onChoose }: Readonly<ProductTabs
           className={`${TAB_CLASSES} ${tab.id === chosen ? CHOSEN_CLASSES : OTHER_CLASSES}`}
         >
           {tab.label}
-          <span className="tabular-nums">
-            {products.filter((product) => inTab(tab.id, product)).length}
-          </span>
+          <span className="tabular-nums">{counts[tab.id]}</span>
         </button>
       ))}
     </div>

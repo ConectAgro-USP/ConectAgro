@@ -1,7 +1,7 @@
 import { PlusIcon, SproutIcon } from "lucide-react";
 import { Link } from "react-router";
 import { NO_FILTERS } from "../api/history";
-import { listMyProducts } from "../api/products";
+import { countMyProducts } from "../api/products";
 import { listReceivedReviews } from "../api/reviews";
 import { listSales } from "../api/sales";
 import { useAuth } from "../auth/AuthContext";
@@ -40,10 +40,10 @@ function FirstProduct() {
 export function FarmerHome() {
   const { user } = useAuth();
   const sales = useLoaded(listSalesToDeliver);
-  const products = useLoaded(listMyProducts);
+  const products = useLoaded(countMyProducts);
   const reviews = useLoaded(listReceivedReviews);
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
-  const noProducts = products.data?.length === 0;
+  const noProducts = products.data?.all === 0;
   const hasSales = (sales.data?.total ?? 0) > 0;
 
   return (
@@ -81,7 +81,7 @@ export function FarmerHome() {
                 more={{ to: "/meus-produtos", label: "Ver meus produtos" }}
                 className="lg:col-span-2"
               >
-                {(data) => <ProductsSummary products={data} />}
+                {(data) => <ProductsSummary counts={data} />}
               </SummaryCard>
               <SummaryCard
                 title="Sua nota"

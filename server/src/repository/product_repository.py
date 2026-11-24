@@ -1,13 +1,19 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_
+from sqlalchemy import and_, delete, func, not_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
+from src.models.my_products import (
+    EXPIRING_SOON_DAYS,
+    MyProductCounts,
+    MyProductsFilters,
+    ProductAvailability,
+)
 from src.models.product import Product
 from src.models.product_picture import ProductPicture
 from src.models.product_search import (
@@ -17,6 +23,7 @@ from src.models.product_search import (
 )
 from src.models.purchase import PurchaseProduct
 from src.models.review import Review
+from src.repository.pagination import fetch_page
 
 # o produto vem com a nota média e o número de avaliações do agricultor
 RatedProduct = tuple[Product, Decimal | float | None, int | None]
@@ -26,12 +33,16 @@ class ProductInUseError(Exception):
     pass
 
 
+def on_sale(today: date):
+    return and_(Product.expiration_date >= today, Product.quantity > 0, Product.is_available)
+
+
 class ProductRepository:
     def __init__(self, session: Session):
         self.session = session
 
     def search(self, filters: ProductSearchFilters, today: date) -> tuple[list[RatedProduct], int]:
-        conditions = [Product.expiration_date >= today, Product.quantity > 0, Product.is_available]
+        conditions = [on_sale(today)]
         if filters.expiration_from is not None:
             conditions.append(Product.expiration_date >= filters.expiration_from)
         if filters.min_quantity is not None:
@@ -100,10 +111,34 @@ class ProductRepository:
         self.session.refresh(product)
         return product
 
-    def list_products_by_farmer_id(self, farmer_id: int) -> list[Product]:
+    def list_products_by_farmer_id(
+        self, farmer_id: int, filters: MyProductsFilters, today: date
+    ) -> tuple[list[Product], int]:
         statement = select(Product).where(Product.farmer_id == farmer_id)
+        if filters.availability == ProductAvailability.AVAILABLE:
+            statement = statement.where(on_sale(today))
+        elif filters.availability == ProductAvailability.HIDDEN:
+            statement = statement.where(not_(on_sale(today)))
         statement = statement.order_by(Product.created_at, Product.public_id)
-        return list(self.session.exec(statement).all())
+        return fetch_page(self.session, statement, filters)
+
+    def count_products_of_farmer(self, farmer_id: int, today: date) -> MyProductCounts:
+        listed = and_(Product.is_available, Product.expiration_date >= today)
+        soon = today + timedelta(days=EXPIRING_SOON_DAYS)
+        statement = select(
+            func.count(Product.id),
+            func.count(Product.id).filter(on_sale(today)),
+            func.count(Product.id).filter(listed, Product.quantity == 0),
+            func.count(Product.id).filter(on_sale(today), Product.expiration_date <= soon),
+        ).where(Product.farmer_id == farmer_id)
+        everything, available, sold_out, expiring_soon = self.session.exec(statement).one()
+        return MyProductCounts(
+            all=everything,
+            available=available,
+            hidden=everything - available,
+            sold_out=sold_out,
+            expiring_soon=expiring_soon,
+        )
 
     def get_product_by_public_id(self, public_id: UUID) -> Product | None:
         statement = select(Product).where(Product.public_id == public_id)

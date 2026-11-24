@@ -1,8 +1,18 @@
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
-import { findCard as findInterest, mandioca, renderInterests } from "../test/interests";
-import { findCard as findProduct, orange, renderProducts } from "../test/products";
+import { pageResponse } from "../test/helpers";
+import {
+  findCard as findInterest,
+  interestsResponse,
+  mandioca,
+  renderInterests,
+} from "../test/interests";
+import {
+  findCard as findProduct,
+  orange,
+  productsResponse,
+  renderProducts,
+} from "../test/products";
 import { findCard as findResident, renderResidents, tita } from "../test/residents";
 import { findCard as findSale, pageOf, pendingSale, renderSales } from "../test/sales";
 
@@ -14,7 +24,7 @@ function expectCompact(card: HTMLElement, names: string[]) {
 
 describe("ações dentro dos cartões", () => {
   it("usa botões compactos no cartão do produto e na confirmação", async () => {
-    renderProducts(jsonResponse([orange]));
+    renderProducts(productsResponse([orange]));
 
     const card = await findProduct("Laranja");
     expectCompact(card, ["Remover", "Editar"]);
@@ -34,14 +44,14 @@ describe("ações dentro dos cartões", () => {
   });
 
   it("usa botões compactos no pedido do morador", async () => {
-    renderResidents(jsonResponse([tita]));
+    renderResidents(pageResponse([tita]));
 
     const card = await findResident("Tita Russell");
     expectCompact(card, ["Recusar", "Aprovar"]);
   });
 
   it("usa botões compactos no interesse, com o campo da mesma altura", async () => {
-    renderInterests(jsonResponse([mandioca]));
+    renderInterests(interestsResponse([mandioca]));
 
     const card = await findInterest("Mandioca");
     expectCompact(card, ["Salvar", "Remover"]);

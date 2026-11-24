@@ -102,7 +102,7 @@ def test_purchase_outside_the_needs_leaves_the_needs_as_they_were(
 
     buy(client, lettuce)
 
-    needs = client.get("/api/apartments/me/needs").json()
+    needs = client.get("/api/apartments/me/needs").json()["items"]
     assert [need["product"]["name"] for need in needs] == ["Batata"]
 
 

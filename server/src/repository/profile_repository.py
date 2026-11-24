@@ -6,9 +6,11 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, SQLModel, select
 
 from src.models.apartment import Apartment
-from src.models.buyer import Buyer, LinkStatus
+from src.models.buyer import Buyer
 from src.models.farmer import Farmer
+from src.models.profile import ResidentsFilters
 from src.models.user import User
+from src.repository.pagination import fetch_page
 
 
 class DuplicateValueError(Exception):
@@ -51,14 +53,14 @@ class ProfileRepository:
         return profiles
 
     def list_buyers_of_apartment(
-        self, apartment_id: int, link_status: LinkStatus | None
-    ) -> list[Buyer]:
+        self, apartment_id: int, filters: ResidentsFilters
+    ) -> tuple[list[Buyer], int]:
         statement = select(Buyer).where(Buyer.apartment_id == apartment_id)
-        if link_status is not None:
-            statement = statement.where(Buyer.link_status == link_status)
+        if filters.status is not None:
+            statement = statement.where(Buyer.link_status == filters.status)
         statement = statement.options(selectinload(Buyer.user))
         statement = statement.order_by(Buyer.link_requested_at, Buyer.id)
-        return list(self.session.exec(statement).all())
+        return fetch_page(self.session, statement, filters)
 
     def lock_buyer_of_apartment(self, public_id: UUID, apartment_id: int) -> Buyer | None:
         statement = select(Buyer).where(

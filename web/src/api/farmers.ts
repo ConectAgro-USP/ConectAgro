@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { Page } from "./pagination";
+import { pageQuery, type Page } from "./pagination";
 import type { ReceivedReview } from "./reviews";
 
 export const DISTANCES = [5, 10, 15] as const;
@@ -38,10 +38,10 @@ export interface FarmerProduct {
   expiration_date: string;
 }
 
-export interface FarmerReviews {
+// a média e a contagem valem para todas, a página traz só as escritas
+export interface FarmerReviews extends Page<ReceivedReview> {
   average_rating: number | null;
   reviews_count: number;
-  reviews: ReceivedReview[];
 }
 
 // o servidor monta e ordena a lista inteira de novo a cada pedido, seja qual for a página,
@@ -70,6 +70,8 @@ export function listFarmerProducts(
   return apiFetch<Page<FarmerProduct>>(`/products?${query}`);
 }
 
-export function getFarmerReviews(farmerPublicId: string): Promise<FarmerReviews> {
-  return apiFetch<FarmerReviews>(`/farmers/${farmerPublicId}/reviews`);
+export function getFarmerReviews(farmerPublicId: string, page: number): Promise<FarmerReviews> {
+  const query = pageQuery(page);
+  query.set("with_comment", "true");
+  return apiFetch<FarmerReviews>(`/farmers/${farmerPublicId}/reviews?${query}`);
 }

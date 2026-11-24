@@ -9,6 +9,7 @@ import {
   openNewForm,
   orange,
   press,
+  productsResponse,
   renderProducts,
   save,
   SHRUNK,
@@ -28,7 +29,7 @@ describe("MyProducts, sending the product's photo", () => {
   });
 
   it("takes or picks an image and previews the reduced photo", async () => {
-    renderProducts(jsonResponse([]));
+    renderProducts(productsResponse([]));
     await openNewForm();
 
     expect(screen.getByLabelText("Tirar ou escolher foto")).toHaveAttribute("accept", "image/*");
@@ -41,7 +42,7 @@ describe("MyProducts, sending the product's photo", () => {
 
   it("creates the product first and then sends the photo", async () => {
     const fetchMock = renderProducts(
-      jsonResponse([]),
+      productsResponse([]),
       jsonResponse(withoutPicture, 201),
       jsonResponse(uploaded),
     );
@@ -63,7 +64,7 @@ describe("MyProducts, sending the product's photo", () => {
 
   it("keeps the old link until the new photo arrives", async () => {
     const fetchMock = renderProducts(
-      jsonResponse([orange]),
+      productsResponse([orange]),
       jsonResponse(orange),
       jsonResponse(uploaded),
     );
@@ -78,7 +79,7 @@ describe("MyProducts, sending the product's photo", () => {
   });
 
   it("keeps the sent photo when the product is saved without a new one", async () => {
-    const fetchMock = renderProducts(jsonResponse([uploaded]), jsonResponse(uploaded));
+    const fetchMock = renderProducts(productsResponse([uploaded]), jsonResponse(uploaded));
     await press(await findCard("Laranja"), "Editar");
 
     expect(screen.getByLabelText(/^Link para a imagem/)).toHaveValue("");
@@ -90,7 +91,7 @@ describe("MyProducts, sending the product's photo", () => {
   });
 
   it("keeps the link as a folded alternative", async () => {
-    renderProducts(jsonResponse([orange, { ...uploaded, public_id: "b", name: "Couve" }]));
+    renderProducts(productsResponse([orange, { ...uploaded, public_id: "b", name: "Couve" }]));
     await press(await findCard("Couve"), "Editar");
 
     const summary = screen.getByText("Ou cole um link");
@@ -100,7 +101,7 @@ describe("MyProducts, sending the product's photo", () => {
   });
 
   it("opens the link when the product already uses one", async () => {
-    renderProducts(jsonResponse([orange]));
+    renderProducts(productsResponse([orange]));
     await press(await findCard("Laranja"), "Editar");
 
     expect(screen.getByText("Ou cole um link").closest("details")).toHaveAttribute("open");

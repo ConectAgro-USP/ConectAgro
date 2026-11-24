@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
+import { pageResponse } from "../test/helpers";
 import { alface, mandioca, renderNeeds, soldOutAlface } from "../test/needs";
 
 async function findRow(name: string): Promise<HTMLElement> {
@@ -9,7 +9,7 @@ async function findRow(name: string): Promise<HTMLElement> {
 
 describe("BuildingNeeds rows", () => {
   it("selects the need by a click anywhere on the row", async () => {
-    renderNeeds(jsonResponse([mandioca, alface]));
+    renderNeeds(pageResponse([mandioca, alface]));
     const row = await findRow("Mandioca");
     const checkbox = within(row).getByRole("checkbox");
 
@@ -21,7 +21,7 @@ describe("BuildingNeeds rows", () => {
   });
 
   it("shows the picture, the price, the stock and the estimated cost", async () => {
-    renderNeeds(jsonResponse([mandioca, alface]));
+    renderNeeds(pageResponse([mandioca, alface]));
 
     const row = await findRow("Mandioca");
     expect(row.querySelector("img")).toHaveAttribute("src", "https://example.com/mandioca.jpg");
@@ -33,7 +33,7 @@ describe("BuildingNeeds rows", () => {
   });
 
   it("links each row to its product, without selecting it", async () => {
-    renderNeeds(jsonResponse([mandioca]));
+    renderNeeds(pageResponse([mandioca]));
     const row = await findRow("Mandioca");
 
     const link = within(row).getByRole("link", { name: "Ver o produto Mandioca" });
@@ -43,7 +43,7 @@ describe("BuildingNeeds rows", () => {
   });
 
   it("keeps a sold out need disabled, even when its row is clicked", async () => {
-    renderNeeds(jsonResponse([mandioca, soldOutAlface]));
+    renderNeeds(pageResponse([mandioca, soldOutAlface]));
     const row = await findRow("Alface");
     const checkbox = within(row).getByRole("checkbox");
 

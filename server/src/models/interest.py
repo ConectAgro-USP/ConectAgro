@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
+from .pagination import PageParams, PaginatedResponse
 from .product import (
     AVAILABLE,
     BUSINESS_TZ,
@@ -160,3 +161,20 @@ class InterestRead(InterestBase):
     purchase: InterestPurchaseRead | None = None
     # nulo quando o agricultor apagou o produto
     product: InterestProductRead | None = None
+
+
+class MyInterestsFilters(PageParams):
+    # a página do produto procura só o interesse dele
+    product_public_id: UUID | None = None
+
+
+class MyInterestsPage(PaginatedResponse[InterestRead]):
+    # soma dos interesses abertos em produtos à venda, de todas as páginas
+    estimated_total: Decimal
+
+
+class ApartmentNeedsFilters(PageParams):
+    descending: bool = True
+
+
+ApartmentNeedsPage = PaginatedResponse[ApartmentNeedRead]

@@ -8,18 +8,18 @@ interface ProductFarmerInfoProps {
 }
 
 function Reviews({ farmerPublicId }: Readonly<{ farmerPublicId: string }>) {
-  const { reviews, loading } = useFarmerReviews(farmerPublicId);
+  const { rating, written, loading, pages } = useFarmerReviews(farmerPublicId);
 
   if (loading) {
     return <p className="text-stone-600">Carregando avaliações...</p>;
   }
-  if (reviews === null) {
+  if (rating === null) {
     return <p className="text-stone-600">Avaliações indisponíveis</p>;
   }
   return (
     <>
-      <FarmerRating average={reviews.average_rating} count={reviews.reviews_count} />
-      <FarmerReviewList reviews={reviews.reviews} />
+      <FarmerRating average={rating.average} count={rating.count} />
+      <FarmerReviewList reviews={written} pages={pages} />
     </>
   );
 }
@@ -53,7 +53,7 @@ export function ProductFarmerInfo({ farmer }: Readonly<ProductFarmerInfoProps>) 
           )}
         </div>
       </div>
-      <Reviews farmerPublicId={farmer.public_id} />
+      <Reviews key={farmer.public_id} farmerPublicId={farmer.public_id} />
     </div>
   );
 }

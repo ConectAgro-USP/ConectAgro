@@ -1,7 +1,10 @@
 import { ChevronDownIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { ReceivedReview } from "../../api/reviews";
+import { SecondaryButton } from "../../components/Button";
+import { FormError } from "../../components/FormError";
 import { RatingStars } from "../../components/reviews/StarRating";
+import { ShowMore, type PagedList } from "../../components/ShowMore";
 import { formatFullDay } from "../../format";
 
 const FIRST_SHOWN = 3;
@@ -11,12 +14,13 @@ const TOGGLE_CLASSES =
 
 interface FarmerReviewListProps {
   reviews: ReceivedReview[];
+  pages: PagedList & { retry: () => void };
 }
 
-export function FarmerReviewList({ reviews }: Readonly<FarmerReviewListProps>) {
+export function FarmerReviewList({ reviews, pages }: Readonly<FarmerReviewListProps>) {
   const [open, setOpen] = useState(false);
   const listId = useId();
-  // a API manda da mais nova para a mais antiga, e só as escritas entram
+  // a API manda só as escritas, da mais nova para a mais antiga
   const written = reviews.filter((review) => review.comment.trim() !== "");
 
   if (written.length === 0) {
@@ -46,6 +50,19 @@ export function FarmerReviewList({ reviews }: Readonly<FarmerReviewListProps>) {
           </li>
         ))}
       </ul>
+      {open && (
+        <div className="flex flex-col items-start gap-3 pb-3 empty:hidden">
+          <ShowMore list={pages} label="Mostrar mais avaliações" />
+          {pages.error && (
+            <>
+              <FormError message={pages.error} />
+              <SecondaryButton size="compact" onClick={pages.retry}>
+                Tentar de novo
+              </SecondaryButton>
+            </>
+          )}
+        </div>
+      )}
       {written.length > FIRST_SHOWN && (
         <button
           type="button"

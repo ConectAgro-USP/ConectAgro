@@ -1,12 +1,15 @@
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
+from src.models.pagination import PageParams
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
-from src.models.review import Review, ReviewAuthor
+from src.models.review import FarmerReviewsFilters, Review, ReviewAuthor
+from src.repository.pagination import fetch_page
 
 
 class DuplicateReviewError(Exception):
@@ -30,7 +33,23 @@ class ReviewRepository:
         statement = statement.order_by(Review.created_at.desc(), Review.id.desc())
         return list(self.session.exec(statement).all())
 
-    def list_by_author(self, author: ReviewAuthor) -> list[Review]:
+    def page_by_farmer(
+        self, farmer_id: int, filters: FarmerReviewsFilters
+    ) -> tuple[list[Review], int]:
+        statement = select(Review).where(Review.farmer_id == farmer_id)
+        if filters.with_comment:
+            statement = statement.where(func.trim(Review.comment) != "")
+        statement = statement.order_by(Review.created_at.desc(), Review.id.desc())
+        return fetch_page(self.session, statement, filters)
+
+    def rating_of_farmer(self, farmer_id: int) -> tuple[float | None, int]:
+        statement = select(func.avg(Review.rating), func.count(Review.id))
+        average, count = self.session.exec(statement.where(Review.farmer_id == farmer_id)).one()
+        return (None if average is None else float(average)), count
+
+    def list_by_author(
+        self, author: ReviewAuthor, params: PageParams
+    ) -> tuple[list[Review], int]:
         statement = select(Review).where(
             Review.apartment_id == author.apartment_id,
             Review.buyer_id == author.buyer_id,
@@ -42,9 +61,11 @@ class ReviewRepository:
             selectinload(Review.buyer),
         )
         statement = statement.order_by(Review.created_at.desc(), Review.id.desc())
-        return list(self.session.exec(statement).all())
+        return fetch_page(self.session, statement, params)
 
-    def list_reviewable_parts(self, author: ReviewAuthor) -> list[PurchasePart]:
+    def list_reviewable_parts(
+        self, author: ReviewAuthor, params: PageParams
+    ) -> tuple[list[PurchasePart], int]:
         # o campo vazio do autor vira IS NULL, igual ao que a avaliação guarda
         reviewed = select(Review.id).where(
             Review.purchase_id == PurchasePart.purchase_id,
@@ -63,7 +84,7 @@ class ReviewRepository:
             selectinload(PurchasePart.purchase_products).selectinload(PurchaseProduct.product),
         )
         statement = statement.order_by(PurchasePart.closed_at.desc(), PurchasePart.id.desc())
-        return list(self.session.exec(statement).all())
+        return fetch_page(self.session, statement, params)
 
     def save(self, review: Review) -> Review:
         self.session.add(review)

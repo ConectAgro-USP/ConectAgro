@@ -23,7 +23,7 @@ def add_pending_resident(session: Session, building: Apartment) -> tuple[User, B
 def pending_units(client: TestClient, manager: User) -> list[str]:
     login(client, manager)
     response = client.get("/api/apartments/me/buyers", params={"status": "PENDENTE"})
-    return [resident["unit"] for resident in response.json()]
+    return [resident["unit"] for resident in response.json()["items"]]
 
 
 def test_pending_resident_switches_the_request_to_another_building(

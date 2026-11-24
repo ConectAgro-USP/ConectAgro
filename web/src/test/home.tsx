@@ -4,6 +4,7 @@ import type { ReceivedReviews } from "../api/reviews";
 import type { Sale } from "../api/sales";
 import { FarmerHome } from "../pages/FarmerHome";
 import { anaAsFarmer, fakeAuth, jsonResponse, renderWithAuth } from "./helpers";
+import { productsResponse } from "./products";
 
 export const NO_REVIEWS: ReceivedReviews = { average_rating: null, reviews_count: 0, reviews: [] };
 
@@ -37,7 +38,8 @@ export function renderHome(answers: HomeAnswers = {}) {
     }
     if (url === "/api/farmers/me/reviews") return jsonResponse(answers.reviews ?? NO_REVIEWS);
     const products = answers.products ?? [];
-    return products instanceof Response ? products : jsonResponse(products);
+    // a página inicial só lê a contagem, que vale para todos os produtos
+    return products instanceof Response ? products : productsResponse(products);
   });
   vi.stubGlobal("fetch", fetchMock);
   renderWithAuth(<FarmerHome />, fakeAuth({ user: anaAsFarmer }));

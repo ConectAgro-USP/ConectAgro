@@ -1,7 +1,18 @@
 from math import ceil
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from src.models.product import INT4_MAX
+
+
+class PageParams(BaseModel):
+    page: int = Field(default=1, ge=1, le=INT4_MAX)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.page_size
 
 
 class PaginatedResponse[T](BaseModel):
@@ -32,3 +43,7 @@ class PaginatedResponse[T](BaseModel):
             total_pages=total_pages,
             **extra,
         )
+
+    @classmethod
+    def from_params(cls, items: list[T], params: PageParams, total: int, **extra) -> Self:
+        return cls.from_page(items, params.page, params.page_size, total, **extra)

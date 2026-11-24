@@ -1,7 +1,8 @@
 import { screen } from "@testing-library/react";
 import type { Interest } from "../api/interests";
+import { openCostInCents } from "../interestState";
 import { MyInterests } from "../pages/MyInterests";
-import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
+import { anaAsBuyer, fakeAuth, jsonResponse, pageBody, renderWithAuth, stubFetch } from "./helpers";
 
 export const mandioca: Interest = {
   public_id: "interesse-1",
@@ -32,18 +33,36 @@ export const laranja: Interest = {
   quantity: 3,
 };
 
+// a página da API, com o total que ela soma dos interesses abertos
+export function interestsPage(interests: Interest[], extra: object = {}) {
+  const cents = interests.reduce((sum, interest) => sum + openCostInCents(interest), 0);
+  return pageBody(interests, { estimated_total: (cents / 100).toFixed(2), ...extra });
+}
+
+export function interestsResponse(interests: Interest[], extra: object = {}): Response {
+  return jsonResponse(interestsPage(interests, extra));
+}
+
 type InterestsAnswer = Interest[] | Response;
+
+// a consulta por produto recebe só o interesse dele, como na API
+function answerFor(answer: InterestsAnswer, url: string): Response {
+  if (answer instanceof Response) return answer.clone();
+  const product = new URL(url, "http://localhost").searchParams.get("product_public_id");
+  const found = answer.filter((interest) => !product || interest.product_public_id === product);
+  return interestsResponse(found);
+}
 
 // a lista do morador sai à parte, e as outras respostas seguem na mesma ordem
 export function answerMyInterests(...answers: InterestsAnswer[]) {
   const others = globalThis.fetch;
   const queue: InterestsAnswer[] = answers.length > 0 ? answers : [[]];
-  const listed = vi.fn(async () => {
+  const listed = vi.fn(async (url: string) => {
     const answer = queue.length > 1 ? queue.shift()! : queue[0];
-    return answer instanceof Response ? answer.clone() : jsonResponse(answer);
+    return answerFor(answer, url);
   });
   vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
-    String(input) === "/api/interests/me" ? listed() : others(input, init),
+    String(input).startsWith("/api/interests/me") ? listed(String(input)) : others(input, init),
   );
   return listed;
 }

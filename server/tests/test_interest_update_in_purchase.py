@@ -44,7 +44,7 @@ def patch(client: TestClient, resident: Buyer, interest: Interest, quantity: int
 
 def needs(client: TestClient, manager: User) -> dict[str, int]:
     login(client, manager)
-    rows = client.get("/api/apartments/me/needs").json()
+    rows = client.get("/api/apartments/me/needs").json()["items"]
     return {row["product"]["name"]: row["total_quantity"] for row in rows}
 
 

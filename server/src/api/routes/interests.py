@@ -1,9 +1,16 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from src.api.deps import CurrentBuyer, InterestServiceDep
-from src.models.interest import InterestCreate, InterestRead, InterestUpdate
+from src.models.interest import (
+    InterestCreate,
+    InterestRead,
+    InterestUpdate,
+    MyInterestsFilters,
+    MyInterestsPage,
+)
 from src.services.exceptions import (
     InterestAlreadyExistsError,
     InterestInPurchaseError,
@@ -59,9 +66,13 @@ def create_interest(
         raise http_error(error) from None
 
 
-@router.get("/me", response_model=list[InterestRead])
-def get_interests(buyer: CurrentBuyer, interest_service: InterestServiceDep):
-    return interest_service.list_interests(buyer)
+@router.get("/me", response_model=MyInterestsPage)
+def get_interests(
+    filters: Annotated[MyInterestsFilters, Query()],
+    buyer: CurrentBuyer,
+    interest_service: InterestServiceDep,
+):
+    return interest_service.list_interests(buyer, filters)
 
 
 @router.patch("/{public_id}", response_model=InterestRead)

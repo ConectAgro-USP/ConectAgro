@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { anaAsFarmer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
 import { findSummary, renderHome, salesPage } from "../test/home";
-import { orange } from "../test/products";
+import { orange, productsResponse } from "../test/products";
 import { pendingSale } from "../test/sales";
 import { MyProducts } from "./MyProducts";
 
@@ -56,7 +56,7 @@ describe("FarmerHome, when a summary does not load", () => {
 
 describe("MyProducts opened from the home page", () => {
   it("opens the form for a new product", async () => {
-    stubFetch(jsonResponse([orange]));
+    stubFetch(productsResponse([orange]));
     renderWithAuth(<MyProducts />, fakeAuth({ user: anaAsFarmer }), "/meus-produtos?novo=1");
 
     expect(screen.getByRole("heading", { name: "Cadastrar produto" })).toHaveFocus();

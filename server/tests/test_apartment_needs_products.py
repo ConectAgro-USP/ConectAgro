@@ -11,7 +11,7 @@ def needs_of(client: TestClient, manager: User) -> list[str]:
     login(client, manager)
     response = client.get("/api/apartments/me/needs")
     assert response.status_code == status.HTTP_200_OK
-    return [need["product"]["name"] for need in response.json()]
+    return [need["product"]["name"] for need in response.json()["items"]]
 
 
 def test_apartment_needs_leaves_out_a_removed_product(

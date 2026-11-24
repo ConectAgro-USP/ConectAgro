@@ -5,6 +5,7 @@ import type { BuildingNeed } from "../api/interests";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductPicture } from "../components/ProductPicture";
+import { ShowMore } from "../components/ShowMore";
 import { CARD_SURFACE } from "../components/surface";
 import { TitleBar } from "../components/TitleBar";
 import { formatCount, formatMoney, sellerName } from "../format";
@@ -118,7 +119,7 @@ export function BuildingNeeds() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [cartError, setCartError] = useState("");
   const orderLabelId = useId();
-  const needs = list.needs ?? [];
+  const needs = list.needs;
   // sem estoque o produto sai da seleção, mesmo se já estava marcado
   const isSelected = (need: BuildingNeed) =>
     selectedIds.includes(need.product.public_id) && inStock(need);
@@ -176,7 +177,7 @@ export function BuildingNeeds() {
             </button>
           ))}
         </div>
-        {list.needs?.length === 0 && (
+        {list.loaded && !list.error && needs.length === 0 && (
           <p className="pt-12 text-center text-xl text-balance">
             Ainda não há interesses dos moradores. Quando um morador registrar interesse em um
             produto, ele aparece aqui.
@@ -194,6 +195,9 @@ export function BuildingNeeds() {
             ))}
           </ul>
         )}
+        <div className="flex justify-center pt-6 empty:hidden">
+          <ShowMore list={list} label="Mostrar mais produtos" />
+        </div>
         {selected.length > 0 && (
           <section aria-label="Seleção" className={BAR_CLASSES}>
             <div className={BAR_ROW_CLASSES}>

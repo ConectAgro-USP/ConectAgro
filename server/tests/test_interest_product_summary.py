@@ -34,7 +34,7 @@ def my_interests(client: TestClient, resident: Buyer) -> list[dict]:
     login(client, resident.user)
     response = client.get(URL)
     assert response.status_code == status.HTTP_200_OK
-    return response.json()
+    return response.json()["items"]
 
 
 def test_interest_brings_what_the_resident_sees_of_the_product(

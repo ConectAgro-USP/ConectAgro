@@ -29,3 +29,11 @@ export function chosenText(quantity: number): string {
 export function costInCents(quantity: number, price: string): number {
   return Math.round(Number(price) * 100) * quantity;
 }
+
+// só o que ainda pode entrar na próxima compra do prédio entra no total
+export function openCostInCents(interest: Interest): number {
+  const { product } = interest;
+  const open = interestState(interest) === "open";
+  if (product === null || !open || interest.product_status !== AVAILABLE) return 0;
+  return costInCents(interest.quantity, product.price);
+}
