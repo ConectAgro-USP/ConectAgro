@@ -29,6 +29,8 @@ function productsText(count: number): string {
 }
 
 export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
+  // no celular a aba da distância fica por cima do nome
+  const topSpace = farmer.distance_km === null ? "pt-6" : "pt-14";
   const [open, setOpen] = useState(false);
   const [opened, setOpened] = useState(false);
   const productsId = useId();
@@ -42,11 +44,13 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
   }
 
   return (
-    <li className={`relative px-6 pt-14 pb-4 sm:px-10 sm:pt-8 ${CARD_SURFACE}`}>
-      <p className={`${CARD_TAB} bg-lime-700 tabular-nums`}>
-        <span className="sr-only">Distância: </span>
-        {formatDistance(farmer.distance_km)}
-      </p>
+    <li className={`relative px-6 pb-4 sm:px-10 sm:pt-8 ${CARD_SURFACE} ${topSpace}`}>
+      {farmer.distance_km !== null && (
+        <p className={`${CARD_TAB} bg-lime-700 tabular-nums`}>
+          <span className="sr-only">Distância: </span>
+          {formatDistance(farmer.distance_km)}
+        </p>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
           <span aria-hidden="true" className={AVATAR_CLASSES}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { errorMessage, lostAccess } from "../api/client";
+import { ApiError, errorMessage, lostAccess } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 // o que toda página da API tem, seja qual for o resto
@@ -41,6 +41,8 @@ export interface Pages<Search, P extends PageOf> {
   // a primeira página carregando, que vai trocar a lista inteira
   replacing: boolean;
   error: string;
+  // o código HTTP do erro, nulo sem erro ou sem resposta do servidor
+  errorStatus: number | null;
   loadMore: () => void;
   retry: () => void;
 }
@@ -57,6 +59,7 @@ export function usePages<Search, P extends PageOf>(
   const [query, setQuery] = useState<Query<Search>>({ search: firstSearch, page: 1 });
   const [loaded, setLoaded] = useState<Loaded<Search, P>>({ query: null, pages: [] });
   const [error, setError] = useState("");
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   // sem keepPrevious a lista de outra busca sai da tela, para ninguém achar que ela responde à nova
   const pages = keepPrevious || loaded.query?.search === query.search ? loaded.pages : [];
   const lastPage = pages.at(-1);
@@ -66,6 +69,7 @@ export function usePages<Search, P extends PageOf>(
   function changeSearch(search: Search) {
     if (search === query.search) return;
     setError("");
+    setErrorStatus(null);
     setQuery({ search, page: 1 });
   }
 
@@ -75,6 +79,7 @@ export function usePages<Search, P extends PageOf>(
 
   function retry() {
     setError("");
+    setErrorStatus(null);
     // a cópia faz o efeito pedir a mesma página de novo
     setQuery({ ...query });
   }
@@ -99,6 +104,7 @@ export function usePages<Search, P extends PageOf>(
         if (outdated) return;
         replaceFromThisPage([]);
         setError(errorMessage(loadError));
+        setErrorStatus(loadError instanceof ApiError ? loadError.status : null);
         if (lostAccess(loadError)) {
           // sem sessão ou com outra conta, recarregar o usuário tira a pessoa da tela
           await refreshUser();
@@ -122,6 +128,7 @@ export function usePages<Search, P extends PageOf>(
     loading,
     replacing: loading && query.page === 1,
     error,
+    errorStatus,
     loadMore,
     retry,
   };

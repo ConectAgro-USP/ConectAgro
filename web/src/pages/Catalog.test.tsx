@@ -53,12 +53,11 @@ async function findRow(name: string): Promise<HTMLElement> {
 }
 
 describe("Dashboard, catalog of the resident and the manager", () => {
-  it("opens with ConectAgro and lists the products on sale", async () => {
+  it("opens with the slogan and lists the products on sale", async () => {
     const fetchMock = renderHome(resident, pageOf([mandioca, laranja]));
 
-    expect(screen.getByRole("heading", { level: 1, name: "ConectAgro" })).toBeInTheDocument();
     expect(screen.getByText("Conectando residências à agricultura familiar")).toBeVisible();
-    expect(screen.getByRole("heading", { level: 2, name: "Produtos em destaque" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Produtos disponíveis" })).toBeVisible();
     const row = await findRow("Mandioca");
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
     expect(within(row).getByRole("link")).toHaveAttribute("href", "/produtos/produto-1");
@@ -100,8 +99,11 @@ describe("Dashboard, catalog of the resident and the manager", () => {
     const fetchMock = renderHome(anaAsFarmer);
 
     expect(screen.getByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
-    expect(screen.queryByText("Produtos em destaque")).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalledWith("/api/products?page=1", expect.anything());
+    expect(screen.queryByText("Produtos disponíveis")).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/products\?/),
+      expect.anything(),
+    );
   });
 
   it("shows more products when asked", async () => {

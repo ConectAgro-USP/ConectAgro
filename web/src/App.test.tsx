@@ -4,7 +4,7 @@ import { ana, anaAsBuyer, fakeAuth, renderWithAuth, stubSilentApi } from "./test
 
 describe("App", () => {
   it.each([
-    ["/", "Produtos em destaque"],
+    ["/", "Produtos disponíveis"],
     ["/perfil", "Meu perfil"],
   ])("shows the header with the page at %s", (url, heading) => {
     stubSilentApi();

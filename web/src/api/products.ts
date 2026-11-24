@@ -56,9 +56,43 @@ export function listMyProducts(): Promise<MyProduct[]> {
   return apiFetch<MyProduct[]>("/products/me");
 }
 
-// o usePages manda a busca antes da página, e o catálogo não tem busca
-export function listCatalog(_search: null, page: number): Promise<Page<CatalogProduct>> {
-  return apiFetch<Page<CatalogProduct>>(`/products?page=${page}`);
+export const CATALOG_SORTS = [
+  "relevance",
+  "lowest_price",
+  "latest_expiration",
+  "highest_rating",
+] as const;
+export type CatalogSort = (typeof CATALOG_SORTS)[number];
+
+// texto vazio e null deixam o filtro de fora do pedido
+export interface CatalogFilters {
+  q: string;
+  sort: CatalogSort;
+  expirationFrom: string;
+  minQuantity: number | null;
+}
+
+export const NO_CATALOG_FILTERS: CatalogFilters = {
+  q: "",
+  sort: "relevance",
+  expirationFrom: "",
+  minQuantity: null,
+};
+
+// o endereço do catálogo usa estes nomes, e o link refaz a busca
+export function catalogQueryOf(filters: CatalogFilters): URLSearchParams {
+  const query = new URLSearchParams();
+  if (filters.q) query.set("q", filters.q);
+  if (filters.expirationFrom) query.set("expiration_from", filters.expirationFrom);
+  if (filters.minQuantity !== null) query.set("min_quantity", String(filters.minQuantity));
+  if (filters.sort !== "relevance") query.set("sort", filters.sort);
+  return query;
+}
+
+export function listCatalog(filters: CatalogFilters, page: number): Promise<Page<CatalogProduct>> {
+  const query = catalogQueryOf(filters);
+  query.set("page", String(page));
+  return apiFetch<Page<CatalogProduct>>(`/products?${query}`);
 }
 
 export function getProduct(publicId: string): Promise<ProductDetail> {

@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useAction } from "../hooks/useAction";
 import { navigationOf, PROFILE_DESTINATION, type NavDestination } from "../restrictedPages";
 import { FormError } from "./FormError";
+import { HeaderSearch } from "./HeaderSearch";
 import { Logo } from "./Logo";
 
 const FOCUS_CLASSES = "focus-visible:outline-2 focus-visible:outline-lime-800";
@@ -42,8 +43,9 @@ export function AppHeader() {
           <Link to="/" className={`shrink-0 rounded-lg text-3xl ${FOCUS_CLASSES}`}>
             <Logo />
           </Link>
-          {/* lugar da busca e do carrinho */}
-          <div className="min-w-0 flex-1" />
+          <div className="min-w-0 flex-1">
+            <HeaderSearch />
+          </div>
           <div className="hidden shrink-0 items-center gap-1 md:flex">
             <DestinationLink page={PROFILE_DESTINATION} className={ACCOUNT_CLASSES} />
             <button

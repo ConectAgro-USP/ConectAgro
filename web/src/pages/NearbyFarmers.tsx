@@ -1,73 +1,75 @@
-import { useId } from "react";
-import { DISTANCES, searchNearbyFarmers, type Distance } from "../api/farmers";
+import { useSearchParams } from "react-router";
+import { DISTANCES, searchNearbyFarmers, type FarmerFilters } from "../api/farmers";
 import { SecondaryButton } from "../components/Button";
 import { FarmerCard } from "../components/farmers/FarmerCard";
 import { FormError } from "../components/FormError";
 import { TitleBar } from "../components/TitleBar";
 import { formatCount } from "../format";
 import { usePages } from "../hooks/usePages";
+import { FarmerFilterFields } from "./farmers/FarmerFilterFields";
+import { farmerFiltersOf, farmerParamsOf } from "./farmers/farmerParams";
 
-const FIRST_DISTANCE: Distance = 15;
-const DISTANCE_BUTTON_CLASSES =
-  "h-11 flex-1 rounded-full border border-stone-400 bg-white px-2 font-bold sm:flex-none " +
-  "sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800 aria-pressed:border-lime-800 aria-pressed:bg-lime-100 " +
-  "aria-pressed:text-lime-800";
+// o prédio sem o CEP no mapa não tem de onde medir a distância
+const NO_BUILDING_POINT = 409;
 
-interface DistanceFilterProps {
-  value: Distance;
-  onChange: (distance: Distance) => void;
+// a busca vai como texto, que o usePages compara pelo valor
+function loadFarmersPage(search: string, page: number) {
+  return searchNearbyFarmers(farmerFiltersOf(new URLSearchParams(search)), page);
 }
 
-function DistanceFilter({ value, onChange }: Readonly<DistanceFilterProps>) {
-  const labelId = useId();
+function totalText(total: number, filters: FarmerFilters): string {
+  const count = formatCount(total, "agricultor", "agricultores");
+  if (filters.distance === null) {
+    return `${count} ${total === 1 ? "encontrado" : "encontrados"}`;
+  }
+  return `${count} a até ${filters.distance} km do seu prédio`;
+}
 
-  return (
-    <div role="group" aria-labelledby={labelId} className="flex flex-wrap items-center gap-2">
-      <span id={labelId} className="w-full text-lg font-bold sm:mr-2 sm:w-auto">
-        Distância
-      </span>
-      {DISTANCES.map((distance) => (
-        <button
-          key={distance}
-          type="button"
-          aria-pressed={distance === value}
-          onClick={() => onChange(distance)}
-          className={DISTANCE_BUTTON_CLASSES}
-        >
-          Até {distance} km
-        </button>
-      ))}
-    </div>
-  );
+function emptyText(filters: FarmerFilters): string {
+  const where =
+    filters.distance === null ? "encontrado" : `a até ${filters.distance} km do seu prédio`;
+  const filtered = filters.name !== "" || filters.products.length > 0;
+  return `Nenhum agricultor ${where}${filtered ? " com esses filtros" : ""}`;
+}
+
+function loadingText(filters: FarmerFilters): string {
+  const measures = filters.distance !== null || filters.sort === "distance";
+  return measures ? "Calculando as distâncias..." : "Procurando os agricultores...";
 }
 
 export function NearbyFarmers() {
-  const farmers = usePages(searchNearbyFarmers, FIRST_DISTANCE, {
-    keyOf: (farmer) => farmer.public_id,
-  });
-  const distance = farmers.search;
+  const [params, setParams] = useSearchParams();
+  const filters = farmerFiltersOf(params);
+  const search = farmerParamsOf(filters).toString();
+  const farmers = usePages(loadFarmersPage, search, { keyOf: (farmer) => farmer.public_id });
+  // voltar ou abrir um link troca o endereço, e a lista segue
+  if (farmers.search !== search) {
+    farmers.changeSearch(search);
+  }
+  const { distance } = filters;
   const total = farmers.lastPage?.total ?? 0;
   const empty = !farmers.loading && farmers.error === "" && farmers.items.length === 0;
-  const largerDistance = DISTANCES.find((option) => option > distance);
+  const largerDistance = DISTANCES.find((option) => distance !== null && option > distance);
+  const filtered = filters.name !== "" || filters.products.length > 0;
+  const noBuildingPoint = farmers.errorStatus === NO_BUILDING_POINT;
+
+  function changeFilters(next: FarmerFilters) {
+    const nextSearch = farmerParamsOf(next);
+    if (nextSearch.toString() !== search) setParams(nextSearch);
+  }
 
   return (
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
       <TitleBar title="Agricultores" />
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div className="space-y-3 border-b border-stone-300 py-8">
-          <DistanceFilter value={distance} onChange={farmers.changeSearch} />
+        <div className="space-y-4 border-b border-stone-300 py-8">
+          <FarmerFilterFields filters={filters} onChange={changeFilters} />
           {/* a BrasilAPI dá o centro da cidade para muitos CEPs, então a conta é aproximada */}
           <p className="text-stone-600">
             Distância em linha reta entre o centro da sua cidade e o centro da cidade do agricultor, aproximada.
           </p>
         </div>
-        {total > 0 && (
-          <p className="pt-8 text-lg text-stone-600">
-            {formatCount(total, "agricultor", "agricultores")} a até {distance} km do seu
-            prédio
-          </p>
-        )}
+        {total > 0 && <p className="pt-8 text-lg text-stone-600">{totalText(total, filters)}</p>}
         {farmers.items.length > 0 && (
           <ul className="space-y-4 pt-4">
             {farmers.items.map((farmer) => (
@@ -77,20 +79,41 @@ export function NearbyFarmers() {
         )}
         {empty && (
           <div className="flex flex-col items-center gap-6 pt-12 text-center text-xl">
-            <p>Nenhum agricultor a até {distance} km do seu prédio</p>
+            <p>{emptyText(filters)}</p>
             {largerDistance !== undefined && (
-              <SecondaryButton onClick={() => farmers.changeSearch(largerDistance)}>
+              <SecondaryButton
+                onClick={() => changeFilters({ ...filters, distance: largerDistance })}
+              >
                 Procurar até {largerDistance} km
+              </SecondaryButton>
+            )}
+            {distance === DISTANCES.at(-1) && (
+              <SecondaryButton onClick={() => changeFilters({ ...filters, distance: null })}>
+                Procurar em qualquer distância
+              </SecondaryButton>
+            )}
+            {filtered && (
+              <SecondaryButton
+                onClick={() => changeFilters({ ...filters, name: "", products: [] })}
+              >
+                Limpar filtros
               </SecondaryButton>
             )}
           </div>
         )}
         <div className="flex flex-col items-center gap-4 pt-10">
           <output className="text-lg text-stone-600">
-            {farmers.loading ? "Calculando as distâncias..." : ""}
+            {farmers.loading ? loadingText(filters) : ""}
           </output>
           <FormError message={farmers.error} />
-          {farmers.error && (
+          {noBuildingPoint && (
+            <SecondaryButton
+              onClick={() => changeFilters({ ...filters, distance: null, sort: "reputation" })}
+            >
+              Ver agricultores sem a distância
+            </SecondaryButton>
+          )}
+          {farmers.error && !noBuildingPoint && (
             <SecondaryButton onClick={farmers.retry}>Tentar de novo</SecondaryButton>
           )}
           {farmers.hasMore && !farmers.loading && !farmers.error && (

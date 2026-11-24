@@ -46,7 +46,6 @@ describe("AppHeader", () => {
       const { container } = renderWithAuth(<AppHeader />, fakeAuth({ profileType }));
 
       expect(container.querySelectorAll(":disabled")).toHaveLength(0);
-      expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Carrinho" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Notificações" })).not.toBeInTheDocument();
     },
