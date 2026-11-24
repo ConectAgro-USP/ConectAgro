@@ -9,7 +9,7 @@ from src.models.interest import (
     InterestUpdate,
 )
 from src.models.product import UNAVAILABLE, ProductDetailRead
-from src.repository.interest_repository import InterestRepository
+from src.repository.interest_repository import InterestGoneError, InterestRepository
 from src.repository.profile_repository import DuplicateValueError
 from src.services.exceptions import (
     InterestAlreadyExistsError,
@@ -68,7 +68,11 @@ class InterestService:
             raise NotInterestOwnerUpdateError
     
         interest.sqlmodel_update(interest_update.model_dump(exclude_unset=True))
-        return self.interests.update(interest)
+        try:
+            return self.interests.update(interest)
+        except InterestGoneError:
+            # a compra do síndico pode apagar o interesse durante a edição
+            raise InterestNotFoundError from None
         
 
     def delete(self, public_id: UUID, buyer: Buyer) -> None:
