@@ -23,6 +23,8 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:5173"
     BACKEND_CORS_ORIGINS: str = ""
+    # o Render preenche com o commit publicado, e o deploy espera por ele
+    RENDER_GIT_COMMIT: str = ""
 
     @field_validator("DATABASE_URL")
     @classmethod

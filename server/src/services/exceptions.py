@@ -145,3 +145,7 @@ class PictureTooLargeError(Exception):
 
 class UnsupportedPictureTypeError(Exception):
     pass
+
+
+class BuildingNameTooShortError(Exception):
+    pass

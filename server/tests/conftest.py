@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from src.api import rate_limits
-from src.api.deps import RECENT_COMPANIES, get_session
+from src.api.deps import RECENT_ADDRESSES, RECENT_COMPANIES, get_session
 from src.main import app
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
@@ -61,8 +61,9 @@ def reset_rate_limits():
 
 
 @pytest.fixture(autouse=True)
-def reset_recent_companies():
+def reset_recent_lookups():
     RECENT_COMPANIES.reset()
+    RECENT_ADDRESSES.reset()
 
 
 @pytest.fixture

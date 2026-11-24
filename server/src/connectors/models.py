@@ -5,11 +5,16 @@ WITHOUT_NULL = r"^[^\x00]*$"
 
 
 class Coordinates(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
 
 
 class Address(BaseModel):
+    # o mesmo endereço fica guardado e vai para vários pedidos
+    model_config = ConfigDict(frozen=True)
+
     cep: str = Field(pattern=r"^[0-9]{8}$")
     state: str
     city: str

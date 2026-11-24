@@ -3,13 +3,14 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 
-from src.api.deps import AuthServiceDep, CurrentUser
+from src.api.deps import AuthServiceDep, CurrentUser, OptionalUser
 from src.api.rate_limits import (
-    LOGIN_FAILURES_PER_EMAIL,
+    LOGIN_FAILURES_PER_EMAIL_AND_IP,
     LOGIN_FAILURES_PER_IP,
     SIGNUPS_PER_IP,
     IpKey,
     count_or_reject,
+    login_key,
     reject_if_blocked,
 )
 from src.auth.oauth import oauth
@@ -46,19 +47,27 @@ async def login_google(request: Request):
 
 @router.get("/callback/google", name="auth_google_callback")
 async def auth_google_callback(request: Request, auth_service: AuthServiceDep):
+    google_error = RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=google")
     try:
         token = await oauth.google.authorize_access_token(request)
-        userinfo = token["userinfo"]
+    except OAuthError:
+        return google_error
+    # sem id_token o Authlib não monta o userinfo, e sem e-mail não há conta
+    userinfo = token.get("userinfo") or {}
+    email = userinfo.get("email")
+    if not isinstance(email, str) or not email:
+        return google_error
+    try:
         user = await run_in_threadpool(
             auth_service.authenticate_with_google,
-            email=userinfo["email"].lower(),
-            name=userinfo.get("name", userinfo["email"]),
+            email=email.lower(),
+            name=userinfo.get("name", email),
             picture_url=userinfo.get("picture"),
             email_verified=userinfo.get("email_verified") is True,
             hosted_domain=userinfo.get("hd"),
         )
-    except (OAuthError, GoogleLoginRejectedError):
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=google")
+    except GoogleLoginRejectedError:
+        return google_error
 
     response = RedirectResponse(url=settings.FRONTEND_URL)
     _set_auth_cookie(response, user)
@@ -71,23 +80,23 @@ async def read_current_user(current_user: CurrentUser):
 
 
 @router.post("/logout")
-async def logout(response: Response):
+def logout(response: Response, auth_service: AuthServiceDep, user: OptionalUser):
+    if user is not None:
+        auth_service.end_sessions(user)
     response.delete_cookie("access_token", httponly=True, secure=settings.is_prod)
     return {"ok": True}
 
 
 # def e não async, para o FastAPI rodar o banco e o argon2 síncronos no threadpool
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(
-    user_in: UserCreate, auth_service: AuthServiceDep, ip_key: IpKey
-) -> dict[str, str | int]:
+def register(user_in: UserCreate, auth_service: AuthServiceDep, ip_key: IpKey) -> dict[str, str]:
     count_or_reject(SIGNUPS_PER_IP, ip_key)
     try:
-        new_user = auth_service.register(user_in)
+        auth_service.register(user_in)
     except EmailAlreadyRegisteredError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "E-mail já cadastrado") from None
 
-    return {"message": "Conta criada com sucesso", "user_id": new_user.id}
+    return {"message": "Conta criada com sucesso"}
 
 
 @router.post("/login")
@@ -97,7 +106,8 @@ def login(
     # o IP só conta senhas erradas: logins certos de uma turma não o bloqueiam
     reject_if_blocked(LOGIN_FAILURES_PER_IP, ip_key)
     # o e-mail conta antes do argon2: pedidos simultâneos não furam o limite
-    count_or_reject(LOGIN_FAILURES_PER_EMAIL, user_in.email)
+    attempt_key = login_key(user_in.email, ip_key)
+    count_or_reject(LOGIN_FAILURES_PER_EMAIL_AND_IP, attempt_key)
     try:
         user = auth_service.authenticate(user_in.email, user_in.password)
     except InvalidCredentialsError:
@@ -105,9 +115,9 @@ def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos") from None
     except Exception:
         # o erro é do servidor, não da senha: a tentativa não conta
-        LOGIN_FAILURES_PER_EMAIL.undo_attempt(user_in.email)
+        LOGIN_FAILURES_PER_EMAIL_AND_IP.undo_attempt(attempt_key)
         raise
 
-    LOGIN_FAILURES_PER_EMAIL.undo_attempt(user_in.email)
+    LOGIN_FAILURES_PER_EMAIL_AND_IP.undo_attempt(attempt_key)
     _set_auth_cookie(response, user)
     return {"message": "Login realizado com sucesso"}

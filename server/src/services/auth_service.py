@@ -39,6 +39,11 @@ class AuthService:
             raise InvalidCredentialsError
         return user
 
+    def end_sessions(self, user: User) -> None:
+        # cada token leva a versão, então os antigos deixam de valer em todo aparelho
+        user.session_version += 1
+        self.users.save(user)
+
     def authenticate_with_google(
         self,
         email: str,

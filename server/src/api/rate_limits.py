@@ -13,7 +13,8 @@ TOO_MANY_ATTEMPTS = "Muitas tentativas. Tente novamente mais tarde"
 MAX_IP_LENGTH = 45
 
 # todos contam na memória do processo: valem enquanto a API roda num processo só
-LOGIN_FAILURES_PER_EMAIL = RateLimiter(max_attempts=5, window_seconds=15 * MINUTE)
+# com o IP na chave, quem erra a senha de outra pessoa não trava o login dela
+LOGIN_FAILURES_PER_EMAIL_AND_IP = RateLimiter(max_attempts=5, window_seconds=15 * MINUTE)
 PROFILE_REQUESTS_PER_USER = RateLimiter(max_attempts=20, window_seconds=HOUR)
 # folgados de propósito: uma turma inteira pode usar o mesmo IP
 LOGIN_FAILURES_PER_IP = RateLimiter(max_attempts=30, window_seconds=15 * MINUTE)
@@ -21,7 +22,7 @@ SIGNUPS_PER_IP = RateLimiter(max_attempts=50, window_seconds=HOUR)
 PROFILE_REQUESTS_PER_IP = RateLimiter(max_attempts=200, window_seconds=HOUR)
 # o conftest zera estes limites antes de cada teste
 ALL_LIMITERS = (
-    LOGIN_FAILURES_PER_EMAIL,
+    LOGIN_FAILURES_PER_EMAIL_AND_IP,
     PROFILE_REQUESTS_PER_USER,
     LOGIN_FAILURES_PER_IP,
     SIGNUPS_PER_IP,
@@ -53,6 +54,10 @@ def get_ip_key(request: Request) -> str:
 
 
 IpKey = Annotated[str, Depends(get_ip_key)]
+
+
+def login_key(email: str, ip_key: str) -> str:
+    return f"{email}|{ip_key}"
 
 
 def reject_if_blocked(limiter: RateLimiter, key: str) -> None:

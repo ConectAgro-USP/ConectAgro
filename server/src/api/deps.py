@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from src.connectors.brasilapi import BrasilApiConnector
 from src.connectors.cnpja import CnpjaConnector
+from src.connectors.models import Address
 from src.core.db import engine
 from src.core.security import decode_access_token
 from src.models.apartment import Apartment
@@ -24,6 +25,7 @@ from src.repository.review_repository import ReviewRepository
 from src.repository.user_repository import UserRepository
 from src.services.apartment_service import ApartmentService
 from src.services.auth_service import AuthService
+from src.services.cep_service import CepService
 from src.services.cnpj_service import CnpjService
 from src.services.company_cache import CompanyCache
 from src.services.distance_service import DistanceService
@@ -34,12 +36,15 @@ from src.services.product_search_service import ProductSearchService
 from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
 from src.services.purchase_service import PurchaseService
+from src.services.recent_cache import RecentCache
 from src.services.review_service import ReviewService
 
 # um client só, dividido entre as threads, reaproveita as conexões abertas
 http_client = httpx.Client()
 # a CNPJá aceita poucas consultas: a prévia e o cadastro gastam uma só
 RECENT_COMPANIES = CompanyCache(keep_seconds=60 * 60)
+# a BrasilAPI responde o mesmo CEP na prévia, no cadastro e nas novas tentativas
+RECENT_ADDRESSES = RecentCache[Address](keep_seconds=60 * 60)
 
 
 def get_session() -> Generator[Session, None, None]:
@@ -87,6 +92,19 @@ def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+def get_optional_user(
+    users: UserRepositoryDep,
+    access_token: Annotated[str | None, Cookie()] = None,
+) -> User | None:
+    try:
+        return get_current_user(users, access_token)
+    except HTTPException:
+        return None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
 def get_brasilapi_connector() -> BrasilApiConnector:
     return BrasilApiConnector(http_client)
 
@@ -111,7 +129,11 @@ ProfileRepositoryDep = Annotated[ProfileRepository, Depends(get_profile_reposito
 def get_profile_service(
     profiles: ProfileRepositoryDep, ceps: BrasilApiDep, companies: CnpjaDep
 ) -> ProfileService:
-    return ProfileService(profiles, ceps, CnpjService(companies, RECENT_COMPANIES))
+    return ProfileService(
+        profiles,
+        CepService(ceps, RECENT_ADDRESSES),
+        CnpjService(companies, RECENT_COMPANIES),
+    )
 
 
 ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]

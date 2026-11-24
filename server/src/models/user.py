@@ -52,7 +52,7 @@ class User(UserBase, table=True):
 
 
 class UserRead(UserBase):
-    id: int
+    # sem o id inteiro, que revelaria quantas contas existem
     created_at: datetime
 
 

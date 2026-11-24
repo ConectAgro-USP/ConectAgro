@@ -29,6 +29,11 @@ Unit = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=10),
     AfterValidator(reject_null_character),
 ]
+BuildingNameQuery = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=150),
+    AfterValidator(reject_null_character),
+]
 FORBID_UNKNOWN_FIELDS = ConfigDict(extra="forbid")
 
 
