@@ -2,13 +2,14 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, or_
+from sqlalchemy import delete, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.models.farmer import Farmer
 from src.models.product import Product
+from src.models.product_picture import ProductPicture
 from src.models.product_search import (
     PRODUCTS_PER_PAGE,
     ProductSearchFilters,
@@ -120,6 +121,8 @@ class ProductRepository:
         return self.session.exec(statement.limit(1)).first() is not None
 
     def delete_product(self, product: Product) -> None:
+        # a foto sai junto, o SQLite dos testes não aplica o cascade da chave
+        self.session.exec(delete(ProductPicture).where(ProductPicture.product_id == product.id))
         self.session.delete(product)
         try:
             self.session.commit()

@@ -16,6 +16,7 @@ from src.models.review import ReviewAuthor
 from src.models.user import User
 from src.repository.farmer_search_repository import FarmerSearchRepository
 from src.repository.interest_repository import InterestRepository
+from src.repository.product_picture_repository import ProductPictureRepository
 from src.repository.product_repository import ProductRepository
 from src.repository.profile_repository import ProfileRepository
 from src.repository.purchase_repository import PurchaseRepository
@@ -28,6 +29,7 @@ from src.services.company_cache import CompanyCache
 from src.services.distance_service import DistanceService
 from src.services.farmer_search_service import FarmerSearchService
 from src.services.interests_service import InterestService
+from src.services.product_picture_service import ProductPictureService
 from src.services.product_search_service import ProductSearchService
 from src.services.product_service import ProductService
 from src.services.profile_service import ProfileService
@@ -134,6 +136,15 @@ def get_product_service(products: ProductRepositoryDep) -> ProductService:
 
 
 ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]
+
+
+def get_product_picture_service(
+    session: SessionDep, products: ProductRepositoryDep
+) -> ProductPictureService:
+    return ProductPictureService(products, ProductPictureRepository(session))
+
+
+ProductPictureServiceDep = Annotated[ProductPictureService, Depends(get_product_picture_service)]
 
 
 def get_interest_repository(session: SessionDep) -> InterestRepository:

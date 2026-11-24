@@ -347,6 +347,7 @@ def test_get_product_returns_every_product_field(
         "is_available": True,
         "price": "3.20",
         "expiration_date": FUTURE.isoformat(),
+        "unit": "kg",
         "farmer_public_id": str(seller.public_id),
     }
 
@@ -496,6 +497,7 @@ def test_catalog_lists_products_of_every_farmer(
             "is_available": True,
             "price": "2.50",
             "expiration_date": FUTURE.isoformat(),
+            "unit": "kg",
             "farmer_public_id": str(seller.public_id),
             "farmer_short_name": "João S.",
             "farmer_farm_name": None,
@@ -511,6 +513,7 @@ def test_catalog_lists_products_of_every_farmer(
             "is_available": True,
             "price": "4.90",
             "expiration_date": FUTURE.isoformat(),
+            "unit": "kg",
             "farmer_public_id": str(maria.public_id),
             "farmer_short_name": "Maria S.",
             "farmer_farm_name": None,
@@ -701,6 +704,7 @@ def test_owner_updates_only_the_fields_sent(
         "is_available": True,
         "price": "3.00",
         "expiration_date": FUTURE.isoformat(),
+        "unit": "kg",
         "farmer_public_id": str(farmer.public_id),
     }
     session.refresh(lettuce)
@@ -719,6 +723,7 @@ def test_owner_updates_every_field(client: TestClient, session: Session, farmer:
         "is_available": False,
         "price": "4.75",
         "expiration_date": (TODAY + timedelta(days=5)).isoformat(),
+        "unit": "duzia",
     }
 
     response = client.patch(f"/api/products/{lettuce.public_id}", json=changes)

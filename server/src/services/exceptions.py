@@ -133,3 +133,15 @@ class NotInterestOwnerDeleteError(Exception):
 
 class NotInterestOwnerUpdateError(Exception):
     pass
+
+
+class ProductPictureNotFoundError(Exception):
+    pass
+
+
+class PictureTooLargeError(Exception):
+    pass
+
+
+class UnsupportedPictureTypeError(Exception):
+    pass
