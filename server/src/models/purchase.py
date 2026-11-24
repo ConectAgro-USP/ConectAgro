@@ -10,7 +10,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 from src.core.text import short_name
 
-from .product import BUSINESS_TZ, INT4_MAX
+from .product import BUSINESS_TZ, INT4_MAX, ProductUnit
 
 if TYPE_CHECKING:
     from .apartment import Apartment
@@ -129,6 +129,10 @@ class PurchaseProduct(PurchaseProductBase, table=True):
     @property
     def product_name(self) -> str | None:
         return self.product.name if self.product else None
+
+    @property
+    def product_unit(self) -> ProductUnit | None:
+        return self.product.unit if self.product else None
 
     @property
     def subtotal(self) -> Decimal:

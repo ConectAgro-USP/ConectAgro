@@ -3,6 +3,7 @@ import type { Interest } from "../../api/interests";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 import { CARD_SURFACE } from "../../components/surface";
+import { formatQuantity, quantityLabel } from "../../format";
 import { useAction } from "../../hooks/useAction";
 import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
 import { AVAILABLE, deliveredText, interestState, purchaseText } from "../../interestState";
@@ -34,6 +35,8 @@ interface InterestCardProps {
 export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCardProps>) {
   const name = interest.product_name ?? "Produto removido";
   const state = interestState(interest);
+  const unit = interest.product?.unit;
+  const atLeastOne = `Informe uma quantidade de pelo menos ${formatQuantity(1, unit)}`;
   const available = interest.product_status === AVAILABLE;
   // em compra não se edita, e entregue se pede de novo se estiver à venda
   const editable = available && state !== "purchase";
@@ -95,7 +98,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
           <form onSubmit={handleSubmit} className="space-y-2">
             {reordering && <p className="font-bold text-stone-900">{details}</p>}
             <label htmlFor={quantityId} className="block text-sm font-bold">
-              Quantidade (kg)
+              {quantityLabel(unit)}
             </label>
             <div className="flex gap-3">
               <input
@@ -117,12 +120,14 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
                 {reordering ? "Pedir de novo" : "Salvar"}
               </PrimaryButton>
             </div>
-            {invalid && <FormError message="Informe uma quantidade de pelo menos 1 kg" />}
+            {invalid && <FormError message={atLeastOne} />}
             <FormError message={save.error} />
           </form>
         ) : (
           <div className="text-stone-600">
-            <p className="text-lg font-bold text-stone-900 tabular-nums">{interest.quantity} kg</p>
+            <p className="text-lg font-bold text-stone-900 tabular-nums">
+              {formatQuantity(interest.quantity, unit)}
+            </p>
             <p>{details}</p>
             {/* a recusa segue à vista depois da releitura */}
             <FormError message={save.error} />

@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { pageQuery, type Page } from "./pagination";
+import type { ProductUnit } from "./products";
 import type { ReceivedReview } from "./reviews";
 
 export const DISTANCES = [5, 10, 15] as const;
@@ -35,6 +36,7 @@ export interface FarmerProduct {
   picture_url: string | null;
   quantity: number;
   price: string;
+  unit: ProductUnit;
   expiration_date: string;
 }
 

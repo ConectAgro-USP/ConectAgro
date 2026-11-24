@@ -87,6 +87,7 @@ def test_farmer_sees_only_own_part_with_items_and_total(
             {
                 "product_public_id": str(lettuce.public_id),
                 "product_name": "Alface",
+                "product_unit": "kg",
                 "quantity": 4,
                 "unit_price": "2.50",
                 "subtotal": "10.00",
@@ -94,6 +95,7 @@ def test_farmer_sees_only_own_part_with_items_and_total(
             {
                 "product_public_id": str(kale.public_id),
                 "product_name": "Couve",
+                "product_unit": "kg",
                 "quantity": 1,
                 "unit_price": "4.00",
                 "subtotal": "4.00",

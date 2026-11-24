@@ -3,7 +3,7 @@ import { useState, type ComponentProps } from "react";
 import { Link } from "react-router";
 import type { FarmerProduct } from "../../api/farmers";
 import type { Interest } from "../../api/interests";
-import { formatCount, formatFullDate, formatMoney } from "../../format";
+import { formatFullDate, formatMoney, formatQuantity, formatStock, pricePer } from "../../format";
 import { CART_LIMIT, useCart } from "../../hooks/useCart";
 import { chosenText, deliveredText } from "../../interestState";
 import { PrimaryButton } from "../Button";
@@ -21,7 +21,7 @@ const PRICE_CLASSES =
   "flex flex-wrap items-center gap-x-2 gap-y-2 px-4 pt-1 pb-3 sm:w-44 sm:shrink-0 " +
   "sm:flex-col sm:flex-nowrap sm:justify-center sm:gap-0 sm:bg-stone-500 sm:p-4 sm:text-white";
 
-// botão compacto do síndico, que soma um quilo de cada vez
+// botão compacto do síndico, que soma um de cada vez
 function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
   const cart = useCart();
   const [full, setFull] = useState(false);
@@ -43,7 +43,7 @@ function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
         Adicionar
       </PrimaryButton>
       <p role="status" className="font-bold empty:hidden">
-        {inCart > 0 ? `No carrinho: ${inCart} kg` : ""}
+        {inCart > 0 ? `No carrinho: ${formatQuantity(inCart, product.unit)}` : ""}
       </p>
       {full && (
         <p role="alert" className="font-bold text-red-700 sm:text-white">
@@ -54,17 +54,17 @@ function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
   );
 }
 
-function markText({ quantity, purchase }: Interest): string {
-  if (!purchase) return chosenText(quantity);
+function markText({ quantity, purchase }: Interest, unit: string): string {
+  if (!purchase) return chosenText(quantity, unit);
   return purchase.status === "ENTREGUE" ? deliveredText(purchase) : "Na compra do prédio";
 }
 
 // marca para o morador o que ele já escolheu
-function InterestMark({ interest }: Readonly<{ interest: Interest }>) {
+function InterestMark({ interest, unit }: Readonly<{ interest: Interest; unit: string }>) {
   return (
     <p className={MARK_CLASSES}>
       <HeartIcon aria-hidden="true" className="size-4 shrink-0" />
-      {markText(interest)}
+      {markText(interest, unit)}
     </p>
   );
 }
@@ -98,15 +98,15 @@ export function ProductRow({ product, seller, rating, interest }: Readonly<Produ
             <p className="line-clamp-2 break-words text-stone-600">{product.description}</p>
           )}
           <p className="text-stone-600">
-            {formatCount(product.quantity, "kg disponível", "kg disponíveis")} · Vence{" "}
+            {formatStock(product.quantity, product.unit)} · Vence{" "}
             <span className="tabular-nums">{formatFullDate(product.expiration_date)}</span>
           </p>
-          {interest && <InterestMark interest={interest} />}
+          {interest && <InterestMark interest={interest} unit={product.unit} />}
         </div>
         <div className={PRICE_CLASSES}>
           <p className="flex items-baseline gap-2 sm:flex-col sm:items-center sm:gap-0">
             <span className="text-2xl font-bold tabular-nums">{formatMoney(product.price)}</span>{" "}
-            <span className="text-sm">por quilo</span>
+            <span className="text-sm">{pricePer(product.unit)}</span>
           </p>
           <AddToCart product={product} />
         </div>

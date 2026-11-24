@@ -1,4 +1,5 @@
 import type { PurchaseStatus } from "./api/history";
+import type { ProductUnit } from "./api/products";
 
 // as datas seguem o horário de Brasília, igual aos filtros da API
 const BUSINESS_TZ = "America/Sao_Paulo";
@@ -84,6 +85,60 @@ export function sellerName(farmer: { short_name: string; farm_name: string | nul
 
 export function formatCount(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+interface UnitWords {
+  one: string;
+  many: string;
+  name: string;
+}
+
+const UNITS: Record<ProductUnit, UnitWords> = {
+  kg: { one: "kg", many: "kg", name: "quilo" },
+  unidade: { one: "unidade", many: "unidades", name: "unidade" },
+  duzia: { one: "dúzia", many: "dúzias", name: "dúzia" },
+  maco: { one: "maço", many: "maços", name: "maço" },
+  litro: { one: "litro", many: "litros", name: "litro" },
+};
+
+type MaybeUnit = string | null | undefined;
+
+// sem a unidade, como no interesse de produto apagado, vale o quilo
+function wordsOf(unit: MaybeUnit): UnitWords {
+  return unit && Object.hasOwn(UNITS, unit) ? UNITS[unit as ProductUnit] : UNITS.kg;
+}
+
+export function unitWord(count: number, unit: MaybeUnit): string {
+  const words = wordsOf(unit);
+  return count === 1 ? words.one : words.many;
+}
+
+export function unitPlural(unit: MaybeUnit): string {
+  return wordsOf(unit).many;
+}
+
+export function formatQuantity(count: number, unit: MaybeUnit): string {
+  return `${count} ${unitWord(count, unit)}`;
+}
+
+export function formatStock(count: number, unit: MaybeUnit): string {
+  return `${formatQuantity(count, unit)} ${count === 1 ? "disponível" : "disponíveis"}`;
+}
+
+export function pricePer(unit: MaybeUnit): string {
+  return `por ${wordsOf(unit).name}`;
+}
+
+export function formatUnitPrice(price: string | number, unit: MaybeUnit): string {
+  return `${formatMoney(price)} ${pricePer(unit)}`;
+}
+
+export function priceLabel(unit: MaybeUnit): string {
+  return `Preço ${pricePer(unit)} (R$)`;
+}
+
+export function quantityLabel(unit: MaybeUnit): string {
+  return `Quantidade (${unitPlural(unit)})`;
 }
 
 export function formatDistance(kilometers: number): string {

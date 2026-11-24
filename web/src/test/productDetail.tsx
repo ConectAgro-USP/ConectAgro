@@ -13,6 +13,7 @@ export const sampleProduct: ProductDetailType = {
   picture_url: "https://example.com/mandioca.jpg",
   quantity: 25,
   price: "20.00",
+  unit: "kg",
   expiration_date: "2099-10-20",
   is_available: true,
   farmer_public_id: "farmer-1",

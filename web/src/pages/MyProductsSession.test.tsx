@@ -20,7 +20,7 @@ describe("MyProducts, session ended while writing", () => {
     const auth = renderFarmer(productsResponse([]), loggedOut());
     await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
     await userEvent.type(screen.getByLabelText("Nome do produto"), "Laranja");
-    await userEvent.type(screen.getByLabelText("Preço (R$)"), "4.99");
+    await userEvent.type(screen.getByLabelText("Preço por quilo (R$)"), "4.99");
     await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
     fireEvent.change(screen.getByLabelText("Data de vencimento"), {
       target: { value: "2030-10-25" },

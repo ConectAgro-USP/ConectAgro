@@ -13,6 +13,7 @@ export const feijao: CatalogProduct = {
   picture_url: null,
   quantity: 30,
   price: "9.00",
+  unit: "kg",
   expiration_date: "2099-12-10",
   farmer_public_id: "agricultor-1",
   created_at: "2026-11-20T12:00:00Z",

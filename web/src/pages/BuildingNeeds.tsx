@@ -8,7 +8,14 @@ import { ProductPicture } from "../components/ProductPicture";
 import { ShowMore } from "../components/ShowMore";
 import { CARD_SURFACE } from "../components/surface";
 import { TitleBar } from "../components/TitleBar";
-import { formatCount, formatMoney, sellerName } from "../format";
+import {
+  formatCount,
+  formatMoney,
+  formatQuantity,
+  formatStock,
+  formatUnitPrice,
+  sellerName,
+} from "../format";
 import { useBuildingNeeds } from "../hooks/useBuildingNeeds";
 import { CART_LIMIT, useCart } from "../hooks/useCart";
 
@@ -45,7 +52,8 @@ function totalOf(need: BuildingNeed): string {
     "morador interessado",
     "moradores interessados",
   );
-  return `${need.total_quantity} kg no total, de ${residents}`;
+  const total = formatQuantity(need.total_quantity, need.product.unit);
+  return `${total} no total, de ${residents}`;
 }
 
 function inStock(need: BuildingNeed): boolean {
@@ -83,8 +91,8 @@ function NeedRow({ need, selected, onSelect }: Readonly<NeedRowProps>) {
           <p className="break-words text-stone-700">{seller}</p>
           <p className="text-stone-700">{totalOf(need)}</p>
           <p className="text-stone-700">
-            <span className="tabular-nums">{formatMoney(product.price)}</span> por kg,{" "}
-            {formatCount(product.quantity, "kg disponível", "kg disponíveis")}
+            {formatUnitPrice(product.price, product.unit)},{" "}
+            {formatStock(product.quantity, product.unit)}
           </p>
           <p className="font-bold">
             Custo estimado{" "}

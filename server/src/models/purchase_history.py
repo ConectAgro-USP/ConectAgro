@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlmodel import Field, SQLModel
 
 from src.models.pagination import PaginatedResponse
-from src.models.product import INT4_MAX
+from src.models.product import INT4_MAX, ProductUnit
 from src.models.purchase import PurchasePartRead, PurchaseProductRead, PurchaseRead, PurchaseStatus
 
 
@@ -28,6 +28,7 @@ class BuildingPurchasesFilters(PurchaseHistoryFilters):
 
 class PurchaseItemRead(PurchaseProductRead):
     product_name: str
+    product_unit: ProductUnit
     subtotal: Decimal
 
 

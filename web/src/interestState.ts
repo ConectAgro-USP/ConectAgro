@@ -1,5 +1,5 @@
 import type { Interest, InterestPurchase } from "./api/interests";
-import { formatCount, formatDate, formatDay } from "./format";
+import { formatDate, formatDay, formatQuantity } from "./format";
 
 export const AVAILABLE = "Disponível";
 
@@ -21,8 +21,8 @@ export function deliveredText(purchase: InterestPurchase): string {
   return purchase.closed_at ? `Entregue em ${formatDay(purchase.closed_at)}` : "Entregue";
 }
 
-export function chosenText(quantity: number): string {
-  return `No seu interesse: ${formatCount(quantity, "kg", "kg")}`;
+export function chosenText(quantity: number, unit: string | undefined): string {
+  return `No seu interesse: ${formatQuantity(quantity, unit)}`;
 }
 
 // em centavos, para a soma não acumular erro de ponto flutuante

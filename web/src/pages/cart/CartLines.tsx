@@ -2,7 +2,14 @@ import { useId } from "react";
 import { Link } from "react-router";
 import type { ProductDetail } from "../../api/products";
 import { SecondaryButton } from "../../components/Button";
-import { formatCount, formatMoney } from "../../format";
+import {
+  formatMoney,
+  formatQuantity,
+  formatStock,
+  formatUnitPrice,
+  unitPlural,
+  unitWord,
+} from "../../format";
 import type { Problem } from "./useCartCheck";
 
 const QUANTITY_CLASSES =
@@ -82,26 +89,28 @@ export function QuantityLine({
           required
           value={quantity}
           onChange={(event) => onChange(event.target.value)}
-          aria-label={`Quantidade de ${product.name} em kg`}
+          aria-label={`Quantidade de ${product.name} em ${unitPlural(product.unit)}`}
           aria-describedby={notes.join(" ")}
           className={QUANTITY_CLASSES}
         />
         <div className="text-stone-700">
-          <p>kg × {formatMoney(product.price)}</p>
-          <p id={`${id}-estoque`}>
-            {formatCount(product.quantity, "kg disponível", "kg disponíveis")}
+          <p>
+            {unitWord(Number(quantity), product.unit)} × {formatMoney(product.price)}
           </p>
+          <p id={`${id}-estoque`}>{formatStock(product.quantity, product.unit)}</p>
         </div>
         <RemoveButton product={product} onRemove={onRemove} />
       </div>
       {oldPrice && (
         <p id={`${id}-preco`} className={NOTE_CLASSES}>
-          O preço mudou de {formatMoney(oldPrice)} para {formatMoney(product.price)}
+          O preço mudou de {formatMoney(oldPrice)} para{" "}
+          {formatUnitPrice(product.price, product.unit)}
         </p>
       )}
       {clampedFrom !== undefined && (
         <p id={`${id}-ajuste`} className={NOTE_CLASSES}>
-          Você tinha pedido {clampedFrom} kg, a quantidade foi ajustada ao estoque
+          Você tinha pedido {formatQuantity(clampedFrom, product.unit)}, a quantidade foi ajustada
+          ao estoque
         </p>
       )}
     </li>

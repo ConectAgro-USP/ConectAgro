@@ -1,6 +1,6 @@
 import { apiFetch, ignoreNotFound } from "./client";
 import { fetchAllPages, LARGEST_PAGE, pageQuery, type Page } from "./pagination";
-import type { ProductDetail } from "./products";
+import type { ProductDetail, ProductUnit } from "./products";
 
 export interface InterestInput {
   product_public_id: string;
@@ -19,7 +19,7 @@ export interface InterestPurchase {
 export interface InterestProduct {
   picture_url: string | null;
   price: string;
-  unit: string;
+  unit: ProductUnit;
   quantity: number;
   expiration_date: string;
   is_available: boolean;

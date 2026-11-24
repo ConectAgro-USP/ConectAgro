@@ -20,6 +20,7 @@ export const orange: MyProduct = {
   quantity: 12,
   is_available: true,
   price: "4.99",
+  unit: "kg",
   expiration_date: "2030-10-25",
   farmer_public_id: "agricultor-1",
   created_at: "2026-11-12T12:00:00Z",
@@ -77,7 +78,7 @@ export async function openNewForm() {
 
 export async function fillRequired(name: string) {
   await userEvent.type(screen.getByLabelText("Nome do produto"), name);
-  await userEvent.type(screen.getByLabelText("Preço (R$)"), "4.99");
+  await userEvent.type(screen.getByLabelText("Preço por quilo (R$)"), "4.99");
   await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
   fireEvent.change(screen.getByLabelText("Data de vencimento"), {
     target: { value: "2030-10-25" },

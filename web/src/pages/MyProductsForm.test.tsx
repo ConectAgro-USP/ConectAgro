@@ -11,7 +11,7 @@ async function openNewForm() {
 
 async function fillRequired(name: string) {
   await userEvent.type(screen.getByLabelText("Nome do produto"), name);
-  await userEvent.type(screen.getByLabelText("Preço (R$)"), "4.99");
+  await userEvent.type(screen.getByLabelText("Preço por quilo (R$)"), "4.99");
   await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
   fireEvent.change(screen.getByLabelText("Data de vencimento"), {
     target: { value: "2030-10-25" },
@@ -42,6 +42,7 @@ describe("MyProducts form", () => {
       picture_url: "https://example.com/laranja.png",
       quantity: 12,
       price: "4.99",
+      unit: "kg",
       expiration_date: "2030-10-25",
     });
   });

@@ -1,6 +1,8 @@
 import { apiFetch, ignoreNotFound } from "./client";
 import { pageQuery, type Page } from "./pagination";
 
+export type ProductUnit = "kg" | "unidade" | "duzia" | "maco" | "litro";
+
 export interface Product {
   public_id: string;
   name: string;
@@ -8,6 +10,7 @@ export interface Product {
   picture_url: string | null;
   quantity: number;
   price: string;
+  unit: ProductUnit;
   expiration_date: string;
   farmer_public_id: string;
   created_at: string;
@@ -24,6 +27,7 @@ export interface ProductInput {
   picture_url: string | null;
   quantity: number;
   price: string;
+  unit: ProductUnit;
   expiration_date: string;
 }
 

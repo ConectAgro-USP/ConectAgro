@@ -8,6 +8,7 @@ import { anaAsFarmer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
   product_name: "Mandioca",
+  product_unit: "kg",
   quantity: 3,
   unit_price: "7.00",
   subtotal: "21.00",

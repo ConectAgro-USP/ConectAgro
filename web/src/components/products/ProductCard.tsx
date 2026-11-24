@@ -2,7 +2,7 @@ import { EyeOffIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
 import type { MyProduct } from "../../api/products";
-import { daysUntil, formatFullDate, formatMoney } from "../../format";
+import { daysUntil, formatFullDate, formatMoney, formatQuantity, pricePer } from "../../format";
 import { useAction } from "../../hooks/useAction";
 import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../Button";
@@ -80,7 +80,9 @@ export function ProductCard({
             <span className={`${CHIP_CLASSES} ${STATE_CLASSES[state]}`}>
               {STATE_LABELS[state]}
             </span>
-            <span className="text-stone-600">Estoque: {product.quantity} kg</span>
+            <span className="text-stone-600">
+              Estoque: {formatQuantity(product.quantity, product.unit)}
+            </span>
           </p>
           {state !== "available" && (
             <p className="flex items-center gap-2 font-bold text-stone-700">
@@ -91,7 +93,8 @@ export function ProductCard({
         </div>
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
           <p className="text-xl font-bold">
-            Valor <span className="tabular-nums">{formatMoney(product.price)}</span>
+            Valor <span className="tabular-nums">{formatMoney(product.price)}</span>{" "}
+            <span className="font-normal">{pricePer(product.unit)}</span>
           </p>
           {confirming ? (
             <div className="space-y-3 sm:text-right">

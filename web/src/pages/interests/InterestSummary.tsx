@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import type { Interest } from "../../api/interests";
 import { ProductPicture } from "../../components/ProductPicture";
-import { formatMoney, sellerName } from "../../format";
+import { formatMoney, pricePer, sellerName } from "../../format";
 import { AVAILABLE, costInCents, interestState } from "../../interestState";
 
 const NAME_LINK_CLASSES =
@@ -59,7 +59,7 @@ export function InterestSummary({ interest, name, nameId }: Readonly<InterestSum
               <span className="font-bold text-stone-900 tabular-nums">
                 {formatMoney(product.price)}
               </span>{" "}
-              por quilo, custo estimado{" "}
+              {pricePer(product.unit)}, custo estimado{" "}
               <span className="font-bold text-stone-900 tabular-nums">
                 {formatMoney(costInCents(interest.quantity, product.price) / 100)}
               </span>

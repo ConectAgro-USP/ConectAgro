@@ -73,7 +73,7 @@ export function InterestActions({ product, isAvailable, stock }: Readonly<Intere
       <div className="mt-4 space-y-3">
         <p className="text-right font-medium text-stone-700">{stock}</p>
         <div className={NOTE_CLASSES}>
-          <p className="font-bold text-stone-900">{chosenText(interest.quantity)}</p>
+          <p className="font-bold text-stone-900">{chosenText(interest.quantity, product.unit)}</p>
           <p>{purchaseText(purchase)}</p>
         </div>
         <Link to="/interesses" className={TEXT_LINK_CLASSES}>

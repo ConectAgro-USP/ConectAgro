@@ -25,10 +25,10 @@ describe("BuildingNeeds rows", () => {
 
     const row = await findRow("Mandioca");
     expect(row.querySelector("img")).toHaveAttribute("src", "https://example.com/mandioca.jpg");
-    expect(row).toHaveTextContent("R$ 20,00 por kg, 25 kg disponíveis");
+    expect(row).toHaveTextContent("R$ 20,00 por quilo, 25 kg disponíveis");
     expect(row).toHaveTextContent("Custo estimado R$ 240,00");
     const lettuce = await findRow("Alface");
-    expect(lettuce).toHaveTextContent("R$ 3,50 por kg, 4 kg disponíveis");
+    expect(lettuce).toHaveTextContent("R$ 3,50 por quilo, 4 kg disponíveis");
     expect(lettuce).toHaveTextContent("Custo estimado R$ 17,50");
   });
 

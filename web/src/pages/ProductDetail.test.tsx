@@ -18,7 +18,7 @@ describe("ProductDetail", () => {
 
     expect(document.querySelector("img")).toHaveAttribute("src", "https://example.com/mandioca.jpg");
 
-    expect(screen.getByText("R$ 20,00/kg")).toBeInTheDocument();
+    expect(screen.getByText("por quilo").parentElement).toHaveTextContent("R$ 20,00 por quilo");
     expect(screen.getByText("20/10/2099")).toBeInTheDocument();
     expect(screen.getByText("25 kg disponíveis")).toBeInTheDocument();
     expect(screen.getByText(/João Vikator/)).toBeInTheDocument();

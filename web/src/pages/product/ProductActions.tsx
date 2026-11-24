@@ -5,7 +5,7 @@ import type { ProductDetail } from "../../api/products";
 import { useAuth } from "../../auth/AuthContext";
 import { PrimaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
-import { daysUntil, formatCount } from "../../format";
+import { daysUntil, formatQuantity, formatStock } from "../../format";
 import { CART_LIMIT, useCart } from "../../hooks/useCart";
 import { InterestActions } from "./InterestActions";
 import { ProductContact } from "./ProductContact";
@@ -32,9 +32,7 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
   const [added, setAdded] = useState(false);
   const [cartError, setCartError] = useState("");
   const canAdd = isAvailable && requestedQuantity > 0 && !quantityExceedsStock && !added;
-  const stock = isAvailable
-    ? formatCount(product.quantity, "kg disponível", "kg disponíveis")
-    : "Indisponível";
+  const stock = isAvailable ? formatStock(product.quantity, product.unit) : "Indisponível";
 
   function handleAddToCart() {
     const item = {
@@ -58,9 +56,10 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
     );
   }
 
-  let hint = `Escolha uma quantidade de até ${product.quantity} kg.`;
+  let hint = `Escolha uma quantidade de até ${formatQuantity(product.quantity, product.unit)}.`;
   if (cart.enabled && inCart > 0) {
-    hint = room > 0 ? `Cabem mais ${room} kg no carrinho.` : "Todo o estoque já está no carrinho.";
+    const fits = `Cabem mais ${formatQuantity(room, product.unit)} no carrinho.`;
+    hint = room > 0 ? fits : "Todo o estoque já está no carrinho.";
   }
 
   return (
@@ -125,7 +124,7 @@ export function ProductActions({ product }: Readonly<ProductActionsProps>) {
         {cart.enabled && (
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p role="status" className="font-bold text-stone-800">
-              {inCart > 0 ? `No carrinho: ${inCart} kg` : ""}
+              {inCart > 0 ? `No carrinho: ${formatQuantity(inCart, product.unit)}` : ""}
             </p>
             {inCart > 0 && (
               <Link to="/carrinho" className={TEXT_LINK_CLASSES}>

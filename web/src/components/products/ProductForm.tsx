@@ -1,17 +1,24 @@
-import { useEffect, useRef, type SubmitEvent } from "react";
-import { isUploadedPicture, type Product, type ProductInput } from "../../api/products";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import {
+  isUploadedPicture,
+  type Product,
+  type ProductInput,
+  type ProductUnit,
+} from "../../api/products";
+import { priceLabel, quantityLabel } from "../../format";
 import { useAction } from "../../hooks/useAction";
 import { usePictureChoice } from "../../hooks/usePictureChoice";
 import { PrimaryButton, SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
 import { TextField } from "../TextField";
 import { PictureField } from "./PictureField";
+import { UnitField } from "./UnitField";
 
 const DESCRIPTION_CLASSES =
   "min-h-28 w-full rounded-lg border border-stone-400 bg-white px-4 py-3 " +
   "focus:border-lime-800 focus:outline-1 focus:outline-lime-800";
 
-function readProduct(form: FormData, current: string | null): ProductInput {
+function readProduct(form: FormData, current: string | null, unit: ProductUnit): ProductInput {
   const text = (key: string) => {
     const value = form.get(key);
     return typeof value === "string" ? value.trim() : "";
@@ -23,6 +30,7 @@ function readProduct(form: FormData, current: string | null): ProductInput {
     picture_url: text("picture_url") || (isUploadedPicture(current) ? current : null),
     quantity: Number(text("quantity")),
     price: text("price"),
+    unit,
     expiration_date: text("expiration_date"),
   };
 }
@@ -37,6 +45,7 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
   const { error, pending, run } = useAction();
   const choice = usePictureChoice();
   const current = product?.picture_url ?? null;
+  const [unit, setUnit] = useState<ProductUnit>(product?.unit ?? "kg");
   const title = useRef<HTMLHeadingElement>(null);
 
   // a lista sai da tela e o foco no título leva ao começo do formulário
@@ -47,7 +56,7 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const picture = choice.chosen?.blob ?? null;
-    const input = readProduct(new FormData(event.currentTarget), current);
+    const input = readProduct(new FormData(event.currentTarget), current, unit);
     // a foto nova só troca o link depois de enviada
     if (picture) input.picture_url = current;
     run(async () => {
@@ -87,9 +96,10 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
               />
             </div>
           </div>
-          <div className="grid gap-6 py-8 sm:grid-cols-3">
+          <div className="grid gap-6 py-8 sm:grid-cols-2">
+            <UnitField value={unit} onChange={setUnit} />
             <TextField
-              label="Preço (R$)"
+              label={priceLabel(unit)}
               name="price"
               type="number"
               min={0}
@@ -98,7 +108,7 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
               defaultValue={product?.price ?? ""}
             />
             <TextField
-              label="Quantidade (kg)"
+              label={quantityLabel(unit)}
               name="quantity"
               type="number"
               min={0}

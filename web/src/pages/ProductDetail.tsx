@@ -3,7 +3,7 @@ import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductPicture } from "../components/ProductPicture";
 import { CARD_SURFACE } from "../components/surface";
-import { formatFullDate, formatMoney } from "../format";
+import { formatFullDate, formatMoney, pricePer } from "../format";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { ProductActions } from "./product/ProductActions";
@@ -60,7 +60,12 @@ export function ProductDetail() {
 
             {/* preço, estoque, quantidade e ações ficam juntos na caixa de compra */}
             <div className={`mt-6 p-5 sm:p-6 ${CARD_SURFACE}`}>
-              <p className="text-3xl font-bold text-stone-900">{formatMoney(product.price)}/kg</p>
+              <p className="text-3xl font-bold text-stone-900">
+                {formatMoney(product.price)}{" "}
+                <span className="text-xl font-semibold text-stone-700">
+                  {pricePer(product.unit)}
+                </span>
+              </p>
               <p className="mt-1 text-stone-700">
                 Validade{" "}
                 <span className="font-semibold text-stone-900 tabular-nums">

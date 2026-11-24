@@ -21,6 +21,7 @@ const mandioca: CatalogProduct = {
   picture_url: "https://example.com/mandioca.jpg",
   quantity: 30,
   price: "7.00",
+  unit: "kg",
   expiration_date: "2099-12-10",
   farmer_public_id: "agricultor-1",
   created_at: "2026-11-20T12:00:00Z",

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Interest } from "../../api/interests";
 import type { ProductDetail } from "../../api/products";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../../components/Button";
+import { formatQuantity } from "../../format";
 import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
 import { chosenText, deliveredText } from "../../interestState";
 import { NOTE_CLASSES, QUANTITY_CLASSES, digitsOnly } from "./buyBox";
@@ -50,7 +51,9 @@ export function InterestForm({
   return (
     <>
       <div className="mt-4">
-        {open && <p className="mb-3 font-bold text-lime-900">{chosenText(kept)}</p>}
+        {open && (
+          <p className="mb-3 font-bold text-lime-900">{chosenText(kept, product.unit)}</p>
+        )}
         {delivery && <p className={`mb-3 ${NOTE_CLASSES}`}>{deliveredText(delivery)}</p>}
         <div className="mb-1.5 flex items-baseline justify-between">
           <label htmlFor="quantity-input" className="font-bold text-stone-900">
@@ -74,7 +77,7 @@ export function InterestForm({
         />
         {isAvailable && (
           <p className="mt-1 text-stone-700">
-            Escolha uma quantidade de até {product.quantity} kg.
+            Escolha uma quantidade de até {formatQuantity(product.quantity, product.unit)}.
           </p>
         )}
         {isAvailable && exceeds && (

@@ -24,6 +24,7 @@ const farmer: ProfileRead = {
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
   product_name: "Mandioca",
+  product_unit: "kg",
   quantity: 3,
   unit_price: "7.00",
   subtotal: "21.00",
@@ -31,6 +32,7 @@ const mandioca: PurchaseItem = {
 const laranja: PurchaseItem = {
   product_public_id: "produto-2",
   product_name: "Laranja",
+  product_unit: "kg",
   quantity: 2,
   unit_price: "9.00",
   subtotal: "18.00",
@@ -116,9 +118,9 @@ describe("MySales", () => {
 
     await userEvent.click(within(card).getByRole("button", { name: "Ver detalhes" }));
 
-    expect(within(card).getByText("3 × R$ 7,00")).toBeVisible();
-    expect(card).toHaveTextContent(/Mandioca\s*3 × R\$ 7,00\s*R\$ 21,00/);
-    expect(card).toHaveTextContent(/Laranja\s*2 × R\$ 9,00\s*R\$ 18,00/);
+    expect(within(card).getByText("3 kg × R$ 7,00")).toBeVisible();
+    expect(card).toHaveTextContent(/Mandioca\s*3 kg × R\$ 7,00\s*R\$ 21,00/);
+    expect(card).toHaveTextContent(/Laranja\s*2 kg × R\$ 9,00\s*R\$ 18,00/);
   });
 
   it("filters the sales by building", async () => {

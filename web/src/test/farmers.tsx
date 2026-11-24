@@ -37,6 +37,7 @@ export const laranja: FarmerProduct = {
   picture_url: "https://example.com/laranja.jpg",
   quantity: 30,
   price: "4.99",
+  unit: "kg",
   expiration_date: "2026-12-10",
 };
 export const mandioca: FarmerProduct = {
@@ -46,6 +47,7 @@ export const mandioca: FarmerProduct = {
   picture_url: null,
   quantity: 1,
   price: "7.00",
+  unit: "kg",
   expiration_date: "2026-11-30",
 };
 

@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { ProductUnit } from "./products";
 
 export type PurchaseStatus = "EM PROGRESSO" | "ENTREGUE" | "CANCELADA";
 
@@ -6,6 +7,7 @@ export type PurchaseStatus = "EM PROGRESSO" | "ENTREGUE" | "CANCELADA";
 export interface PurchaseItem {
   product_public_id: string;
   product_name: string;
+  product_unit: ProductUnit;
   quantity: number;
   unit_price: string;
   subtotal: string;
