@@ -1,5 +1,4 @@
 import { useId } from "react";
-import type { PurchaseStatus } from "../api/history";
 import {
   cancelPurchase,
   listBuildingPurchases,
@@ -7,7 +6,7 @@ import {
   type PurchasePart,
 } from "../api/purchases";
 import type { Reviewable } from "../api/reviews";
-import { farmerName, formatDay, formatMoney } from "../format";
+import { MANAGER_STATUS_LABELS, farmerName, formatDay, formatMoney } from "../format";
 import { HistoryCard } from "../components/history/HistoryCard";
 import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
@@ -17,11 +16,6 @@ import { RateLinks } from "../components/reviews/RateLinks";
 import { useHistory } from "../hooks/useHistory";
 import { useReviewables } from "../hooks/useReviewables";
 
-const STATUS_LABELS: Record<PurchaseStatus, string> = {
-  "EM PROGRESSO": "A caminho",
-  ENTREGUE: "Entregue",
-  CANCELADA: "Cancelada",
-};
 const CANCEL_PURCHASE = {
   label: "Cancelar compra",
   question: "Cancelar esta compra?",
@@ -31,7 +25,7 @@ const CANCEL_PURCHASE = {
 const NEEDS_LINK = { to: "/necessidades", label: "Ver as necessidades do prédio" };
 
 function partStatus(part: PurchasePart): string {
-  const label = STATUS_LABELS[part.status];
+  const label = MANAGER_STATUS_LABELS[part.status];
   if (part.closed_at === null) {
     return label;
   }
@@ -102,7 +96,7 @@ function PurchaseCard({
       names={purchase.purchase_parts.map(farmerName)}
       items={purchase.purchase_parts.flatMap((part) => part.purchase_products)}
       status={purchase.status}
-      statusLabel={STATUS_LABELS[purchase.status]}
+      statusLabel={MANAGER_STATUS_LABELS[purchase.status]}
       orderedAt={purchase.created_at}
       expectedOn={purchase.expected_delivery_date}
       closedAt={purchase.closed_at}
@@ -138,7 +132,7 @@ export function BuildingPurchases() {
     <HistoryLayout
       title="Compras do prédio"
       history={history}
-      statusLabels={STATUS_LABELS}
+      statusLabels={MANAGER_STATUS_LABELS}
       counterpartLabel="Agricultor"
       emptyMessage={
         "Você ainda não fez compras, veja as necessidades do prédio e feche a sua primeira compra"

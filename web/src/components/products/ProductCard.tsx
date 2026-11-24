@@ -5,14 +5,10 @@ import { useAction } from "../../hooks/useAction";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
 import { ProductPicture } from "../ProductPicture";
+import { CARD_SURFACE, CARD_TAB } from "../surface";
 
-const CARD_CLASSES =
-  "relative flex flex-col overflow-hidden rounded-4xl border border-stone-200 bg-stone-100 " +
-  "sm:flex-row";
-const PICTURE_CLASSES = "h-44 w-full shrink-0 sm:h-auto sm:min-h-48 sm:w-56";
-const TAB_CLASSES =
-  "absolute top-0 right-0 rounded-tr-4xl rounded-bl-2xl px-5 py-1.5 text-lg font-bold " +
-  "text-white tabular-nums";
+const CARD_CLASSES = `relative flex flex-col overflow-hidden sm:flex-row ${CARD_SURFACE}`;
+const PICTURE_CLASSES = "w-full shrink-0 sm:my-6 sm:ml-6 sm:w-48 sm:rounded-2xl";
 // no celular os botões dividem a largura do cartão
 const BUTTON_ROW_CLASSES = "flex w-full gap-3 sm:w-auto sm:justify-end";
 const BUTTON_CLASSES = "flex-1 sm:flex-none";
@@ -27,7 +23,11 @@ export function ProductCard({ product, onEdit, onRemove }: Readonly<ProductCardP
   const [confirming, setConfirming] = useState(false);
   const removal = useAction();
   const nameId = useId();
-  const buttonProps = { "aria-describedby": nameId, disabled: removal.pending };
+  const buttonProps = {
+    "aria-describedby": nameId,
+    disabled: removal.pending,
+    size: "compact" as const,
+  };
   const days = daysUntil(product.expiration_date);
 
   function goBack() {
@@ -96,7 +96,7 @@ export function ProductCard({ product, onEdit, onRemove }: Readonly<ProductCardP
           )}
         </div>
       </div>
-      <p className={`${TAB_CLASSES} ${days <= 7 ? "bg-amber-700" : "bg-lime-700"}`}>
+      <p className={`${CARD_TAB} tabular-nums ${days <= 7 ? "bg-amber-700" : "bg-lime-700"}`}>
         {days < 0 ? "Venceu" : "Vence"} {formatFullDate(product.expiration_date)}
       </p>
     </li>

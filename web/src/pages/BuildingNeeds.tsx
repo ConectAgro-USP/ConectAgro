@@ -65,7 +65,14 @@ export function BuildingNeeds() {
 
   return (
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
-      <TitleBar title="Necessidades do prédio" />
+      <TitleBar
+        title="Necessidades do prédio"
+        back={
+          closing && !purchase.pending
+            ? { label: "Voltar às necessidades", onClick: () => showForm(false) }
+            : undefined
+        }
+      />
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         {closing && selected.length > 0 ? (
           <PurchaseForm

@@ -1,5 +1,4 @@
 import { useId } from "react";
-import type { PurchaseStatus } from "../api/history";
 import { changeMyPartStatus } from "../api/purchases";
 import { listSales, type Sale } from "../api/sales";
 import { HistoryCard } from "../components/history/HistoryCard";
@@ -7,13 +6,9 @@ import { HistoryLayout } from "../components/history/HistoryLayout";
 import { HistoryMonths } from "../components/history/HistoryMonths";
 import { ItemLines } from "../components/history/ItemLines";
 import { StatusActions } from "../components/history/StatusActions";
+import { FARMER_STATUS_LABELS } from "../format";
 import { useHistory } from "../hooks/useHistory";
 
-const STATUS_LABELS: Record<PurchaseStatus, string> = {
-  "EM PROGRESSO": "Pendente",
-  ENTREGUE: "Entregue",
-  CANCELADA: "Cancelada",
-};
 const CANCEL_SALE = {
   label: "Cancelar venda",
   question: "Cancelar esta venda?",
@@ -34,6 +29,7 @@ function SaleCard({ sale, busy, reload }: Readonly<SaleCardProps>) {
   return (
     <HistoryCard
       titleId={titleId}
+      avatars={false}
       actions={
         <StatusActions
           open={sale.status === "EM PROGRESSO"}
@@ -48,7 +44,7 @@ function SaleCard({ sale, busy, reload }: Readonly<SaleCardProps>) {
       names={[sale.building_name]}
       items={sale.purchase_products}
       status={sale.status}
-      statusLabel={STATUS_LABELS[sale.status]}
+      statusLabel={FARMER_STATUS_LABELS[sale.status]}
       orderedAt={sale.purchased_at}
       expectedOn={sale.expected_delivery_date}
       closedAt={sale.closed_at}
@@ -66,7 +62,7 @@ export function MySales() {
     <HistoryLayout
       title="Minhas vendas"
       history={history}
-      statusLabels={STATUS_LABELS}
+      statusLabels={FARMER_STATUS_LABELS}
       counterpartLabel="Prédio"
       emptyMessage={
         "Você ainda não fez vendas, confira a página inicial e ofereça os seus produtos hoje"

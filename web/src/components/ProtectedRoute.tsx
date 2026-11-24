@@ -3,6 +3,7 @@ import { Navigate } from "react-router";
 import type { ProfileType } from "../api/profiles";
 import { useAuth } from "../auth/AuthContext";
 import { PendingLink, RejectedLink } from "../pages/BuildingLink";
+import { NoAccess } from "../pages/NotFound";
 import { ProfileSetup } from "../pages/ProfileSetup";
 
 interface ProtectedRouteProps {
@@ -19,7 +20,7 @@ export function ProtectedRoute({ children, allowedProfiles }: Readonly<Protected
   if (!profileType) return <ProfileSetup />;
   if (linkStatus === "PENDENTE") return <PendingLink />;
   if (linkStatus === "RECUSADO") return <RejectedLink />;
-  if (allowedProfiles && !allowedProfiles.includes(profileType)) return <Navigate to="/" replace />;
+  if (allowedProfiles && !allowedProfiles.includes(profileType)) return <NoAccess />;
 
   return children;
 }

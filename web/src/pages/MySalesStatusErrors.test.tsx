@@ -19,7 +19,7 @@ describe("MySales, refused status changes", () => {
     expect(await within(card).findByRole("alert")).toHaveTextContent(CLOSED);
     await waitFor(() => expect(within(card).getByRole("button", { name: DELIVER })).toBeEnabled());
     expect(within(card).getByRole("button", { name: CANCEL })).toBeEnabled();
-    expect(within(card).getByText("Pendente")).toBeVisible();
+    expect(within(card).getByText("A entregar")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

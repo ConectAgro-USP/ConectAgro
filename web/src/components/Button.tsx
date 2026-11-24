@@ -1,47 +1,55 @@
 import type { ButtonHTMLAttributes } from "react";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+// compacto para ações dentro de cartões, grande para formulários
+type ButtonSize = "large" | "compact";
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  size?: ButtonSize;
+}
 
 const BUTTON_CLASSES =
-  "h-14 rounded-full px-8 font-bold focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "rounded-full font-bold focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-lime-800 disabled:cursor-not-allowed disabled:opacity-60";
+const SIZE_CLASSES: Record<ButtonSize, string> = {
+  large: "h-14 px-8",
+  compact: "h-11 px-5",
+};
 const PRIMARY_CLASSES = "bg-lime-800 text-white hover:bg-lime-900";
 const SECONDARY_CLASSES = "border border-stone-400 bg-white hover:bg-stone-50";
 const DANGER_CLASSES = "bg-red-700 text-white hover:bg-red-800";
 
+function classesOf(size: ButtonSize, variant: string, className: string): string {
+  return `${BUTTON_CLASSES} ${SIZE_CLASSES[size]} ${variant} ${className}`;
+}
+
 export function PrimaryButton({
   className = "",
   type = "submit",
+  size = "large",
   ...props
 }: Readonly<ButtonProps>) {
-  return (
-    <button
-      type={type}
-      className={`${BUTTON_CLASSES} ${PRIMARY_CLASSES} ${className}`}
-      {...props}
-    />
-  );
+  return <button type={type} className={classesOf(size, PRIMARY_CLASSES, className)} {...props} />;
 }
 
 export function SecondaryButton({
   className = "",
   type = "button",
+  size = "large",
   ...props
 }: Readonly<ButtonProps>) {
   return (
-    <button
-      type={type}
-      className={`${BUTTON_CLASSES} ${SECONDARY_CLASSES} ${className}`}
-      {...props}
-    />
+    <button type={type} className={classesOf(size, SECONDARY_CLASSES, className)} {...props} />
   );
 }
 
 // para o que nega alguma coisa, como recusar um pedido
-export function DangerButton({ className = "", type = "button", ...props }: Readonly<ButtonProps>) {
-  return (
-    <button type={type} className={`${BUTTON_CLASSES} ${DANGER_CLASSES} ${className}`} {...props} />
-  );
+export function DangerButton({
+  className = "",
+  type = "button",
+  size = "large",
+  ...props
+}: Readonly<ButtonProps>) {
+  return <button type={type} className={classesOf(size, DANGER_CLASSES, className)} {...props} />;
 }
 
 export function GoogleButton({ children, ...props }: Readonly<ButtonProps>) {

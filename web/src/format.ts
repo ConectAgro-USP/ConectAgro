@@ -1,3 +1,5 @@
+import type { PurchaseStatus } from "./api/history";
+
 // as datas seguem o horário de Brasília, igual aos filtros da API
 const BUSINESS_TZ = "America/Sao_Paulo";
 const MONEY = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,6 +27,17 @@ const RATING = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 const PERCENT = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
+
+// o mesmo estado da API, visto por quem entrega e por quem recebe
+export const FARMER_STATUS_LABELS: Record<PurchaseStatus, string> = {
+  "EM PROGRESSO": "A entregar",
+  ENTREGUE: "Entregue",
+  CANCELADA: "Cancelada",
+};
+export const MANAGER_STATUS_LABELS: Record<PurchaseStatus, string> = {
+  ...FARMER_STATUS_LABELS,
+  "EM PROGRESSO": "A caminho",
+};
 
 export function formatMoney(value: string | number): string {
   return MONEY.format(Number(value));

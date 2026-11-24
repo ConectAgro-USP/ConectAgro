@@ -113,11 +113,12 @@ describe("BuildingPurchases", () => {
     expect(await screen.findByRole("heading", { name: "Compras do prédio" })).toBeInTheDocument();
   });
 
-  it("sends a resident at /compras back to the home", () => {
+  it("tells a resident at /compras there is no access, without calling the API", () => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsBuyer("APROVADO") }), "/compras");
 
-    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
+    const title = screen.getByRole("heading", { name: "Você não tem acesso a esta página" });
+    expect(title).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

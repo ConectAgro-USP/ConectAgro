@@ -4,6 +4,7 @@ import type { Resident } from "../api/residents";
 import { formatDay } from "../format";
 import { useFocusWithoutScroll } from "../hooks/useFocusWithoutScroll";
 import { DangerButton, PrimaryButton, SecondaryButton } from "./Button";
+import { CARD_SURFACE } from "./surface";
 
 const AVATAR_CLASSES =
   "flex size-14 shrink-0 items-center justify-center rounded-full bg-stone-800 text-xl " +
@@ -80,10 +81,10 @@ export function ResidentCard({
   const answer = status === listStatus ? "" : answerText(resident);
   const confirmation = CONFIRMATIONS[status];
   // o leitor de tela diz de quem é cada botão, já que todos os cartões têm os mesmos
-  const buttonProps = { "aria-describedby": nameId, disabled };
+  const buttonProps = { "aria-describedby": nameId, disabled, size: "compact" as const };
 
   return (
-    <li className="rounded-4xl bg-stone-200 px-6 py-6 sm:px-10">
+    <li className={`px-6 py-6 sm:px-10 ${CARD_SURFACE}`}>
       <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
         <div className="flex min-w-0 flex-1 basis-64 items-start gap-5">
           <span aria-hidden="true" className={AVATAR_CLASSES}>

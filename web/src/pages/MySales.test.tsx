@@ -94,7 +94,7 @@ describe("MySales", () => {
     const card = await findCard("Cond. Village Vila Verde");
 
     expect(within(card).getByText("Mandioca e Laranja")).toBeVisible();
-    expect(within(card).getByText("Pendente")).toBeVisible();
+    expect(within(card).getByText("A entregar")).toBeVisible();
     expect(card).toHaveTextContent(/Data do pedido:\s*10\/11/);
     expect(card).toHaveTextContent(/Valor combinado\s*R\$ 39,00/);
   });
@@ -103,7 +103,7 @@ describe("MySales", () => {
     renderSales(pageOf(sale));
 
     expect(await screen.findByText("Total entregue")).toBeInTheDocument();
-    expect(screen.getByText("Total pendente")).toBeInTheDocument();
+    expect(screen.getByText("Total a entregar")).toBeInTheDocument();
   });
 
   it("opens the items of a sale", async () => {
@@ -155,11 +155,12 @@ describe("MySales", () => {
     expect(await screen.findByRole("heading", { name: "Minhas vendas" })).toBeInTheDocument();
   });
 
-  it("sends a manager at /vendas back to the home", () => {
+  it("tells a manager at /vendas there is no access, without calling the API", () => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsManager }), "/vendas");
 
-    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
+    const title = screen.getByRole("heading", { name: "Você não tem acesso a esta página" });
+    expect(title).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

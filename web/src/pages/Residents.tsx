@@ -3,6 +3,7 @@ import { approveResident, rejectResident, type Resident } from "../api/residents
 import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ResidentCard } from "../components/ResidentCard";
+import { TitleBar } from "../components/TitleBar";
 import { useAction } from "../hooks/useAction";
 import { useResidents } from "../hooks/useResidents";
 
@@ -78,9 +79,9 @@ export function Residents() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-12 text-stone-900 sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-4xl font-extrabold">Moradores</h1>
+    <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
+      <TitleBar title="Moradores" />
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="mt-6 flex gap-2">
           {STATUSES.map((status) => (
             <button

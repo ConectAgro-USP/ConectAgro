@@ -63,7 +63,8 @@ describe("MyProducts", () => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsManager }), "/meus-produtos");
 
-    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
+    const title = screen.getByRole("heading", { name: "Você não tem acesso a esta página" });
+    expect(title).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

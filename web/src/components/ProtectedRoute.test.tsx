@@ -89,10 +89,13 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Área restrita")).toBeInTheDocument();
   });
 
-  it("sends another profile to the dashboard when the route is restricted", () => {
+  it("tells another profile it has no access when the route is restricted", () => {
     renderRoute({ ...ana, profile_type: "farmer" }, ["apartment", "buyer"]);
 
-    expect(screen.getByText("Painel")).toBeInTheDocument();
+    const title = screen.getByRole("heading", { name: "Você não tem acesso a esta página" });
+    expect(title).toBeInTheDocument();
+    expect(screen.queryByText("Área restrita")).not.toBeInTheDocument();
+    expect(screen.queryByText("Painel")).not.toBeInTheDocument();
   });
 
   it.each<ProfileType>(["apartment", "buyer"])(

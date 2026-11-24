@@ -3,9 +3,10 @@ import { Link } from "react-router";
 import type { FarmerProduct } from "../../api/farmers";
 import { formatCount, formatFullDate, formatMoney } from "../../format";
 import { ProductPicture } from "../ProductPicture";
+import { CARD_SURFACE } from "../surface";
 import { FarmerRating } from "./FarmerRating";
 
-const PICTURE_CLASSES = "min-h-24 w-24 shrink-0 self-stretch sm:w-40";
+const PICTURE_CLASSES = "m-3 w-24 shrink-0 rounded-2xl sm:m-4 sm:w-40";
 const NAME_LINK_CLASSES =
   "rounded text-lime-800 underline focus-visible:outline-2 focus-visible:outline-lime-800";
 const PRICE_CLASSES =
@@ -16,17 +17,15 @@ interface ProductRowProps {
   product: FarmerProduct;
   seller?: string;
   rating?: ComponentProps<typeof FarmerRating>;
-  className?: string;
 }
 
 export function ProductRow({
   product,
   seller,
   rating,
-  className = "bg-stone-50",
 }: Readonly<ProductRowProps>) {
   return (
-    <li className={`flex overflow-hidden rounded-3xl text-left ${className}`}>
+    <li className={`flex overflow-hidden text-left ${CARD_SURFACE}`}>
       <ProductPicture url={product.picture_url} className={PICTURE_CLASSES} />
       <div className="flex min-w-0 flex-1 flex-col sm:flex-row">
         <div className="min-w-0 flex-1 px-4 pt-3 sm:px-6 sm:py-5">

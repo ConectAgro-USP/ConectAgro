@@ -7,7 +7,6 @@ import { usePages } from "../hooks/usePages";
 
 const HERO_CLASSES =
   "border-b border-stone-200 bg-stone-100 px-4 py-10 text-center sm:px-6 sm:py-16";
-const ROW_CLASSES = "border border-stone-200 bg-stone-100";
 
 function sellerOf(product: CatalogProduct): string {
   const names = [product.farmer_short_name, product.farmer_farm_name].filter(Boolean);
@@ -41,7 +40,6 @@ export function Catalog() {
                   average: product.farmer_average_rating,
                   count: product.farmer_reviews_count,
                 }}
-                className={ROW_CLASSES}
               />
             ))}
           </ul>

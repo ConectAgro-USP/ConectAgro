@@ -52,9 +52,9 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
 
   return (
     <>
-      <h1 ref={title} tabIndex={-1} className="text-4xl font-extrabold outline-none">
+      <h2 ref={title} tabIndex={-1} className="text-3xl font-extrabold outline-none">
         {product ? "Editar produto" : "Cadastrar produto"}
-      </h1>
+      </h2>
       <form
         onSubmit={handleSubmit}
         className="mt-6 rounded-4xl border border-stone-200 bg-stone-100 px-6 sm:px-10"
@@ -64,7 +64,7 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
             <ProductPicture
               key={pictureUrl}
               url={pictureUrl.trim() || null}
-              className="h-36 w-full shrink-0 rounded-2xl sm:w-48"
+              className="w-48 shrink-0 rounded-2xl"
             />
             <div className="flex-1">
               <TextField

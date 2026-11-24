@@ -4,6 +4,7 @@ import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductCard } from "../components/products/ProductCard";
 import { ProductForm } from "../components/products/ProductForm";
+import { TitleBar } from "../components/TitleBar";
 import { useProducts } from "../hooks/useProducts";
 
 export function MyProducts() {
@@ -25,18 +26,23 @@ export function MyProducts() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-12 text-stone-900 sm:px-6">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
+      <TitleBar
+        title="Meus produtos"
+        back={
+          showForm
+            ? { label: "Voltar aos meus produtos", onClick: () => setShowForm(false) }
+            : undefined
+        }
+      />
+      <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
         {showForm ? (
           <ProductForm product={editing} onSave={save} onClose={() => setShowForm(false)} />
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <h1 className="text-4xl font-extrabold">Meus produtos</h1>
-              <PrimaryButton type="button" onClick={() => openForm(null)}>
-                Cadastrar produto
-              </PrimaryButton>
-            </div>
+            <PrimaryButton type="button" onClick={() => openForm(null)}>
+              Cadastrar produto
+            </PrimaryButton>
             <output className="mt-4 block text-lg text-stone-600">
               {products.loading ? "Carregando..." : ""}
             </output>

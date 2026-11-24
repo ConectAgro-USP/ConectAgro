@@ -14,6 +14,7 @@ import {
   type Reviewable,
 } from "../api/reviews";
 import { SecondaryButton } from "../components/Button";
+import { CARD_SURFACE } from "../components/surface";
 import { FormError } from "../components/FormError";
 import { TitleBar } from "../components/TitleBar";
 import { FarmerAvatar } from "../components/reviews/FarmerAvatar";
@@ -33,10 +34,10 @@ const SENT = "Avaliação enviada. Obrigado por ajudar outros prédios a escolhe
 const EDITED = "Avaliação atualizada.";
 const BACK_TO_LIST = { to: REVIEWS_PATH, label: "Voltar às avaliações" };
 const LINK_BUTTON_CLASSES =
-  "inline-flex h-12 items-center rounded-full border border-stone-400 bg-white px-6 " +
+  "inline-flex h-11 items-center rounded-full border border-stone-400 bg-white px-5 " +
   "font-bold hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-lime-800";
-const CARD_CLASSES = "rounded-4xl bg-stone-200 px-6 py-6 sm:px-10";
+const CARD_CLASSES = `px-6 py-6 sm:px-10 ${CARD_SURFACE}`;
 const NOT_WAITING = "Esta entrega não está esperando sua avaliação. Ela pode já ter sido avaliada.";
 const NOT_FOUND = "Não encontramos esta avaliação entre as suas.";
 

@@ -34,7 +34,11 @@ export function StatusActions({
   const { error, setError, pending, run } = useAction();
   const backId = useFocusWithoutScroll(open && confirming);
   const guard = useWriteGuard();
-  const buttonProps = { "aria-describedby": describedBy, disabled: disabled || pending };
+  const buttonProps = {
+    "aria-describedby": describedBy,
+    disabled: disabled || pending,
+    size: "compact" as const,
+  };
 
   function send(request: () => Promise<unknown>, done: string) {
     run(async () => {

@@ -1,7 +1,9 @@
 import type { ReceivedReview, ReceivedReviews } from "../api/reviews";
 import { SecondaryButton } from "../components/Button";
+import { CARD_SURFACE } from "../components/surface";
 import { FormError } from "../components/FormError";
 import { RatingStars } from "../components/reviews/StarRating";
+import { TitleBar } from "../components/TitleBar";
 import { formatCount, formatFullDay, formatRating } from "../format";
 import { useReceivedReviews } from "../hooks/useReceivedReviews";
 
@@ -30,7 +32,7 @@ function Summary({ reviews }: Readonly<{ reviews: ReceivedReviews }>) {
 
 function ReviewCard({ review }: Readonly<{ review: ReceivedReview }>) {
   return (
-    <li className="space-y-4 rounded-2xl border border-stone-300 bg-white px-6 py-5">
+    <li className={`space-y-4 px-6 py-5 ${CARD_SURFACE}`}>
       <RatingStars rating={review.rating} label={`Nota ${review.rating} de 5`} />
       {review.comment && <p className="text-lg break-words whitespace-pre-line">{review.comment}</p>}
       <p className="text-sm font-bold text-stone-500">
@@ -44,9 +46,9 @@ export function MyReviews() {
   const { reviews, loading, error, retry } = useReceivedReviews();
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-12 text-stone-900 sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-4xl font-extrabold">Minhas avaliações</h1>
+    <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
+      <TitleBar title="Minhas avaliações" />
+      <div className="mx-auto max-w-3xl px-4 pt-4 sm:px-6">
         <output className="mt-4 block text-lg text-stone-600">
           {loading ? "Carregando..." : ""}
         </output>

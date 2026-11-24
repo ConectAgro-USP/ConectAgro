@@ -2,17 +2,15 @@ import { ChevronDownIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { NearbyFarmer } from "../../api/farmers";
 import { formatCount, formatDistance, formatPercent } from "../../format";
+import { CARD_SURFACE, CARD_TAB } from "../surface";
 import { FarmerProducts } from "./FarmerProducts";
 import { FarmerRating } from "./FarmerRating";
 
-const DISTANCE_TAB_CLASSES =
-  "absolute top-0 right-0 rounded-tr-4xl rounded-bl-2xl bg-lime-700 px-5 py-1.5 text-lg " +
-  "font-bold text-white tabular-nums";
 const AVATAR_CLASSES =
   "flex size-14 shrink-0 items-center justify-center rounded-full bg-stone-800 text-xl " +
-  "text-white uppercase ring-4 ring-stone-200 sm:size-16";
+  "text-white uppercase ring-4 ring-white sm:size-16";
 const PRODUCTS_BUTTON_CLASSES =
-  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg hover:bg-stone-300 " +
+  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg hover:bg-stone-100 " +
   "focus-visible:outline-2 focus-visible:outline-lime-800";
 
 // sem o nome do Google a API manda o nome vazio, e aí o sítio identifica o agricultor
@@ -44,8 +42,8 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
   }
 
   return (
-    <li className="relative rounded-4xl bg-stone-200 px-6 pt-14 pb-4 sm:px-10 sm:pt-8">
-      <p className={DISTANCE_TAB_CLASSES}>
+    <li className={`relative px-6 pt-14 pb-4 sm:px-10 sm:pt-8 ${CARD_SURFACE}`}>
+      <p className={`${CARD_TAB} bg-lime-700 tabular-nums`}>
         <span className="sr-only">Distância: </span>
         {formatDistance(farmer.distance_km)}
       </p>
@@ -93,7 +91,7 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
           <ChevronDownIcon aria-hidden="true" className={open ? "rotate-180" : ""} />
         </button>
       </div>
-      <div id={productsId} hidden={!open} className="mt-2 border-t border-stone-400 py-4">
+      <div id={productsId} hidden={!open} className="mt-2 border-t border-stone-300 py-4">
         {opened && <FarmerProducts key={farmer.public_id} farmerPublicId={farmer.public_id} />}
       </div>
     </li>

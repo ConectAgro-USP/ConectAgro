@@ -3,17 +3,18 @@ import { Link } from "react-router";
 import type { Interest } from "../../api/interests";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
+import { CARD_SURFACE } from "../../components/surface";
 import { useAction } from "../../hooks/useAction";
 import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
 
-const CARD_CLASSES = "rounded-3xl border border-stone-200 bg-stone-100 p-5 sm:px-6";
+const CARD_CLASSES = `p-5 sm:px-6 ${CARD_SURFACE}`;
 const NAME_LINK_CLASSES =
   "rounded text-lime-800 underline focus-visible:outline-2 focus-visible:outline-lime-800";
 const STATUS_CLASSES = "shrink-0 rounded-full px-3 py-1 text-sm font-bold";
 const AVAILABLE_COLORS = "bg-lime-100 text-lime-800";
 const UNAVAILABLE_COLORS = "bg-stone-200 text-stone-700";
 const QUANTITY_CLASSES =
-  "h-14 w-full min-w-0 rounded-xl border border-stone-400 bg-white px-4 text-lg font-bold " +
+  "h-11 w-full min-w-0 rounded-xl border border-stone-400 bg-white px-4 text-lg font-bold " +
   "text-stone-900 tabular-nums focus:border-lime-800 focus:outline-1 focus:outline-lime-800 " +
   "disabled:cursor-not-allowed disabled:bg-stone-100 sm:w-36";
 const BODY_CLASSES = "mt-4 sm:grid sm:grid-cols-[1fr_auto] sm:items-end sm:gap-x-6";
@@ -42,7 +43,11 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
   const backId = useFocusWithoutScroll(confirming);
   const requested = Number(quantity);
   const invalid = requested < 1;
-  const removalProps = { "aria-describedby": nameId, disabled: removal.pending };
+  const removalProps = {
+    "aria-describedby": nameId,
+    disabled: removal.pending,
+    size: "compact" as const,
+  };
   // abaixo do rótulo, o Remover fica na altura do campo e não das mensagens
   const idleActions = available ? "sm:self-start sm:mt-7" : "sm:mt-0";
 
@@ -102,6 +107,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
                 className={QUANTITY_CLASSES}
               />
               <PrimaryButton
+                size="compact"
                 aria-describedby={nameId}
                 disabled={invalid || requested === interest.quantity || save.pending}
               >
@@ -137,6 +143,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
             </>
           ) : (
             <SecondaryButton
+              size="compact"
               aria-describedby={nameId}
               disabled={save.pending}
               onClick={() => setConfirming(true)}
