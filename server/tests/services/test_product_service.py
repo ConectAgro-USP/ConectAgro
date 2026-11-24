@@ -27,6 +27,17 @@ def products_with_one_product() -> tuple[ProductRepository, Farmer]:
     return products, farmer
 
 
+def test_removal_locks_the_product_before_reading_its_purchases():
+    products, farmer = products_with_one_product()
+    products.has_purchases.return_value = False
+    service = ProductService(products)
+
+    service.delete_product(uuid4(), farmer)
+
+    steps = [call[0] for call in products.method_calls]
+    assert steps == ["get_product_by_public_id", "lock_product", "has_purchases", "delete_product"]
+
+
 def test_purchase_saved_during_the_removal_is_explained_as_already_sold():
     products, farmer = products_with_one_product()
     # a compra ainda não existia na conferência, mas já existe quando o banco recusa
