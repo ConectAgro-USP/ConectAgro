@@ -57,6 +57,8 @@ class ProductService:
             raise ProductNotFoundError
         if farmer.id != product.farmer_id:
             raise NotProductOwnerError
+        # trava o produto antes, como a compra, para as duas não se travarem
+        self.products.lock_product(product.id)
         # a compra guarda o produto e o preço da época, e esse histórico não pode sumir
         if self.products.has_purchases(product.id):
             raise ProductHasPurchasesError
