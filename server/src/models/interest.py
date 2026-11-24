@@ -1,11 +1,19 @@
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from .product import AVAILABLE, BUSINESS_TZ, INT4_MAX, UNAVAILABLE, ProductDetailRead
+from .product import (
+    AVAILABLE,
+    BUSINESS_TZ,
+    INT4_MAX,
+    UNAVAILABLE,
+    ProductDetailRead,
+    ProductUnit,
+)
 from .purchase import PurchaseStatus
 
 if TYPE_CHECKING:
@@ -124,6 +132,22 @@ class InterestPurchaseRead(SQLModel):
     closed_at: datetime | None
 
 
+class InterestFarmerRead(SQLModel):
+    public_id: UUID
+    short_name: str
+    farm_name: str | None
+
+
+class InterestProductRead(SQLModel):
+    picture_url: str | None
+    price: Decimal
+    unit: ProductUnit
+    quantity: int
+    expiration_date: date
+    is_available: bool
+    farmer: InterestFarmerRead
+
+
 class InterestRead(InterestBase):
     public_id: UUID
     buyer_public_id: UUID
@@ -134,3 +158,5 @@ class InterestRead(InterestBase):
     updated_at: datetime | None
     # nulo enquanto o interesse está aberto nas necessidades do prédio
     purchase: InterestPurchaseRead | None = None
+    # nulo quando o agricultor apagou o produto
+    product: InterestProductRead | None = None

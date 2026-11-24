@@ -3,6 +3,8 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from src.services.text_service import short_name
+
 if TYPE_CHECKING:
     from .product import Product
     from .purchase import PurchasePart
@@ -26,6 +28,10 @@ class Farmer(SQLModel, table=True):
     user: "User" = Relationship(back_populates="farmer")
     products: list["Product"] = Relationship(back_populates="farmer")
     purchase_parts: list["PurchasePart"] = Relationship(back_populates="farmer")
+
+    @property
+    def short_name(self) -> str:
+        return short_name(self.user.name)
 
 
 class FarmerSearchRead(SQLModel):

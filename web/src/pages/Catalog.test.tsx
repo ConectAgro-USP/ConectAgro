@@ -11,6 +11,7 @@ import {
   renderWithAuth,
   stubFetch,
 } from "../test/helpers";
+import { answerMyInterests } from "../test/interests";
 import { Dashboard } from "./Dashboard";
 
 const mandioca: CatalogProduct = {
@@ -44,6 +45,7 @@ const resident = anaAsBuyer("APROVADO");
 
 function renderHome(user = resident, ...responses: Response[]) {
   const fetchMock = stubFetch(...responses);
+  answerMyInterests();
   renderWithAuth(<Dashboard />, fakeAuth({ user }));
   return fetchMock;
 }

@@ -58,18 +58,17 @@ export function ProductDetail() {
               {product.name}
             </h1>
 
-            <p className="mt-4 text-3xl font-bold text-stone-900">
-              {formatMoney(product.price)}/kg
-            </p>
-
-            <div className="mt-4">
-              <span className="block text-sm text-stone-600">Data de validade:</span>
-              <span className="text-base font-semibold text-stone-900">
-                {formatFullDate(product.expiration_date)}
-              </span>
+            {/* preço, estoque, quantidade e ações ficam juntos na caixa de compra */}
+            <div className={`mt-6 p-5 sm:p-6 ${CARD_SURFACE}`}>
+              <p className="text-3xl font-bold text-stone-900">{formatMoney(product.price)}/kg</p>
+              <p className="mt-1 text-stone-700">
+                Validade{" "}
+                <span className="font-semibold text-stone-900 tabular-nums">
+                  {formatFullDate(product.expiration_date)}
+                </span>
+              </p>
+              <ProductActions product={product} />
             </div>
-
-            <ProductActions product={product} />
 
             <ProductFarmerInfo farmer={product.farmer} />
           </div>

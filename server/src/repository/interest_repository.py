@@ -35,7 +35,9 @@ class InterestRepository:
             select(Interest)
             .where(Interest.buyer_id == buyer_id)
             .options(
-                selectinload(Interest.product),
+                selectinload(Interest.product)
+                .selectinload(Product.farmer)
+                .selectinload(Farmer.user),
                 selectinload(Interest.purchase_part).selectinload(PurchasePart.purchase),
             )
             .order_by(Interest.created_at.desc())

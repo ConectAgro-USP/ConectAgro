@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import type { Page } from "./pagination";
+import type { ReceivedReview } from "./reviews";
 
 export const DISTANCES = [5, 10, 15] as const;
 export type Distance = (typeof DISTANCES)[number];
@@ -40,6 +41,7 @@ export interface FarmerProduct {
 export interface FarmerReviews {
   average_rating: number | null;
   reviews_count: number;
+  reviews: ReceivedReview[];
 }
 
 // o servidor monta e ordena a lista inteira de novo a cada pedido, seja qual for a página,

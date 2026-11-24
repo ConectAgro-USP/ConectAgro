@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
+import { Cart } from "./pages/Cart";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MyProfile } from "./pages/MyProfile";
@@ -63,6 +64,17 @@ export default function App() {
           }
         />
         <Route path="/produtos/:publicId" element={<ProductDetail />} />
+        {/* sem link no menu, o carrinho abre pelo ícone do cabeçalho */}
+        <Route
+          path="/carrinho"
+          element={
+            <ProtectedRoute allowedProfiles={["apartment"]}>
+              <Titled title="Carrinho">
+                <Cart />
+              </Titled>
+            </ProtectedRoute>
+          }
+        />
         {RESTRICTED_PAGES.map((page) => (
           <Route
             key={page.path}

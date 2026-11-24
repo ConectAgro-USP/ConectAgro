@@ -6,6 +6,25 @@ export interface InterestInput {
   quantity: number;
 }
 
+// só a parte em andamento ou entregue, a cancelada devolve o interesse aberto
+export interface InterestPurchase {
+  public_id: string;
+  created_at: string;
+  expected_delivery_date: string;
+  status: "EM PROGRESSO" | "ENTREGUE";
+  closed_at: string | null;
+}
+
+export interface InterestProduct {
+  picture_url: string | null;
+  price: string;
+  unit: string;
+  quantity: number;
+  expiration_date: string;
+  is_available: boolean;
+  farmer: { public_id: string; short_name: string; farm_name: string | null };
+}
+
 export interface Interest {
   public_id: string;
   buyer_public_id: string;
@@ -15,6 +34,9 @@ export interface Interest {
   quantity: number;
   created_at: string;
   updated_at: string | null;
+  purchase: InterestPurchase | null;
+  // nulo quando o agricultor apagou o produto
+  product: InterestProduct | null;
 }
 
 export interface BuildingNeed {

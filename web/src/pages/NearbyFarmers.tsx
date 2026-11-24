@@ -5,6 +5,7 @@ import { FarmerCard } from "../components/farmers/FarmerCard";
 import { FormError } from "../components/FormError";
 import { TitleBar } from "../components/TitleBar";
 import { formatCount } from "../format";
+import { useInterestLookup } from "../hooks/useInterestLookup";
 import { usePages } from "../hooks/usePages";
 import { FarmerFilterFields } from "./farmers/FarmerFilterFields";
 import { farmerFiltersOf, farmerParamsOf } from "./farmers/farmerParams";
@@ -42,6 +43,7 @@ export function NearbyFarmers() {
   const filters = farmerFiltersOf(params);
   const search = farmerParamsOf(filters).toString();
   const farmers = usePages(loadFarmersPage, search, { keyOf: (farmer) => farmer.public_id });
+  const interests = useInterestLookup();
   // voltar ou abrir um link troca o endereço, e a lista segue
   if (farmers.search !== search) {
     farmers.changeSearch(search);
@@ -73,7 +75,7 @@ export function NearbyFarmers() {
         {farmers.items.length > 0 && (
           <ul className="space-y-4 pt-4">
             {farmers.items.map((farmer) => (
-              <FarmerCard key={farmer.public_id} farmer={farmer} />
+              <FarmerCard key={farmer.public_id} farmer={farmer} interests={interests} />
             ))}
           </ul>
         )}

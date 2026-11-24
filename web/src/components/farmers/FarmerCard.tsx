@@ -2,6 +2,7 @@ import { ChevronDownIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { NearbyFarmer } from "../../api/farmers";
 import { formatCount, formatDistance, formatPercent } from "../../format";
+import type { InterestLookup } from "../../hooks/useInterestLookup";
 import { CARD_SURFACE, CARD_TAB } from "../surface";
 import { FarmerProducts } from "./FarmerProducts";
 import { FarmerRating } from "./FarmerRating";
@@ -28,7 +29,12 @@ function productsText(count: number): string {
   return formatCount(count, "produto disponível", "produtos disponíveis");
 }
 
-export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
+interface FarmerCardProps {
+  farmer: NearbyFarmer;
+  interests: InterestLookup;
+}
+
+export function FarmerCard({ farmer, interests }: Readonly<FarmerCardProps>) {
   // no celular a aba da distância fica por cima do nome
   const topSpace = farmer.distance_km === null ? "pt-6" : "pt-14";
   const [open, setOpen] = useState(false);
@@ -96,7 +102,13 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
         </button>
       </div>
       <div id={productsId} hidden={!open} className="mt-2 border-t border-stone-300 py-4">
-        {opened && <FarmerProducts key={farmer.public_id} farmerPublicId={farmer.public_id} />}
+        {opened && (
+          <FarmerProducts
+            key={farmer.public_id}
+            farmerPublicId={farmer.public_id}
+            interests={interests}
+          />
+        )}
       </div>
     </li>
   );

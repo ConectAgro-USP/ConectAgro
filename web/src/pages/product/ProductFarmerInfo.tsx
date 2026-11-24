@@ -1,6 +1,7 @@
 import type { ProductFarmer } from "../../api/products";
 import { FarmerRating } from "../../components/farmers/FarmerRating";
 import { useFarmerReviews } from "../../hooks/useFarmerReviews";
+import { FarmerReviewList } from "./FarmerReviewList";
 
 interface ProductFarmerInfoProps {
   farmer: ProductFarmer;
@@ -10,12 +11,17 @@ function Reviews({ farmerPublicId }: Readonly<{ farmerPublicId: string }>) {
   const { reviews, loading } = useFarmerReviews(farmerPublicId);
 
   if (loading) {
-    return <p className="text-sm text-stone-500">Carregando avaliações...</p>;
+    return <p className="text-stone-600">Carregando avaliações...</p>;
   }
   if (reviews === null) {
-    return <p className="text-sm text-stone-500">Avaliações indisponíveis</p>;
+    return <p className="text-stone-600">Avaliações indisponíveis</p>;
   }
-  return <FarmerRating average={reviews.average_rating} count={reviews.reviews_count} />;
+  return (
+    <>
+      <FarmerRating average={reviews.average_rating} count={reviews.reviews_count} />
+      <FarmerReviewList reviews={reviews.reviews} />
+    </>
+  );
 }
 
 export function ProductFarmerInfo({ farmer }: Readonly<ProductFarmerInfoProps>) {

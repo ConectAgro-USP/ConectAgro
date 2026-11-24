@@ -3,6 +3,7 @@ import type { CatalogProduct } from "../api/products";
 import { Dashboard } from "../pages/Dashboard";
 import { pageOf } from "./farmers";
 import { anaAsBuyer, fakeAuth, renderWithAuth } from "./helpers";
+import { answerMyInterests } from "./interests";
 import { Address, BackButton } from "./RouterProbe";
 
 export const feijao: CatalogProduct = {
@@ -30,6 +31,7 @@ export function renderCatalog(url: string, ...responses: Response[]) {
     fetchMock.mockResolvedValueOnce(response);
   }
   vi.stubGlobal("fetch", fetchMock);
+  answerMyInterests();
   const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
   renderWithAuth(
     <>

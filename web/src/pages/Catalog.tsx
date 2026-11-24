@@ -9,6 +9,7 @@ import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductRow } from "../components/farmers/ProductRow";
 import { formatCount } from "../format";
+import { useInterestLookup } from "../hooks/useInterestLookup";
 import { usePages } from "../hooks/usePages";
 import { CatalogBand } from "./catalog/CatalogBand";
 import { CatalogControls } from "./catalog/CatalogControls";
@@ -42,6 +43,7 @@ export function Catalog() {
   const filters = catalogFiltersOf(params);
   const search = catalogQueryOf(filters).toString();
   const products = usePages(loadCatalogPage, search, { keyOf: (product) => product.public_id });
+  const interests = useInterestLookup();
   // voltar ou buscar no cabeçalho troca o endereço, e a lista segue
   if (products.search !== search) {
     products.changeSearch(search);
@@ -78,6 +80,7 @@ export function Catalog() {
               <ProductRow
                 key={product.public_id}
                 product={product}
+                interest={interests.get(product.public_id)}
                 seller={sellerOf(product)}
                 rating={{
                   average: product.farmer_average_rating,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { errorMessage, lostAccess } from "../api/client";
+import { ApiError, errorMessage, lostAccess } from "../api/client";
 import {
+  createInterest,
   deleteInterest,
   listMyInterests,
   updateInterest,
@@ -14,15 +15,17 @@ interface UseMyInterestsState {
   loading: boolean;
   error: string;
   retry: () => void;
+  register: (productPublicId: string, quantity: number) => Promise<void>;
   update: (publicId: string, quantity: number) => Promise<void>;
   remove: (publicId: string) => Promise<void>;
 }
 
-export function useMyInterests(): UseMyInterestsState {
+// desligado, nada é pedido, para quem não é morador aprovado
+export function useMyInterests(enabled = true): UseMyInterestsState {
   const { refreshUser } = useAuth();
   const guard = useWriteGuard();
   const [data, setData] = useState<Interest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -32,6 +35,7 @@ export function useMyInterests(): UseMyInterestsState {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     let outdated = false;
 
     async function load() {
@@ -55,10 +59,27 @@ export function useMyInterests(): UseMyInterestsState {
     return () => {
       outdated = true;
     };
-  }, [refreshUser, reloadKey]);
+  }, [enabled, refreshUser, reloadKey]);
+
+  // outra aba ou a compra mudou o interesse, então a lista é relida
+  async function rereadOnConflict<T>(request: Promise<T>): Promise<T> {
+    try {
+      return await guard(request);
+    } catch (writeError) {
+      if (writeError instanceof ApiError && writeError.status === 409) retry();
+      throw writeError;
+    }
+  }
+
+  async function register(productPublicId: string, quantity: number): Promise<void> {
+    const created = await rereadOnConflict(
+      createInterest({ product_public_id: productPublicId, quantity }),
+    );
+    setData((current) => [created, ...current]);
+  }
 
   async function update(publicId: string, quantity: number): Promise<void> {
-    const saved = await guard(updateInterest(publicId, quantity));
+    const saved = await rereadOnConflict(updateInterest(publicId, quantity));
     setData((current) =>
       current.map((interest) => (interest.public_id === publicId ? saved : interest)),
     );
@@ -69,5 +90,5 @@ export function useMyInterests(): UseMyInterestsState {
     setData((current) => current.filter((interest) => interest.public_id !== publicId));
   }
 
-  return { data, loading, error, retry, update, remove };
+  return { data, loading: enabled && loading, error, retry, register, update, remove };
 }

@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import type { FarmerProduct, NearbyFarmer } from "../api/farmers";
 import { NearbyFarmers } from "../pages/NearbyFarmers";
 import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
+import { answerMyInterests } from "./interests";
 import { Address } from "./RouterProbe";
 
 export const RETRY = "Tentar de novo";
@@ -68,6 +69,7 @@ export function renderFarmersAt(url: string, ...answers: Answer[]) {
       fetchMock.mockReturnValueOnce(Promise.resolve(answer));
     }
   }
+  answerMyInterests();
   const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
   renderWithAuth(
     <>

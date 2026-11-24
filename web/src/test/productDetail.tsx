@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router";
+import type { Interest } from "../api/interests";
 import type { ProductDetail as ProductDetailType } from "../api/products";
 import { ProductDetail } from "../pages/ProductDetail";
 import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth } from "./helpers";
+import { answerMyInterests } from "./interests";
 
 export const sampleProduct: ProductDetailType = {
   public_id: "prod-123",
@@ -42,7 +44,9 @@ export function pageLoad(product = sampleProduct, reviews: unknown = emptyReview
 export function renderDetail(
   auth = fakeAuth({ user: anaAsBuyer("APROVADO") }),
   url = "/produtos/prod-123",
+  ...interests: (Interest[] | Response)[]
 ) {
+  answerMyInterests(...interests);
   return renderWithAuth(
     <Routes>
       <Route path="/produtos/:publicId" element={<ProductDetail />} />

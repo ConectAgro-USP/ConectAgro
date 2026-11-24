@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { useAction } from "../hooks/useAction";
 import { navigationOf, PROFILE_DESTINATION, type NavDestination } from "../restrictedPages";
+import { CartLink } from "./CartLink";
 import { FormError } from "./FormError";
 import { HeaderSearch } from "./HeaderSearch";
 import { Logo } from "./Logo";
@@ -46,6 +47,7 @@ export function AppHeader() {
           <div className="min-w-0 flex-1">
             <HeaderSearch />
           </div>
+          <CartLink />
           <div className="hidden shrink-0 items-center gap-1 md:flex">
             <DestinationLink page={PROFILE_DESTINATION} className={ACCOUNT_CLASSES} />
             <button
