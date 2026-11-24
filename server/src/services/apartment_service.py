@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from src.core.search_text import fold
+from src.core.text import short_name
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.profile import ApartmentMatch, ResidentRead, ResidentsFilters, ResidentsPage
 from src.repository.profile_repository import ProfileRepository
 from src.services.cnpj_service import normalize_cnpj
 from src.services.exceptions import BuildingNameTooShortError, ResidentNotFoundError
-from src.services.text_service import short_name
 
 MIN_NAME_LETTERS = 3
 MAX_NAME_MATCHES = 20

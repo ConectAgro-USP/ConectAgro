@@ -1,6 +1,6 @@
 import pytest
 
-from src.services.text_service import short_name
+from src.core.text import short_name
 
 
 @pytest.mark.parametrize(

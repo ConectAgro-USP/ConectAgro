@@ -1,6 +1,6 @@
 import pytest
 
-from src.services.phone_service import validate_cellphone, validate_homephone
+from src.core.phone import validate_cellphone, validate_homephone
 
 
 @pytest.mark.parametrize("number", ["(11) 94464-4502", "11 94464 4502", "11944644502"])

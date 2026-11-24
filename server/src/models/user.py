@@ -5,9 +5,9 @@ from pydantic import AfterValidator, EmailStr, StringConstraints
 from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.cpf_service import validate_cpf
-from src.services.phone_service import validate_cellphone, validate_homephone
-from src.services.text_service import reject_null_character
+from src.core.cpf import validate_cpf
+from src.core.phone import validate_cellphone, validate_homephone
+from src.core.text import reject_null_character
 
 NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
 PersonName = Annotated[

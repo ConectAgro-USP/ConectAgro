@@ -8,7 +8,7 @@ from pydantic import field_validator
 from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import short_name
+from src.core.text import short_name
 
 from .product import BUSINESS_TZ, INT4_MAX
 

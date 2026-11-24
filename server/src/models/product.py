@@ -9,7 +9,7 @@ from pydantic import AfterValidator, StringConstraints, field_validator
 from sqlalchemy import CheckConstraint, DateTime, String
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import reject_null_character
+from src.core.text import reject_null_character
 
 if TYPE_CHECKING:
     from .farmer import Farmer

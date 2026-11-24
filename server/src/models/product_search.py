@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.core.text import reject_null_character
 from src.models.pagination import PaginatedResponse
 from src.models.product import INT4_MAX, ProductCatalogRead
-from src.services.text_service import reject_null_character
 
 PRODUCTS_PER_PAGE = 20
 

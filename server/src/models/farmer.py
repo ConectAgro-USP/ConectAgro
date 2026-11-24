@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import short_name
+from src.core.text import short_name
 
 if TYPE_CHECKING:
     from .product import Product

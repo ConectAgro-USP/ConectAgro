@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from src.core.text import short_name
 from src.models.farmer import Farmer
 from src.models.pagination import PageParams
 from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
@@ -28,7 +29,6 @@ from src.services.exceptions import (
     ReviewAlreadyExistsError,
     ReviewNotFoundError,
 )
-from src.services.text_service import short_name
 
 
 class ReviewService:

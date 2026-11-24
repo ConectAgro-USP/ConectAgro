@@ -36,9 +36,6 @@ class Apartment(SQLModel, table=True):
     buyers: list["Buyer"] = Relationship(back_populates="apartment")
     purchases: list["Purchase"] = Relationship(back_populates="apartment")
 
-    def change_manager(self, new_manager: int) -> None:
-        self.manager_id = new_manager
-
 
 @event.listens_for(Apartment, "before_insert")
 @event.listens_for(Apartment, "before_update")

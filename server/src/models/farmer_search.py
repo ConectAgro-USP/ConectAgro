@@ -3,10 +3,10 @@ from typing import Annotated, NamedTuple
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.core.text import reject_null_character
 from src.models.farmer import FarmerSearchRead
 from src.models.pagination import PaginatedResponse
 from src.models.product import INT4_MAX
-from src.services.text_service import reject_null_character
 
 
 class AllowedDistance(IntEnum):

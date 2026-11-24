@@ -27,7 +27,7 @@ from src.services.exceptions import (
     ProductNotFoundError,
     ProductUnavailableError,
 )
-from src.services.product_service import _farmer_summary
+from src.services.product_service import farmer_summary
 
 
 class InterestService:
@@ -110,7 +110,7 @@ class InterestService:
         apartment_needs = [
             ApartmentNeedRead(
                 product=ProductDetailRead.model_validate(
-                    product, update={"farmer": _farmer_summary(product.farmer)}
+                    product, update={"farmer": farmer_summary(product.farmer)}
                 ),
                 total_quantity=quantity,
                 interested_buyers_count=buyers_count,

@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
+from src.core.text import short_name
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, INT4_MAX
@@ -37,7 +38,6 @@ from src.services.exceptions import (
     PurchaseNotFoundError,
     PurchasePartClosedError,
 )
-from src.services.text_service import short_name
 
 
 class PurchaseService:

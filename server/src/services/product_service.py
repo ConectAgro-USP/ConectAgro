@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from src.core.search_text import fold
+from src.core.text import short_name
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.my_products import MyProductsFilters, MyProductsPage
@@ -22,7 +23,6 @@ from src.services.exceptions import (
     ProductHasPurchasesError,
     ProductNotFoundError,
 )
-from src.services.text_service import short_name
 
 
 class ProductService:
@@ -52,7 +52,7 @@ class ProductService:
         if product is None:
             raise ProductNotFoundError
         return ProductDetailRead.model_validate(
-            product, update={"farmer": _farmer_summary(product.farmer)}
+            product, update={"farmer": farmer_summary(product.farmer)}
         )
 
     def update_product(
@@ -119,7 +119,7 @@ def fill_search_text(product: Product) -> None:
     product.description_search = fold(product.description)
 
 
-def _farmer_summary(farmer: Farmer) -> ProductFarmerRead:
+def farmer_summary(farmer: Farmer) -> ProductFarmerRead:
     return ProductFarmerRead(
         public_id=farmer.public_id,
         farm_name=farmer.farm_name,

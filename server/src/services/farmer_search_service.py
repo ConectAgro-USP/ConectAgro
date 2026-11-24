@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from src.core.search_text import fold
+from src.core.text import short_name
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer, FarmerSearchRead
 from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse, FarmerSort
@@ -13,7 +14,6 @@ from src.services.distance_service import (
     km_between,
     saved_point,
 )
-from src.services.text_service import short_name
 
 
 class FarmerSearchService:

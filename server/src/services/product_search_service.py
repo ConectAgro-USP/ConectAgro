@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from src.core.search_text import fold
+from src.core.text import short_name
 from src.models.product import BUSINESS_TZ, ProductCatalogRead
 from src.models.product_search import (
     PRODUCTS_PER_PAGE,
@@ -8,7 +9,6 @@ from src.models.product_search import (
     ProductSearchResponse,
 )
 from src.repository.product_repository import ProductRepository
-from src.services.text_service import short_name
 
 
 class ProductSearchService:

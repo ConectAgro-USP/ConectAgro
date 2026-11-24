@@ -1,6 +1,6 @@
 import pytest
 
-from src.services.cpf_service import validate_cpf
+from src.core.cpf import validate_cpf
 
 
 @pytest.mark.parametrize(

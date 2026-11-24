@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import AfterValidator, ConfigDict, StringConstraints, model_validator
 from sqlmodel import Field, SQLModel
 
-from src.services.text_service import reject_null_character
+from src.core.text import reject_null_character
 
 from .buyer import LinkStatus
 from .pagination import PageParams, PaginatedResponse

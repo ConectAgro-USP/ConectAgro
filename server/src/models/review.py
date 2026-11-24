@@ -6,7 +6,7 @@ from pydantic import AfterValidator, Strict
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import reject_null_character, short_name
+from src.core.text import reject_null_character, short_name
 
 from .pagination import PageParams, PaginatedResponse
 

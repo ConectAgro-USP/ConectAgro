@@ -87,15 +87,6 @@ class InterestRepository:
         )
         return self.session.exec(statement).first()
 
-    def list_by_buyer(self, buyer: Buyer) -> list[Interest]:
-        statement = (
-            select(Interest)
-            .where(Interest.buyer_id == buyer.id)
-            .options(selectinload(Interest.product))
-            .order_by(Interest.created_at.desc())
-        )
-        return list(self.session.exec(statement).all())
-
     def list_apartment_needs(self, apartment: Apartment, filters: ApartmentNeedsFilters):
         today = datetime.now(BUSINESS_TZ).date()
         statement = (
