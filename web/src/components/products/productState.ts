@@ -10,11 +10,14 @@ export const STATE_LABELS: Record<ProductState, string> = {
   soldOut: "Esgotado",
 };
 
+// a mesma regra vale para o dono, a página do produto e o carrinho
+type Stateful = Pick<MyProduct, "is_available" | "expiration_date" | "quantity">;
+
 // a pausa vem antes, porque é o que o botão de retomar desfaz
-export function stateOf(product: MyProduct): ProductState {
+export function stateOf(product: Stateful): ProductState {
   if (!product.is_available) return "paused";
   if (daysUntil(product.expiration_date) < 0) return "expired";
-  if (product.quantity === 0) return "soldOut";
+  if (product.quantity <= 0) return "soldOut";
   return "available";
 }
 

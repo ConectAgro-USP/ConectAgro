@@ -10,7 +10,6 @@ from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase
 from src.models.review import Review
-from src.services.product_service import fill_search_text
 from tests.helpers import add_building, add_farmer, add_user
 
 # a busca exige login, então todos os testes rodam com a Ana logada
@@ -35,7 +34,6 @@ def add_product(
         expiration_date=datetime.now(BUSINESS_TZ).date() + timedelta(days=days_until_expiration),
         farmer_id=farmer.id,
     )
-    fill_search_text(product)
     session.add(product)
     session.commit()
     session.refresh(product)

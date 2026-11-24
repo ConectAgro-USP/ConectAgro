@@ -112,6 +112,7 @@ class Interest(InterestBase, table=True):
 
 class InterestCreate(InterestBase):
     product_public_id: UUID
+    unit: ProductUnit | None = None
 
 
 class ApartmentNeedRead(SQLModel):
@@ -123,6 +124,7 @@ class ApartmentNeedRead(SQLModel):
 class InterestUpdate(SQLModel):
     # o default None marca campo não enviado, e o tipo sem None recusa null explícito
     quantity: int = Field(default=None, gt=0, le=INT4_MAX)
+    unit: ProductUnit = Field(default=None)
 
 
 class InterestPurchaseRead(SQLModel):

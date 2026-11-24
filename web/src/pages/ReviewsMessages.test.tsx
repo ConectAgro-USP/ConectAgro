@@ -40,7 +40,7 @@ describe("Reviews, messages after saving", () => {
       `${OSVALDO_URL}&nota=2`,
       [lastDelivery],
       [],
-      jsonResponse({}, 500),
+      jsonResponse({}, 409),
       jsonResponse({}, 500),
       jsonResponse({}, 500),
       jsonResponse(created, 201),
@@ -60,7 +60,7 @@ describe("Reviews, messages after saving", () => {
       `${OSVALDO_URL}&nota=2`,
       [lastDelivery],
       [],
-      jsonResponse({}, 500),
+      jsonResponse({}, 409),
     );
     fetchMock
       .mockReturnValueOnce(reviewables.promise)

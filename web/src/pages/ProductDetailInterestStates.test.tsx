@@ -36,7 +36,7 @@ describe("ProductDetail, interest states", () => {
     expect(screen.getByText("No seu interesse: 8 kg")).toBeInTheDocument();
     expect(fetchMock.mock.calls[3][0]).toBe("/api/interests/interesse-9");
     expect(fetchMock.mock.calls[3][1]?.method).toBe("PATCH");
-    expect(sentBody(fetchMock, 3)).toEqual({ quantity: 8 });
+    expect(sentBody(fetchMock, 3)).toEqual({ quantity: 8, unit: "kg" });
   });
 
   it("lets the resident lower an open interest above the stock", async () => {
@@ -74,7 +74,7 @@ describe("ProductDetail, interest states", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pedir de novo" }));
 
     expect(await screen.findByText("Interesse registrado de novo")).toBeInTheDocument();
-    expect(sentBody(fetchMock, 3)).toEqual({ quantity: 2 });
+    expect(sentBody(fetchMock, 3)).toEqual({ quantity: 2, unit: "kg" });
     expect(fetchMock.mock.calls[3][1]?.method).toBe("PATCH");
     expect(screen.getByText("No seu interesse: 2 kg")).toBeInTheDocument();
     expect(screen.getByRole("button", UPDATE)).toBeDisabled();

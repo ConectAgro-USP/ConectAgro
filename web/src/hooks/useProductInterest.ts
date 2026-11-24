@@ -7,6 +7,7 @@ import {
   updateInterest,
   type Interest,
 } from "../api/interests";
+import type { ProductUnit } from "../api/products";
 import { useAuth } from "../auth/AuthContext";
 import { useWriteGuard } from "./useWriteGuard";
 
@@ -62,12 +63,14 @@ export function useProductInterest(productPublicId: string) {
     }
   }
 
-  function register(quantity: number): Promise<void> {
-    return rereadOnConflict(createInterest({ product_public_id: productPublicId, quantity }));
+  // a unidade é a mostrada na página, e a API recusa se ela mudou
+  function register(quantity: number, unit: ProductUnit): Promise<void> {
+    const interest = { product_public_id: productPublicId, quantity, unit };
+    return rereadOnConflict(createInterest(interest));
   }
 
-  function update(publicId: string, quantity: number): Promise<void> {
-    return rereadOnConflict(updateInterest(publicId, quantity));
+  function update(publicId: string, quantity: number, unit: ProductUnit): Promise<void> {
+    return rereadOnConflict(updateInterest(publicId, quantity, unit));
   }
 
   async function remove(publicId: string): Promise<void> {

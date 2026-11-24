@@ -10,7 +10,6 @@ from sqlmodel import Session
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, Product
 from src.models.user import User
-from src.services.product_service import fill_search_text
 
 FUTURE = datetime.now(BUSINESS_TZ).date() + timedelta(days=30)
 MAX_SECONDS = 0.500
@@ -40,7 +39,6 @@ def ten_thousand_products(session: Session) -> None:
                 expiration_date=FUTURE,
                 farmer_id=farmer.id,
             )
-            fill_search_text(product)
             products.append(product)
     session.add_all(products)
     session.commit()

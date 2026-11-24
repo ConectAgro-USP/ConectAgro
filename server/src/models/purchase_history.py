@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from uuid import UUID
 
 from sqlmodel import Field, SQLModel
@@ -18,8 +19,15 @@ class PurchaseHistoryFilters(SQLModel):
     page_size: int = Field(default=20, ge=1, le=100)
 
 
+class SalesSort(StrEnum):
+    RECENT = "recent"
+    # a entrega mais próxima primeiro, e as atrasadas antes de todas
+    DELIVERY = "delivery"
+
+
 class SalesFilters(PurchaseHistoryFilters):
     apartment_public_id: UUID | None = None
+    sort: SalesSort = SalesSort.RECENT
 
 
 class BuildingPurchasesFilters(PurchaseHistoryFilters):

@@ -47,7 +47,7 @@ describe("MyInterests, states of the interest", () => {
 
     expect(await within(card).findByText("Interesse registrado de novo")).toBeInTheDocument();
     expect(fetchMock.mock.calls[1][1]?.method).toBe("PATCH");
-    expect(sentBody(fetchMock, 1)).toEqual({ quantity: 2 });
+    expect(sentBody(fetchMock, 1)).toEqual({ quantity: 2, unit: "kg" });
     expect(within(card).getByText("Disponível")).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Salvar" })).toBeDisabled();
     expect(within(card).getByRole("button", { name: "Remover" })).toBeEnabled();

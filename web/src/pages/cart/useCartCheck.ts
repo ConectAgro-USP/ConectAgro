@@ -1,15 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ApiError, errorMessage, lostAccess } from "../../api/client";
-import { getProduct, type ProductDetail } from "../../api/products";
+import { getProduct, type ProductDetail, type ProductUnit } from "../../api/products";
 import { useAuth } from "../../auth/AuthContext";
-import { daysUntil } from "../../format";
+import { stateOf, type ProductState } from "../../components/products/productState";
 import type { useCart } from "../../hooks/useCart";
 
-export type Problem = "paused" | "expired" | "soldOut";
+export type Problem = Exclude<ProductState, "available">;
 
 export interface CheckNotes {
   // o preço guardado antes da conferência, por produto
   oldPrices: Partial<Record<string, string>>;
+  // a unidade guardada antes da conferência, por produto
+  oldUnits: Partial<Record<string, ProductUnit>>;
   // a quantidade pedida antes de caber no estoque, por produto
   clamped: Partial<Record<string, number>>;
   // os produtos que saíram do catálogo e do carrinho
@@ -19,16 +21,16 @@ export interface CheckNotes {
 // poucos pedidos de cada vez, para não encher a API
 const BATCH = 10;
 type Checked = Partial<Record<string, ProductDetail>>;
-const NO_NOTES: CheckNotes = { oldPrices: {}, clamped: {}, gone: [] };
+const NO_NOTES: CheckNotes = { oldPrices: {}, oldUnits: {}, clamped: {}, gone: [] };
 
 export function problemOf(product: ProductDetail): Problem | null {
-  if (!product.is_available) return "paused";
-  if (daysUntil(product.expiration_date) < 0) return "expired";
-  if (product.quantity <= 0) return "soldOut";
-  return null;
+  const state = stateOf(product);
+  return state === "available" ? null : state;
 }
 
-// o produto apagado volta como null
+// o produto apagado volta como null, como o id guardado que a API recusa
+const GONE_STATUSES = [404, 422];
+
 async function fetchProducts(ids: string[]): Promise<Map<string, ProductDetail | null>> {
   const found = new Map<string, ProductDetail | null>();
   for (let start = 0; start < ids.length; start += BATCH) {
@@ -36,7 +38,7 @@ async function fetchProducts(ids: string[]): Promise<Map<string, ProductDetail |
     const products = await Promise.all(
       batch.map((id) =>
         getProduct(id).catch((error: unknown) => {
-          if (error instanceof ApiError && error.status === 404) return null;
+          if (error instanceof ApiError && GONE_STATUSES.includes(error.status)) return null;
           throw error;
         }),
       ),
@@ -58,9 +60,9 @@ export function useCartCheck(cart: ReturnType<typeof useCart>) {
   async function check(): Promise<{ changed: boolean; products: Checked }> {
     const items = cart.current();
     const found = await fetchProducts(items.map((item) => item.productPublicId));
-    const next: CheckNotes = { oldPrices: {}, clamped: {}, gone: [] };
+    const next: CheckNotes = { oldPrices: {}, oldUnits: {}, clamped: {}, gone: [] };
     let changed = false;
-    for (const { productPublicId: id, quantity, unitPrice } of items) {
+    for (const { productPublicId: id, quantity, unitPrice, unit } of items) {
       const product = found.get(id);
       const before = seen.current[id];
       if (!product) {
@@ -73,10 +75,20 @@ export function useCartCheck(cart: ReturnType<typeof useCart>) {
         changed ||= before === undefined || problemOf(before) === null;
         continue;
       }
+      // o produto que a página não mostrou ou que estava fora entra no total
+      if (before === undefined || problemOf(before) !== null) changed = true;
       if (Number(product.price) !== Number(unitPrice)) {
         cart.change(id, { unitPrice: product.price });
         next.oldPrices[id] = unitPrice;
         changed = true;
+      }
+      if (unit !== product.unit) {
+        cart.change(id, { unit: product.unit });
+        // o carrinho antigo não tinha a unidade, que passa a ser a de agora
+        if (unit !== undefined) {
+          next.oldUnits[id] = unit;
+          changed = true;
+        }
       }
       if (quantity > product.quantity) {
         cart.change(id, { quantity: product.quantity });
@@ -89,6 +101,7 @@ export function useCartCheck(cart: ReturnType<typeof useCart>) {
     setProducts(seen.current);
     setNotes((current) => ({
       oldPrices: { ...current.oldPrices, ...next.oldPrices },
+      oldUnits: { ...current.oldUnits, ...next.oldUnits },
       clamped: { ...current.clamped, ...next.clamped },
       gone: [...new Set([...current.gone, ...next.gone])],
     }));

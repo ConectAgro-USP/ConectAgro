@@ -1,3 +1,4 @@
+import { MAX_SEARCH_TERM } from "../../api/pagination";
 import {
   CATALOG_SORTS,
   NO_CATALOG_FILTERS,
@@ -7,7 +8,6 @@ import {
 
 // o maior inteiro que a API aceita
 const INT4_MAX = 2_147_483_647;
-const MAX_TERM = 200;
 
 export const SORT_LABELS: Record<CatalogSort, string> = {
   relevance: "Mais relevantes",
@@ -36,7 +36,7 @@ export function catalogFiltersOf(params: URLSearchParams): CatalogFilters {
   const sort = params.get("sort");
   const expirationFrom = params.get("expiration_from") ?? "";
   return {
-    q: (params.get("q") ?? "").trim().slice(0, MAX_TERM),
+    q: (params.get("q") ?? "").trim().slice(0, MAX_SEARCH_TERM),
     sort: isSort(sort) ? sort : "relevance",
     expirationFrom: isDay(expirationFrom) ? expirationFrom : "",
     minQuantity: parseQuantity(params.get("min_quantity")),

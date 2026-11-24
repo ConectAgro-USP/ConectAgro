@@ -13,7 +13,12 @@ export const ALFACE = alface.product;
 export const LARANJA = laranja.product;
 
 export function inCart(product: ProductDetail, quantity: number): CartItem {
-  return { productPublicId: product.public_id, quantity, unitPrice: product.price };
+  return {
+    productPublicId: product.public_id,
+    quantity,
+    unitPrice: product.price,
+    unit: product.unit,
+  };
 }
 
 // o carrinho confere cada produto na API quando abre

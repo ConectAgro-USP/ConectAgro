@@ -53,8 +53,8 @@ describe("Cart submit", () => {
     expect(sentBody(fetchMock, 6)).toEqual({
       expected_delivery_date: "2026-12-01",
       items: [
-        { product_public_id: "produto-1", quantity: 12, unit_price: "20.00" },
-        { product_public_id: "produto-3", quantity: 1, unit_price: "4.50" },
+        { product_public_id: "produto-1", quantity: 12, unit_price: "20.00", unit: "kg" },
+        { product_public_id: "produto-3", quantity: 1, unit_price: "4.50", unit: "kg" },
       ],
     });
     expect(storedCart()).toBeNull();

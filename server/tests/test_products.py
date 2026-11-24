@@ -707,6 +707,7 @@ def test_owner_updates_only_the_fields_sent(
         "expiration_date": FUTURE.isoformat(),
         "unit": "kg",
         "farmer_public_id": str(farmer.public_id),
+        "unit_locked": False,
     }
     session.refresh(lettuce)
     assert lettuce.price == Decimal("3.00")
@@ -736,6 +737,7 @@ def test_owner_updates_every_field(client: TestClient, session: Session, farmer:
         **changes,
         "public_id": str(lettuce.public_id),
         "farmer_public_id": str(farmer.public_id),
+        "unit_locked": False,
     }
 
 

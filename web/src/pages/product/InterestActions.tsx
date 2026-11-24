@@ -1,6 +1,7 @@
 import { CheckCircleIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { ApiError } from "../../api/client";
 import type { ProductDetail } from "../../api/products";
 import { SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
@@ -17,9 +18,16 @@ interface InterestActionsProps {
   product: ProductDetail;
   isAvailable: boolean;
   stock: string;
+  // relê o produto, que pode ter mudado de unidade
+  onConflict: () => void;
 }
 
-export function InterestActions({ product, isAvailable, stock }: Readonly<InterestActionsProps>) {
+export function InterestActions({
+  product,
+  isAvailable,
+  stock,
+  onConflict,
+}: Readonly<InterestActionsProps>) {
   const interests = useProductInterest(product.public_id);
   const action = useAction();
   const [notice, setNotice] = useState("");
@@ -30,17 +38,22 @@ export function InterestActions({ product, isAvailable, stock }: Readonly<Intere
   function run(request: () => Promise<void>, done: string) {
     setNotice("");
     action.run(async () => {
-      await request();
+      try {
+        await request();
+      } catch (writeError) {
+        if (writeError instanceof ApiError && writeError.status === 409) onConflict();
+        throw writeError;
+      }
       setNotice(done);
     });
   }
 
   function submit(quantity: number) {
     if (!interest) {
-      run(() => interests.register(quantity), "Interesse registrado");
+      run(() => interests.register(quantity, product.unit), "Interesse registrado");
     } else {
       const done = state === "delivered" ? "Interesse registrado de novo" : "Interesse atualizado";
-      run(() => interests.update(interest.public_id, quantity), done);
+      run(() => interests.update(interest.public_id, quantity, product.unit), done);
     }
   }
 

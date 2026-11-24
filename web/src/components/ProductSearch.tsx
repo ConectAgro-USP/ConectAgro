@@ -1,6 +1,7 @@
 import { SearchIcon } from "lucide-react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { MAX_SEARCH_TERM } from "../api/pagination";
 import { useSyncedValue } from "../hooks/useSyncedValue";
 
 const INPUT_CLASSES =
@@ -11,9 +12,6 @@ const BUTTON_CLASSES =
   "flex w-14 shrink-0 items-center justify-center rounded-r-full bg-lime-800 text-white " +
   "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-lime-800";
-
-// o mesmo limite da API para a busca
-const MAX_TERM = 200;
 
 export function ProductSearch({ className = "" }: Readonly<{ className?: string }>) {
   const navigate = useNavigate();
@@ -40,7 +38,7 @@ export function ProductSearch({ className = "" }: Readonly<{ className?: string 
         onChange={(event) => setTerm(event.target.value)}
         aria-label="Buscar produto"
         placeholder="Buscar produto"
-        maxLength={MAX_TERM}
+        maxLength={MAX_SEARCH_TERM}
         enterKeyHint="search"
         className={INPUT_CLASSES}
       />

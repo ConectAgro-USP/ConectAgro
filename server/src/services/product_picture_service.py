@@ -3,7 +3,7 @@ from hashlib import sha256
 from uuid import UUID
 
 from src.models.farmer import Farmer
-from src.models.product import Product
+from src.models.product import ProductRead
 from src.models.product_picture import ProductPicture
 from src.repository.product_picture_repository import ProductPictureRepository
 from src.repository.product_repository import ProductRepository
@@ -14,6 +14,7 @@ from src.services.exceptions import (
     ProductPictureNotFoundError,
     UnsupportedPictureTypeError,
 )
+from src.services.product_service import owner_read
 
 MAX_PICTURE_BYTES = 1024 * 1024
 PICTURE_VERSION_LENGTH = 12
@@ -42,7 +43,7 @@ class ProductPictureService:
 
     def save_picture(
         self, public_id: UUID, farmer: Farmer, data: bytes, content_type: str | None
-    ) -> Product:
+    ) -> ProductRead:
         product = self.products.get_product_by_public_id(public_id)
         if product is None:
             raise ProductNotFoundError
@@ -65,7 +66,8 @@ class ProductPictureService:
         picture.etag = etag
         picture.updated_at = datetime.now(UTC)
         product.picture_url = picture_url(product.public_id, etag)
-        return self.pictures.save(picture, product)
+        product = self.pictures.save(picture, product)
+        return owner_read(product, self.products.is_unit_locked(product.id))
 
     def get_picture(self, public_id: UUID) -> ProductPicture:
         found = self.pictures.get_with_product(public_id)

@@ -19,6 +19,7 @@ from src.services.exceptions import (
     NotInterestOwnerUpdateError,
     ProductNotFoundError,
     ProductUnavailableError,
+    ProductUnitChangedError,
 )
 
 router = APIRouter(prefix="/interests", tags=["interests"])
@@ -28,6 +29,10 @@ HTTP_ERRORS = {
     ProductUnavailableError: (
         status.HTTP_409_CONFLICT,
         "Este produto não está mais disponível no catálogo",
+    ),
+    ProductUnitChangedError: (
+        status.HTTP_409_CONFLICT,
+        "A unidade do produto mudou. Confira a página antes de continuar",
     ),
     InterestNotFoundError: (status.HTTP_404_NOT_FOUND, "Interesse não encontrado"),
     InterestAlreadyExistsError: (

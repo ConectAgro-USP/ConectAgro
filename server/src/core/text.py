@@ -5,9 +5,14 @@ def reject_null_character(text: str) -> str:
     return text
 
 
-def short_name(full_name: str) -> str:
+def hide_email(name: str) -> str:
     # sem o nome do Google, o cadastro guarda o e-mail, que não pode vazar
-    if "@" in full_name:
+    return "" if "@" in name else name
+
+
+def short_name(full_name: str) -> str:
+    full_name = hide_email(full_name)
+    if not full_name:
         return ""
     # o primeiro nome e a inicial do último: o morador reconhece o síndico
     words = full_name.split()

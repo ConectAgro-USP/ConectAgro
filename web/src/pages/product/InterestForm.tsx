@@ -2,10 +2,10 @@ import { useState } from "react";
 import type { Interest } from "../../api/interests";
 import type { ProductDetail } from "../../api/products";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../../components/Button";
-import { formatQuantity } from "../../format";
 import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
 import { chosenText, deliveredText } from "../../interestState";
-import { NOTE_CLASSES, QUANTITY_CLASSES, digitsOnly } from "./buyBox";
+import { NOTE_CLASSES, upToHint } from "./buyBox";
+import { QuantityField } from "./QuantityField";
 
 // sem a compra em andamento, que só mostra o aviso
 interface InterestFormProps {
@@ -55,36 +55,17 @@ export function InterestForm({
           <p className="mb-3 font-bold text-lime-900">{chosenText(kept, product.unit)}</p>
         )}
         {delivery && <p className={`mb-3 ${NOTE_CLASSES}`}>{deliveredText(delivery)}</p>}
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <label htmlFor="quantity-input" className="font-bold text-stone-900">
-            Quantidade
-          </label>
-          <span className="font-medium text-stone-700">{stock}</span>
-        </div>
-        <input
-          id="quantity-input"
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          disabled={!isAvailable || pending}
+        <QuantityField
+          stock={stock}
           value={quantity}
-          onChange={(event) => {
-            if (!digitsOnly(event.target.value)) return;
-            setQuantity(event.target.value);
+          disabled={!isAvailable || pending}
+          hint={isAvailable ? upToHint(product) : null}
+          exceeds={isAvailable && exceeds}
+          onChange={(value) => {
+            setQuantity(value);
             onEdit();
           }}
-          className={QUANTITY_CLASSES}
         />
-        {isAvailable && (
-          <p className="mt-1 text-stone-700">
-            Escolha uma quantidade de até {formatQuantity(product.quantity, product.unit)}.
-          </p>
-        )}
-        {isAvailable && exceeds && (
-          <p role="alert" className="mt-1 font-bold text-red-700">
-            A quantidade informada excede o estoque disponível.
-          </p>
-        )}
       </div>
 
       <div className="mt-6 space-y-3">

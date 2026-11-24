@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from src.core.search_text import fold
-from src.core.text import short_name
+from src.core.text import hide_email, short_name
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer, FarmerSearchRead
 from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse, FarmerSort
@@ -29,7 +29,8 @@ class FarmerSearchService:
         else:
             origin = saved_point(building)
         box = bounding_box(origin, radius) if radius is not None else None
-        farmers = self.repository.search(filters.products, today, box)
+        products = [fold(product) for product in filters.products]
+        farmers = self.repository.search(products, today, box)
         if filters.name:
             query = fold(filters.name)
             farmers = [farmer for farmer in farmers if self.matches_name(farmer, query)]
@@ -92,8 +93,7 @@ class FarmerSearchService:
 
     @staticmethod
     def matches_name(farmer: Farmer, query: str) -> bool:
-        # o email salvo como nome fica de fora, para a busca não revelar o endereço
-        name = "" if "@" in farmer.user.name else farmer.user.name
+        name = hide_email(farmer.user.name)
         return query in fold(name) or query in fold(farmer.farm_name)
 
     @staticmethod

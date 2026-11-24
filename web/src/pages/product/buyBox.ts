@@ -1,3 +1,6 @@
+import type { ProductDetail } from "../../api/products";
+import { formatQuantity } from "../../format";
+
 export const QUANTITY_CLASSES =
   "h-14 w-full rounded-xl border border-stone-400 bg-white px-4 text-stone-900 " +
   "focus:border-lime-800 focus:outline-1 focus:outline-lime-800 " +
@@ -9,4 +12,8 @@ export const TEXT_LINK_CLASSES =
 // o campo aceita só dígitos, o resto do que se digita é ignorado
 export function digitsOnly(value: string): boolean {
   return !/\D/.test(value);
+}
+
+export function upToHint(product: ProductDetail): string {
+  return `Escolha uma quantidade de até ${formatQuantity(product.quantity, product.unit)}.`;
 }

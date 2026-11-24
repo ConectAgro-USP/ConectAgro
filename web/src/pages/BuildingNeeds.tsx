@@ -8,6 +8,7 @@ import { ProductPicture } from "../components/ProductPicture";
 import { ShowMore } from "../components/ShowMore";
 import { CARD_SURFACE } from "../components/surface";
 import { TitleBar } from "../components/TitleBar";
+import { ToggleGroup } from "../components/ToggleGroup";
 import {
   formatCount,
   formatMoney,
@@ -19,11 +20,6 @@ import {
 import { useBuildingNeeds } from "../hooks/useBuildingNeeds";
 import { CART_LIMIT, useCart } from "../hooks/useCart";
 
-const ORDER_BUTTON_CLASSES =
-  "h-11 flex-1 rounded-full border border-stone-400 bg-white px-2 font-bold sm:flex-none " +
-  "sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800 aria-pressed:border-lime-800 aria-pressed:bg-lime-100 " +
-  "aria-pressed:text-lime-800";
 const ROW_CLASSES =
   `overflow-hidden ${CARD_SURFACE} has-checked:border-lime-800 has-checked:bg-lime-50 ` +
   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 " +
@@ -33,7 +29,7 @@ const LABEL_CLASSES =
 const LINK_CLASSES =
   "rounded font-bold text-lime-800 underline focus-visible:outline-2 " +
   "focus-visible:outline-lime-800";
-// no celular a barra fica presa em cima da barra de navegação, depois fica no fim da lista
+// no celular a barra fica sobre a navegação, na tela larga no fim da lista
 const BAR_CLASSES =
   "fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 border-t " +
   "border-stone-300 bg-white px-4 py-3 md:sticky md:bottom-4 md:mt-6 md:rounded-3xl " +
@@ -42,8 +38,8 @@ const MAIN_CLASSES = "min-h-screen bg-stone-50 text-stone-900 md:pb-16";
 const BAR_ROW_CLASSES =
   "mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4";
 const ORDERS = [
-  { descending: true, label: "Maior primeiro" },
-  { descending: false, label: "Menor primeiro" },
+  { value: true, label: "Maior primeiro" },
+  { value: false, label: "Menor primeiro" },
 ];
 
 function totalOf(need: BuildingNeed): string {
@@ -126,7 +122,6 @@ export function BuildingNeeds() {
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [cartError, setCartError] = useState("");
-  const orderLabelId = useId();
   const needs = list.needs;
   // sem estoque o produto sai da seleção, mesmo se já estava marcado
   const isSelected = (need: BuildingNeed) =>
@@ -148,6 +143,7 @@ export function BuildingNeeds() {
         productPublicId: product.public_id,
         quantity: Math.min(total_quantity, product.quantity),
         unitPrice: product.price,
+        unit: product.unit,
       })),
     );
     if (left > 0) {
@@ -165,26 +161,13 @@ export function BuildingNeeds() {
     <main className={`${MAIN_CLASSES} ${selected.length > 0 ? "pb-40" : "pb-16"}`}>
       <TitleBar title="Necessidades do prédio" />
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div
-          role="group"
-          aria-labelledby={orderLabelId}
-          className="flex flex-wrap items-center gap-2 border-b border-stone-300 py-8"
-        >
-          <span id={orderLabelId} className="w-full text-lg font-bold sm:mr-2 sm:w-auto">
-            Ordenar por quantidade total
-          </span>
-          {ORDERS.map(({ descending, label }) => (
-            <button
-              key={label}
-              type="button"
-              aria-pressed={descending === list.descending}
-              onClick={() => list.sort(descending)}
-              className={ORDER_BUTTON_CLASSES}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <ToggleGroup
+          label="Ordenar por quantidade total"
+          options={ORDERS}
+          value={list.descending}
+          onChange={list.sort}
+          className="border-b border-stone-300 py-8"
+        />
         {list.loaded && !list.error && needs.length === 0 && (
           <p className="pt-12 text-center text-xl text-balance">
             Ainda não há interesses dos moradores. Quando um morador registrar interesse em um

@@ -9,7 +9,12 @@ import {
   type MyProductCounts,
   type ProductInput,
 } from "../api/products";
-import { availabilityOf, recount, type ProductTab } from "../components/products/productState";
+import {
+  availabilityOf,
+  inTab,
+  recount,
+  type ProductTab,
+} from "../components/products/productState";
 import { addItem, removeItem, replaceItem } from "./pageEdits";
 import { usePages } from "./usePages";
 import { useWriteGuard } from "./useWriteGuard";
@@ -55,7 +60,9 @@ export function useProducts() {
 
   // quem chama passa o produto como estava, para a contagem descontar
   function replace(before: MyProduct, saved: MyProduct) {
-    pages.editPages(replaceItem(same(saved.public_id), saved));
+    // o produto que sai da aba fica na tela, mas sai da lista do servidor
+    const left = inTab(pages.search, before) && !inTab(pages.search, saved);
+    pages.editPages(replaceItem(same(saved.public_id), saved), { dropped: left ? 1 : 0 });
     track(before, saved);
   }
 
@@ -78,7 +85,7 @@ export function useProducts() {
 
   async function remove(before: MyProduct): Promise<void> {
     await guard(sendDeleteProduct(before.public_id));
-    pages.editPages(removeItem(same(before.public_id)));
+    pages.editPages(removeItem(same(before.public_id)), { dropped: 1 });
     track(before, null);
   }
 

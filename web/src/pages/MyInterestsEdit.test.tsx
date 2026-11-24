@@ -42,7 +42,7 @@ describe("MyInterests, quantity", () => {
     expect(await findCard("Laranja")).toHaveTextContent("3 kg");
     expect(fetchMock.mock.calls[1][0]).toBe("/api/interests/interesse-1");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("PATCH");
-    expect(sentBody(fetchMock, 1)).toEqual({ quantity: 8 });
+    expect(sentBody(fetchMock, 1)).toEqual({ quantity: 8, unit: "kg" });
     expect(saveButton(card)).toBeDisabled();
   });
 

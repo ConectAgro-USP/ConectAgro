@@ -5,10 +5,12 @@ from fastapi.responses import RedirectResponse
 
 from src.api.deps import AuthServiceDep, CurrentUser, OptionalUser
 from src.api.rate_limits import (
+    LOGIN_FAILURES_PER_EMAIL,
     LOGIN_FAILURES_PER_EMAIL_AND_IP,
     LOGIN_FAILURES_PER_IP,
     SIGNUPS_PER_IP,
     IpKey,
+    count_both,
     count_or_reject,
     login_key,
     reject_if_blocked,
@@ -99,6 +101,11 @@ def register(user_in: UserCreate, auth_service: AuthServiceDep, ip_key: IpKey) -
     return {"message": "Conta criada com sucesso"}
 
 
+def _undo_login_attempt(attempt_key: str, email: str) -> None:
+    LOGIN_FAILURES_PER_EMAIL_AND_IP.undo_attempt(attempt_key)
+    LOGIN_FAILURES_PER_EMAIL.undo_attempt(email)
+
+
 @router.post("/login")
 def login(
     user_in: UserLogin, auth_service: AuthServiceDep, response: Response, ip_key: IpKey
@@ -107,7 +114,9 @@ def login(
     reject_if_blocked(LOGIN_FAILURES_PER_IP, ip_key)
     # o e-mail conta antes do argon2: pedidos simultâneos não furam o limite
     attempt_key = login_key(user_in.email, ip_key)
-    count_or_reject(LOGIN_FAILURES_PER_EMAIL_AND_IP, attempt_key)
+    count_both(
+        LOGIN_FAILURES_PER_EMAIL_AND_IP, attempt_key, LOGIN_FAILURES_PER_EMAIL, user_in.email
+    )
     try:
         user = auth_service.authenticate(user_in.email, user_in.password)
     except InvalidCredentialsError:
@@ -115,9 +124,9 @@ def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos") from None
     except Exception:
         # o erro é do servidor, não da senha: a tentativa não conta
-        LOGIN_FAILURES_PER_EMAIL_AND_IP.undo_attempt(attempt_key)
+        _undo_login_attempt(attempt_key, user_in.email)
         raise
 
-    LOGIN_FAILURES_PER_EMAIL_AND_IP.undo_attempt(attempt_key)
+    _undo_login_attempt(attempt_key, user_in.email)
     _set_auth_cookie(response, user)
     return {"message": "Login realizado com sucesso"}

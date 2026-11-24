@@ -1,12 +1,13 @@
 import { useId } from "react";
 import { Link } from "react-router";
-import type { ProductDetail } from "../../api/products";
+import type { ProductDetail, ProductUnit } from "../../api/products";
 import { SecondaryButton } from "../../components/Button";
 import {
   formatMoney,
   formatQuantity,
   formatStock,
   formatUnitPrice,
+  unitName,
   unitPlural,
   unitWord,
 } from "../../format";
@@ -55,6 +56,7 @@ function RemoveButton({ product, onRemove }: Readonly<RemoveProps>) {
 interface QuantityLineProps extends RemoveProps {
   quantity: string;
   oldPrice?: string;
+  oldUnit?: ProductUnit;
   clampedFrom?: number;
   onChange: (quantity: string) => void;
 }
@@ -63,12 +65,14 @@ export function QuantityLine({
   product,
   quantity,
   oldPrice,
+  oldUnit,
   clampedFrom,
   onChange,
   onRemove,
 }: Readonly<QuantityLineProps>) {
   const id = useId();
   const notes = [`${id}-estoque`];
+  if (oldUnit) notes.push(`${id}-unidade`);
   if (oldPrice) notes.push(`${id}-preco`);
   if (clampedFrom !== undefined) notes.push(`${id}-ajuste`);
 
@@ -101,6 +105,11 @@ export function QuantityLine({
         </div>
         <RemoveButton product={product} onRemove={onRemove} />
       </div>
+      {oldUnit && (
+        <p id={`${id}-unidade`} className={NOTE_CLASSES}>
+          A unidade mudou de {unitName(oldUnit)} para {unitName(product.unit)}
+        </p>
+      )}
       {oldPrice && (
         <p id={`${id}-preco`} className={NOTE_CLASSES}>
           O preço mudou de {formatMoney(oldPrice)} para{" "}

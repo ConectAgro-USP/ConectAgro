@@ -143,6 +143,7 @@ class PurchaseItemCreate(SQLModel):
     product_public_id: UUID
     quantity: int = Field(gt=0, le=INT4_MAX)
     unit_price: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
+    unit: ProductUnit | None = None
 
 
 class PurchaseCreate(PurchaseBase):

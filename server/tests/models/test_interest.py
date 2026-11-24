@@ -85,6 +85,7 @@ def test_interest_create_works_for_valid_data():
     assert interest.model_dump() == {
         "quantity": 1,
         "product_public_id": interest.product_public_id,
+        "unit": None,
     }
     assert isinstance(interest.product_public_id, UUID)
 

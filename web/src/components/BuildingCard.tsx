@@ -1,3 +1,5 @@
+import { formatZipCode } from "../format";
+
 interface BuildingCardProps {
   building: {
     building_name: string;
@@ -7,11 +9,6 @@ interface BuildingCardProps {
   };
   // na escolha do prédio o CEP ajuda a separar nomes parecidos
   showZipCode?: boolean;
-}
-
-function formatZipCode(zipCode: string): string {
-  const digits = zipCode.replace(/\D/g, "");
-  return digits.length === 8 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : zipCode;
 }
 
 export function BuildingCard({ building, showZipCode = false }: Readonly<BuildingCardProps>) {

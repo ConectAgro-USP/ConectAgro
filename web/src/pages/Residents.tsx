@@ -4,16 +4,10 @@ import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ResidentCard } from "../components/ResidentCard";
 import { ShowMore } from "../components/ShowMore";
+import { ToggleGroup } from "../components/ToggleGroup";
 import { TitleBar } from "../components/TitleBar";
 import { useAction } from "../hooks/useAction";
 import { useResidents } from "../hooks/useResidents";
-
-// no celular os três botões dividem a largura da tela
-const TAB_CLASSES =
-  "h-11 flex-1 rounded-full border border-stone-400 bg-white px-2 font-bold sm:flex-none " +
-  "sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800 aria-pressed:border-lime-800 aria-pressed:bg-lime-100 " +
-  "aria-pressed:text-lime-800 disabled:cursor-not-allowed disabled:opacity-60";
 
 // cada situação tem o nome do botão e as frases para nenhum, um e vários moradores
 const SITUATIONS: Record<LinkStatus, { tab: string; none: string; one: string; many: string }> = {
@@ -36,7 +30,10 @@ const SITUATIONS: Record<LinkStatus, { tab: string; none: string; one: string; m
     many: "pedidos recusados",
   },
 };
-const STATUSES = Object.keys(SITUATIONS) as LinkStatus[];
+const TABS = (Object.keys(SITUATIONS) as LinkStatus[]).map((status) => ({
+  value: status,
+  label: SITUATIONS[status].tab,
+}));
 
 function summarize(status: LinkStatus, count: number): string {
   const { none, one, many } = SITUATIONS[status];
@@ -81,20 +78,15 @@ export function Residents() {
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
       <TitleBar title="Moradores" />
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        <div className="mt-6 flex gap-2">
-          {STATUSES.map((status) => (
-            <button
-              key={status}
-              type="button"
-              aria-pressed={status === list.status}
-              disabled={answer.pending}
-              onClick={() => changeStatus(status)}
-              className={TAB_CLASSES}
-            >
-              {SITUATIONS[status].tab}
-            </button>
-          ))}
-        </div>
+        <ToggleGroup
+          label="Situação dos moradores"
+          hideLabel
+          options={TABS}
+          value={list.status}
+          disabled={answer.pending}
+          onChange={changeStatus}
+          className="mt-6"
+        />
         {/* fica sempre no HTML para o leitor de tela anunciar a mudança */}
         <output className="mt-4 block text-lg text-stone-600">
           {list.loading ? "Carregando..." : ""}

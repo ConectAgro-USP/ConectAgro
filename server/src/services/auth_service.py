@@ -40,7 +40,7 @@ class AuthService:
         return user
 
     def end_sessions(self, user: User) -> None:
-        # cada token leva a versão, então os antigos deixam de valer em todo aparelho
+        # o token leva a versão, e os antigos param de valer em todo aparelho
         user.session_version += 1
         self.users.save(user)
 

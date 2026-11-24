@@ -13,7 +13,7 @@ export function storedCart(key = MANAGER_CART_KEY): unknown {
 }
 
 export function item(productPublicId: string, quantity = 1, unitPrice = "20.00"): CartItem {
-  return { productPublicId, quantity, unitPrice };
+  return { productPublicId, quantity, unitPrice, unit: "kg" };
 }
 
 export function renderCart(auth = fakeAuth({ user: anaAsManager })) {

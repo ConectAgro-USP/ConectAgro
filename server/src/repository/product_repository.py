@@ -5,9 +5,10 @@ from uuid import UUID
 from sqlalchemy import and_, delete, func, not_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from src.models.farmer import Farmer
+from src.models.interest import Interest
 from src.models.my_products import (
     EXPIRING_SOON_DAYS,
     MyProductCounts,
@@ -154,6 +155,20 @@ class ProductRepository:
             PurchaseProduct.product_id == product_id
         )
         return self.session.exec(statement.limit(1)).first() is not None
+
+    def locked_units(self, product_ids: list[int]) -> set[int]:
+        # a unidade muda o sentido das quantidades já pedidas ou vendidas
+        if not product_ids:
+            return set()
+        sold = select(PurchaseProduct.product_id).where(PurchaseProduct.product_id == Product.id)
+        wanted = select(Interest.id).where(Interest.product_id == Product.id)
+        statement = select(Product.id).where(
+            col(Product.id).in_(product_ids), or_(sold.exists(), wanted.exists())
+        )
+        return set(self.session.exec(statement).all())
+
+    def is_unit_locked(self, product_id: int) -> bool:
+        return product_id in self.locked_units([product_id])
 
     def delete_product(self, product: Product) -> None:
         # a foto sai junto, o SQLite dos testes não aplica o cascade da chave

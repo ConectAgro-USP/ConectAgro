@@ -5,6 +5,8 @@ import type { ProductDetail, ProductUnit } from "./products";
 export interface InterestInput {
   product_public_id: string;
   quantity: number;
+  // a unidade mostrada na página, a API recusa se ela mudou
+  unit: ProductUnit;
 }
 
 // só a parte em andamento ou entregue, a cancelada devolve o interesse aberto
@@ -74,10 +76,14 @@ export async function findMyInterest(productPublicId: string): Promise<Interest 
   return items[0] ?? null;
 }
 
-export function updateInterest(publicId: string, quantity: number): Promise<Interest> {
+export function updateInterest(
+  publicId: string,
+  quantity: number,
+  unit: ProductUnit | undefined,
+): Promise<Interest> {
   return apiFetch<Interest>(`/interests/${publicId}`, {
     method: "PATCH",
-    body: JSON.stringify({ quantity }),
+    body: JSON.stringify({ quantity, unit }),
   });
 }
 

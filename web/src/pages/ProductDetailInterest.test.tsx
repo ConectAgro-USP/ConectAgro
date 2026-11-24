@@ -39,7 +39,11 @@ describe("ProductDetail, interest", () => {
 
     expect(await screen.findByText("Interesse registrado")).toBeInTheDocument();
     expect(fetchMock.mock.calls[3][0]).toBe("/api/interests");
-    expect(sentBody(fetchMock, 3)).toEqual({ product_public_id: "prod-123", quantity: 5 });
+    expect(sentBody(fetchMock, 3)).toEqual({
+      product_public_id: "prod-123",
+      quantity: 5,
+      unit: "kg",
+    });
     expect(screen.queryByRole("button", { name: "Registrar interesse" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Atualizar interesse" })).toBeDisabled();
     expect(screen.getByLabelText("Quantidade")).toHaveValue("5");

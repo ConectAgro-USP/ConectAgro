@@ -6,6 +6,7 @@ import {
   useNavigationType,
   useSearchParams,
 } from "react-router";
+import { ApiError } from "../api/client";
 import {
   createReview,
   RATINGS,
@@ -14,6 +15,7 @@ import {
   type Reviewable,
 } from "../api/reviews";
 import { SecondaryButton } from "../components/Button";
+import { buttonClasses } from "../components/buttonClasses";
 import { CARD_SURFACE } from "../components/surface";
 import { FormError } from "../components/FormError";
 import { ShowMore, type PagedList } from "../components/ShowMore";
@@ -34,13 +36,12 @@ import { useAuthorReviews } from "../hooks/useAuthorReviews";
 const SENT = "Avaliação enviada. Obrigado por ajudar outros prédios a escolher!";
 const EDITED = "Avaliação atualizada.";
 const BACK_TO_LIST = { to: REVIEWS_PATH, label: "Voltar às avaliações" };
-const LINK_BUTTON_CLASSES =
-  "inline-flex h-11 items-center rounded-full border border-stone-400 bg-white px-5 " +
-  "font-bold hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800";
+const LINK_BUTTON_CLASSES = `inline-flex items-center ${buttonClasses("secondary", "compact")}`;
 const CARD_CLASSES = `px-6 py-6 sm:px-10 ${CARD_SURFACE}`;
 const NOT_WAITING = "Esta entrega não está esperando sua avaliação. Ela pode já ter sido avaliada.";
 const NOT_FOUND = "Não encontramos esta avaliação entre as suas.";
+// recusas de um item que pode ter saído da lista ou mudado de lugar
+const MOVED = new Set([404, 409]);
 
 type View =
   | { kind: "list" }
@@ -265,7 +266,11 @@ export function Reviews() {
     try {
       await save();
     } catch (sendError) {
-      reviews.reload();
+      if (sendError instanceof ApiError && MOVED.has(sendError.status)) {
+        reviews.reload();
+      } else {
+        reviews.retry();
+      }
       throw sendError;
     }
   }
@@ -341,7 +346,7 @@ export function Reviews() {
         {reviews.error && (view.kind === "list" || !reviews.loaded) && (
           <div className="space-y-4 pt-4">
             <FormError message={reviews.error} />
-            <SecondaryButton onClick={reviews.reload}>Tentar de novo</SecondaryButton>
+            <SecondaryButton onClick={reviews.retry}>Tentar de novo</SecondaryButton>
           </div>
         )}
         {content()}

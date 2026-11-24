@@ -26,6 +26,7 @@ from src.services.exceptions import (
     NotInterestOwnerUpdateError,
     ProductNotFoundError,
     ProductUnavailableError,
+    ProductUnitChangedError,
 )
 from src.services.product_service import farmer_summary
 
@@ -38,6 +39,8 @@ class InterestService:
         product = self.interests.get_product_by_public_id(interest_in.product_public_id)
         if product is None:
             raise ProductNotFoundError
+        if interest_in.unit is not None and interest_in.unit != product.unit:
+            raise ProductUnitChangedError
         if self.interests.get_by_buyer_and_product(buyer, product) is not None:
             raise InterestAlreadyExistsError
         interest = Interest.model_validate(
@@ -81,6 +84,9 @@ class InterestService:
             raise InterestInPurchaseError
 
         changes = interest_update.model_dump(exclude_unset=True)
+        unit = changes.pop("unit", None)
+        if unit is not None and interest.product is not None and unit != interest.product.unit:
+            raise ProductUnitChangedError
         reopening = interest.purchase_status == PurchaseStatus.ENTREGUE
         raising = changes.get("quantity", 0) > interest.quantity
         # pedir de novo ou pedir mais segue a regra da criação

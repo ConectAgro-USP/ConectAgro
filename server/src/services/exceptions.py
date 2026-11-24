@@ -63,6 +63,10 @@ class ProductHasPurchasesError(Exception):
     pass
 
 
+class ProductUnitLockedError(Exception):
+    pass
+
+
 class ProductExpiredError(Exception):
     pass
 
@@ -72,6 +76,10 @@ class ProductUnavailableError(Exception):
 
 
 class ProductPriceChangedError(Exception):
+    pass
+
+
+class ProductUnitChangedError(Exception):
     pass
 
 

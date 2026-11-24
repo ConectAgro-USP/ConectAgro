@@ -16,8 +16,12 @@ from src.models.purchase_history import (
     BuildingPurchasesFilters,
     PurchaseHistoryFilters,
     SalesFilters,
+    SalesSort,
 )
 from src.repository.interest_repository import open_interest
+
+NEWEST = (Purchase.created_at.desc(), Purchase.id.desc())
+NEAREST_DELIVERY = (Purchase.expected_delivery_date, Purchase.created_at, Purchase.id)
 
 
 class PurchaseRepository:
@@ -82,7 +86,8 @@ class PurchaseRepository:
             apartment.selectinload(Apartment.manager),
             selectinload(PurchasePart.purchase_products).selectinload(PurchaseProduct.product),
         )
-        return self._page(statement, filters), total
+        order = NEAREST_DELIVERY if filters.sort == SalesSort.DELIVERY else NEWEST
+        return self._page(statement, filters, order), total
 
     def list_building_purchases(
         self,
@@ -146,8 +151,8 @@ class PurchaseRepository:
         statement = statement.where(*conditions)
         return dict(self.session.exec(statement.group_by(PurchasePart.status)).all())
 
-    def _page(self, statement, filters: PurchaseHistoryFilters) -> list:
-        statement = statement.order_by(Purchase.created_at.desc(), Purchase.id.desc())
+    def _page(self, statement, filters: PurchaseHistoryFilters, order: tuple = NEWEST) -> list:
+        statement = statement.order_by(*order)
         offset = (filters.page - 1) * filters.page_size
         return list(self.session.exec(statement.offset(offset).limit(filters.page_size)).all())
 

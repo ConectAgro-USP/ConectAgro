@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
-from src.core.text import short_name
+from src.core.text import hide_email, short_name
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, INT4_MAX
@@ -33,6 +33,7 @@ from src.services.exceptions import (
     ProductOutOfStockError,
     ProductPriceChangedError,
     ProductUnavailableError,
+    ProductUnitChangedError,
     PurchaseAccessDeniedError,
     PurchaseAlreadyDeliveredError,
     PurchaseNotFoundError,
@@ -61,6 +62,8 @@ class PurchaseService:
                 raise ProductExpiredError(product.name)
             if not product.is_available:
                 raise ProductUnavailableError(product.name)
+            if item.unit is not None and item.unit != product.unit:
+                raise ProductUnitChangedError(product.name)
             if product.price != item.unit_price:
                 raise ProductPriceChangedError(product.name)
             if product.quantity < item.quantity:
@@ -210,7 +213,7 @@ def _sale_read(part: PurchasePart) -> SaleRead:
             "building_name": building.building_name,
             "delivery_address": building.address,
             "delivery_zip_code": building.zip_code,
-            "manager_name": building.manager.name,
+            "manager_name": hide_email(building.manager.name),
             "manager_cellphone": building.manager.cellphone,
             "purchased_at": purchase.created_at,
             "expected_delivery_date": purchase.expected_delivery_date,

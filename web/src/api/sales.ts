@@ -23,6 +23,13 @@ export interface Sale {
   purchase_products: PurchaseItem[];
 }
 
-export function listSales(filters: HistoryFilters, page: number): Promise<HistoryPage<Sale>> {
-  return fetchHistory("/farmers/me/sales", "apartment_public_id", filters, page);
+// a ordem da API, que sem escolha traz as compras mais novas primeiro
+export type SaleSort = "delivery";
+
+export function listSales(
+  filters: HistoryFilters,
+  page: number,
+  sort?: SaleSort,
+): Promise<HistoryPage<Sale>> {
+  return fetchHistory("/farmers/me/sales", "apartment_public_id", filters, page, sort);
 }

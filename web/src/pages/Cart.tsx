@@ -3,21 +3,20 @@ import { Link, useNavigate } from "react-router";
 import type { ProductDetail } from "../api/products";
 import { createPurchase } from "../api/purchases";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
+import { buttonClasses } from "../components/buttonClasses";
 import { FormError } from "../components/FormError";
 import { CARD_SURFACE } from "../components/surface";
 import { TextField } from "../components/TextField";
 import { TitleBar } from "../components/TitleBar";
 import { formatCount, formatMoney, sellerName } from "../format";
 import { useAction } from "../hooks/useAction";
-import { useCart, type CartItem } from "../hooks/useCart";
+import { CART_FULL, useCart, type CartItem } from "../hooks/useCart";
 import { BlockedLine, QuantityLine, RemovedLine } from "./cart/CartLines";
 import { problemOf, useCartCheck } from "./cart/useCartCheck";
 
-const LINK_CLASSES =
-  "flex h-14 items-center justify-center rounded-full px-8 font-bold " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-800";
-const CATALOG_LINK_CLASSES = `${LINK_CLASSES} bg-lime-800 text-white hover:bg-lime-900`;
-const MORE_LINK_CLASSES = `${LINK_CLASSES} border border-stone-400 bg-white hover:bg-stone-50`;
+const LINK_CLASSES = "flex items-center justify-center";
+const CATALOG_LINK_CLASSES = `${LINK_CLASSES} ${buttonClasses("primary")}`;
+const MORE_LINK_CLASSES = `${LINK_CLASSES} ${buttonClasses("secondary")}`;
 const CHANGED =
   "Os produtos mudaram desde que você abriu o carrinho. Confira e confirme de novo.";
 
@@ -94,7 +93,7 @@ export function Cart() {
     const item = removed[id];
     if (!item) return;
     if (cart.put([item]) > 0) {
-      setError("O carrinho já tem 100 produtos, o limite de uma compra");
+      setError(CART_FULL);
       return;
     }
     setRemoved((current) => ({ ...current, [id]: undefined }));
@@ -104,23 +103,22 @@ export function Cart() {
     event.preventDefault();
     const date = String(new FormData(event.currentTarget).get("expected_delivery_date"));
     run(async () => {
-      // o preço e o estoque podem ter mudado com o carrinho aberto
+      // o preço, a unidade e o estoque podem ter mudado com o carrinho aberto
       const { changed, products } = await checked.check();
       if (changed) {
         setError(CHANGED);
         return;
       }
-      const purchased = cart
-        .current()
-        .filter((item) => {
-          const product = products[item.productPublicId];
-          return product && !problemOf(product);
-        })
-        .map((item) => ({
+      const purchased = cart.current().flatMap((item) => {
+        const product = products[item.productPublicId];
+        if (!product || problemOf(product)) return [];
+        return {
           product_public_id: item.productPublicId,
           quantity: item.quantity,
           unit_price: item.unitPrice,
-        }));
+          unit: item.unit ?? product.unit,
+        };
+      });
       try {
         await createPurchase({ expected_delivery_date: date, items: purchased });
       } catch (purchaseError) {
@@ -174,6 +172,7 @@ export function Cart() {
                         product={product}
                         quantity={quantityOf(item)}
                         oldPrice={checked.notes.oldPrices[id]}
+                        oldUnit={checked.notes.oldUnits[id]}
                         clampedFrom={checked.notes.clamped[id]}
                         onChange={(text) => changeQuantity(item, text)}
                         onRemove={() => remove(item)}

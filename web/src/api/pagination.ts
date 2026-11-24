@@ -8,6 +8,8 @@ export interface Page<Item> {
 
 // o maior tamanho de página que a API aceita
 export const LARGEST_PAGE = 100;
+// o maior texto de busca que a API aceita, nos produtos e nos agricultores
+export const MAX_SEARCH_TERM = 200;
 
 // para quem precisa da lista inteira, como a consulta por produto
 export async function fetchAllPages<Item>(

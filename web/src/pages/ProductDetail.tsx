@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router";
 import { SecondaryButton } from "../components/Button";
+import { buttonClasses } from "../components/buttonClasses";
 import { FormError } from "../components/FormError";
 import { ProductPicture } from "../components/ProductPicture";
 import { CARD_SURFACE } from "../components/surface";
@@ -11,14 +12,11 @@ import { ProductDescription } from "./product/ProductDescription";
 import { ProductFarmerInfo } from "./product/ProductFarmerInfo";
 
 const PICTURE_CLASSES = "w-full shrink-0 rounded-2xl md:w-72 lg:w-80";
-const HOME_LINK_CLASSES =
-  "flex h-14 items-center rounded-full bg-lime-800 px-8 font-bold text-white " +
-  "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800";
+const HOME_LINK_CLASSES = `flex items-center ${buttonClasses("primary")}`;
 
 export function ProductDetail() {
   const { publicId } = useParams<{ publicId: string }>();
-  const { product, loading, error, retry } = useProductDetail(publicId);
+  const { product, loading, error, retry, refresh } = useProductDetail(publicId);
   useDocumentTitle(product?.name ?? "Produto");
 
   if (loading) {
@@ -58,7 +56,7 @@ export function ProductDetail() {
               {product.name}
             </h1>
 
-            {/* preço, estoque, quantidade e ações ficam juntos na caixa de compra */}
+            {/* a caixa de compra junta preço, estoque e ações */}
             <div className={`mt-6 p-5 sm:p-6 ${CARD_SURFACE}`}>
               <p className="text-3xl font-bold text-stone-900">
                 {formatMoney(product.price)}{" "}
@@ -72,7 +70,7 @@ export function ProductDetail() {
                   {formatFullDate(product.expiration_date)}
                 </span>
               </p>
-              <ProductActions product={product} />
+              <ProductActions product={product} onConflict={refresh} />
             </div>
 
             <ProductFarmerInfo farmer={product.farmer} />

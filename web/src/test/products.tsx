@@ -19,6 +19,7 @@ export const orange: MyProduct = {
   picture_url: "https://example.com/laranja.png",
   quantity: 12,
   is_available: true,
+  unit_locked: false,
   price: "4.99",
   unit: "kg",
   expiration_date: "2030-10-25",

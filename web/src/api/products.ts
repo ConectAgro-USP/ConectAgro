@@ -19,6 +19,8 @@ export interface Product {
 // o produto visto pelo dono, que pode pausar o anúncio
 export interface MyProduct extends Product {
   is_available: boolean;
+  // a unidade fica presa depois do primeiro interesse ou da primeira venda
+  unit_locked: boolean;
 }
 
 export interface ProductInput {
@@ -149,7 +151,7 @@ export function updateProduct(
   });
 }
 
-// o corpo é a própria foto, sem formulário, e o servidor confere o tipo pelos bytes
+// o corpo é a foto, o servidor confere o tipo pelos bytes
 export function uploadProductPicture(publicId: string, picture: Blob): Promise<MyProduct> {
   return apiFetch<MyProduct>(`/products/${publicId}/picture`, {
     method: "POST",

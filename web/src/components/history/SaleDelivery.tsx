@@ -1,14 +1,10 @@
 import type { Sale } from "../../api/sales";
-import { formatFullDay } from "../../format";
+import { formatFullDay, formatZipCode } from "../../format";
 import { WhatsAppContact } from "../WhatsAppContact";
 
 const DELIVERY_CLASSES =
   "mb-4 flex flex-col gap-6 border-b border-stone-300 pb-6 md:flex-row md:items-end " +
   "md:justify-between";
-
-function formatZipCode(zipCode: string): string {
-  return `CEP ${zipCode.slice(0, 5)}-${zipCode.slice(5)}`;
-}
 
 function messageFor(sale: Sale): string {
   const greeting = sale.manager_name ? `Olá, ${sale.manager_name}!` : "Olá!";
@@ -23,7 +19,7 @@ export function SaleDelivery({ sale }: Readonly<{ sale: Sale }>) {
         <div>
           <dt className="font-bold">Local de entrega</dt>
           <dd className="break-words">
-            {sale.delivery_address ?? formatZipCode(sale.delivery_zip_code)}
+            {sale.delivery_address ?? `CEP ${formatZipCode(sale.delivery_zip_code)}`}
           </dd>
         </div>
         {sale.manager_name && (

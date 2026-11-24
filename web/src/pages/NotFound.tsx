@@ -1,11 +1,9 @@
 import { Link } from "react-router";
+import { buttonClasses } from "../components/buttonClasses";
 import { TitleBar } from "../components/TitleBar";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
-const HOME_LINK_CLASSES =
-  "flex h-14 items-center rounded-full bg-lime-800 px-8 text-base font-bold text-white " +
-  "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800";
+const HOME_LINK_CLASSES = `flex items-center text-base ${buttonClasses("primary")}`;
 
 interface MessagePageProps {
   title: string;

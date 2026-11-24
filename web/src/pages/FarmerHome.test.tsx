@@ -18,11 +18,12 @@ function product(name: string, changes: Partial<MyProduct> = {}): MyProduct {
   return { ...orange, public_id: name, name, ...changes };
 }
 
+// na ordem da API, a entrega mais próxima primeiro
 const SALES = [
-  sale("c1", "Ed. Ipê", "2026-11-28", "14.00"),
   sale("c2", "Cond. Village Vila Verde", "2026-11-22", "56.00"),
-  sale("c3", "Ed. Primavera", "2026-11-30", "21.00"),
   sale("c4", "Res. Acácias", "2026-11-25", "28.00"),
+  sale("c1", "Ed. Ipê", "2026-11-28", "14.00"),
+  sale("c3", "Ed. Primavera", "2026-11-30", "21.00"),
 ];
 
 describe("FarmerHome, with sales and products", () => {
@@ -47,7 +48,7 @@ describe("FarmerHome, with sales and products", () => {
     await findSummary("Vendas a entregar");
 
     const urls = fetchMock.mock.calls.map(([url]) => String(url));
-    expect(urls).toContain("/api/farmers/me/sales?page=1&status=EM+PROGRESSO");
+    expect(urls).toContain("/api/farmers/me/sales?page=1&status=EM+PROGRESSO&sort=delivery");
     expect(urls).toContain("/api/products/me?page=1&page_size=1");
     expect(urls).toContain("/api/farmers/me/reviews");
   });

@@ -125,6 +125,14 @@ export function formatStock(count: number, unit: MaybeUnit): string {
   return `${formatQuantity(count, unit)} ${count === 1 ? "disponível" : "disponíveis"}`;
 }
 
+export function isProductUnit(value: unknown): value is ProductUnit {
+  return typeof value === "string" && Object.hasOwn(UNITS, value);
+}
+
+export function unitName(unit: MaybeUnit): string {
+  return wordsOf(unit).name;
+}
+
 export function pricePer(unit: MaybeUnit): string {
   return `por ${wordsOf(unit).name}`;
 }
@@ -139,6 +147,12 @@ export function priceLabel(unit: MaybeUnit): string {
 
 export function quantityLabel(unit: MaybeUnit): string {
   return `Quantidade (${unitPlural(unit)})`;
+}
+
+// só com os 8 dígitos o CEP ganha o hífen, o resto fica como veio
+export function formatZipCode(zipCode: string): string {
+  const digits = zipCode.replace(/\D/g, "");
+  return digits.length === 8 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : zipCode;
 }
 
 export function formatDistance(kilometers: number): string {

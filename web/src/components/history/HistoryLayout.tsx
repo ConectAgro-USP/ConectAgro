@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { NO_FILTERS, type HistoryFilters, type PurchaseStatus } from "../../api/history";
 import type { History } from "../../hooks/useHistory";
 import { SecondaryButton } from "../Button";
+import { buttonClasses } from "../buttonClasses";
 import { FormError } from "../FormError";
 import { TitleBar } from "../TitleBar";
 import { formatMoney } from "../../format";
@@ -16,10 +17,7 @@ const FILTER_BUTTON_CLASSES =
 const CLEAR_BUTTON_CLASSES =
   "mt-2 rounded py-2 font-bold text-lime-800 underline focus-visible:outline-2 " +
   "focus-visible:outline-lime-800";
-const EMPTY_LINK_CLASSES =
-  "flex h-14 items-center rounded-full bg-lime-800 px-8 text-base font-bold text-white " +
-  "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800";
+const EMPTY_LINK_CLASSES = `flex items-center text-base ${buttonClasses("primary")}`;
 
 interface EmptyLink {
   to: string;

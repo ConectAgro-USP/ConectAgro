@@ -50,6 +50,7 @@ export function fetchHistory<Item>(
   counterpartParam: string,
   filters: HistoryFilters,
   page: number,
+  sort?: string,
 ): Promise<HistoryPage<Item>> {
   const query = new URLSearchParams({ page: String(page) });
   const chosen = {
@@ -63,5 +64,6 @@ export function fetchHistory<Item>(
       query.set(name, value);
     }
   }
+  if (sort) query.set("sort", sort);
   return apiFetch<HistoryPage<Item>>(`${path}?${query}`);
 }

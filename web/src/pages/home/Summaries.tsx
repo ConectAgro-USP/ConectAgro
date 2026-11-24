@@ -11,11 +11,9 @@ const SALE_LINK_CLASSES =
   "flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 rounded-xl px-3 py-3 " +
   "hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-lime-800";
 
-// a entrega mais próxima vem primeiro
+// a API manda a entrega mais próxima primeiro
 function nextDeliveries(sales: Sale[]): Sale[] {
-  return [...sales]
-    .sort((a, b) => a.expected_delivery_date.localeCompare(b.expected_delivery_date))
-    .slice(0, SHOWN_SALES);
+  return sales.slice(0, SHOWN_SALES);
 }
 
 export function SalesSummary({ page }: Readonly<{ page: HistoryPage<Sale> }>) {

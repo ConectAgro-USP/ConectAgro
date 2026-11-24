@@ -1,12 +1,8 @@
-import { XIcon } from "lucide-react";
 import type { CatalogFilters } from "../../api/products";
+import { FilterChip } from "../../components/FilterChip";
 import { formatFullDate } from "../../format";
 import { clearFilters } from "./catalogParams";
 
-const CHIP_CLASSES =
-  "flex min-h-11 items-center gap-2 rounded-full border border-lime-800 bg-lime-100 py-1 " +
-  "pr-3 pl-4 text-left font-bold wrap-anywhere text-lime-900 hover:bg-lime-200 " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-800";
 const CLEAR_CLASSES =
   "min-h-11 rounded px-2 font-bold text-lime-800 underline focus-visible:outline-2 " +
   "focus-visible:outline-lime-800";
@@ -48,15 +44,10 @@ export function FilterChips({ filters, onChange }: Readonly<FilterChipsProps>) {
       <ul aria-label="Filtros aplicados" className="flex flex-wrap gap-2">
         {chips.map((chip) => (
           <li key={chip.label}>
-            <button
-              type="button"
-              aria-label={`Remover ${chip.label}`}
-              onClick={() => onChange({ ...filters, ...chip.without })}
-              className={CHIP_CLASSES}
-            >
-              {chip.label}
-              <XIcon aria-hidden="true" className="size-5 shrink-0" />
-            </button>
+            <FilterChip
+              label={chip.label}
+              onRemove={() => onChange({ ...filters, ...chip.without })}
+            />
           </li>
         ))}
       </ul>

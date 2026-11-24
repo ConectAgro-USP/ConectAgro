@@ -12,6 +12,7 @@ from src.api.deps import (
     ProductServiceDep,
     get_current_user,
 )
+from src.api.rate_limits import limit_picture_uploads
 from src.models.my_products import MyProductsFilters, MyProductsPage
 from src.models.product import (
     ProductContactRead,
@@ -27,6 +28,7 @@ from src.services.exceptions import (
     ProductHasPurchasesError,
     ProductNotFoundError,
     ProductPictureNotFoundError,
+    ProductUnitLockedError,
     UnsupportedPictureTypeError,
 )
 from src.services.product_picture_service import MAX_PICTURE_BYTES
@@ -97,6 +99,9 @@ def patch_product(
     except NotProductOwnerError:
         message = "Você só pode alterar seus produtos"
         raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
+    except ProductUnitLockedError:
+        message = "A unidade não pode mudar depois que o produto recebeu interesse ou foi vendido"
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
 
 @router.get(
@@ -139,7 +144,11 @@ def get_product_contact(
         raise HTTPException(status.HTTP_404_NOT_FOUND, PRODUCT_NOT_FOUND) from None
 
 
-@router.post("/{public_id}/picture", response_model=ProductRead)
+@router.post(
+    "/{public_id}/picture",
+    response_model=ProductRead,
+    dependencies=[Depends(limit_picture_uploads)],
+)
 def upload_product_picture(
     public_id: UUID,
     farmer: CurrentFarmer,

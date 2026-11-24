@@ -1,4 +1,3 @@
-import { XIcon } from "lucide-react";
 import { useId, type FormEvent } from "react";
 import {
   DISTANCES,
@@ -7,75 +6,31 @@ import {
   type FarmerFilters,
   type FarmerSort,
 } from "../../api/farmers";
+import { MAX_SEARCH_TERM } from "../../api/pagination";
 import { SecondaryButton } from "../../components/Button";
+import { FilterChip } from "../../components/FilterChip";
+import { ToggleGroup, type ToggleOption } from "../../components/ToggleGroup";
 import { useSyncedValue } from "../../hooks/useSyncedValue";
 import { withProduct } from "./farmerParams";
 
 const INPUT_CLASSES =
   "h-14 min-w-0 flex-1 rounded-lg border border-stone-400 bg-white px-4 text-lg " +
   "focus:border-lime-800 focus:outline-1 focus:outline-lime-800";
-const TOGGLE_CLASSES =
-  "h-11 flex-1 rounded-full border border-stone-400 bg-white px-3 font-bold whitespace-nowrap " +
-  "sm:flex-none sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800 aria-pressed:border-lime-800 aria-pressed:bg-lime-100 " +
-  "aria-pressed:text-lime-800";
-const CHIP_CLASSES =
-  "flex min-h-11 items-center gap-2 rounded-full border border-lime-800 bg-lime-100 py-1 " +
-  "pr-3 pl-4 text-left font-bold wrap-anywhere text-lime-900 hover:bg-lime-200 " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-800";
+// as duas escolhas alinham os botões pela largura do rótulo
+const LABEL_CLASSES = "sm:w-28";
 
 function without(products: string[], product: string): string[] {
   return products.filter((item) => item !== product);
 }
 
-interface Option<Value> {
-  value: Value;
-  label: string;
-}
-
-const DISTANCE_OPTIONS: Option<Distance | null>[] = [
+const DISTANCE_OPTIONS: ToggleOption<Distance | null>[] = [
   ...DISTANCES.map((distance) => ({ value: distance, label: `Até ${distance} km` })),
   { value: null, label: "Qualquer distância" },
 ];
-const SORT_OPTIONS: Option<FarmerSort>[] = [
+const SORT_OPTIONS: ToggleOption<FarmerSort>[] = [
   { value: "reputation", label: "Melhor avaliados" },
   { value: "distance", label: "Mais próximos" },
 ];
-
-interface ToggleGroupProps<Value> {
-  label: string;
-  options: Option<Value>[];
-  value: Value;
-  onChange: (value: Value) => void;
-}
-
-function ToggleGroup<Value>({
-  label,
-  options,
-  value,
-  onChange,
-}: Readonly<ToggleGroupProps<Value>>) {
-  const labelId = useId();
-
-  return (
-    <div role="group" aria-labelledby={labelId} className="flex flex-wrap items-center gap-2">
-      <span id={labelId} className="w-full text-lg font-bold sm:mr-2 sm:w-28">
-        {label}
-      </span>
-      {options.map((option) => (
-        <button
-          key={option.label}
-          type="button"
-          aria-pressed={option.value === value}
-          onClick={() => onChange(option.value)}
-          className={TOGGLE_CLASSES}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 interface TextSearchProps {
   label: string;
@@ -111,7 +66,7 @@ function TextSearch({
         <input
           id={id}
           type="search"
-          maxLength={200}
+          maxLength={MAX_SEARCH_TERM}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           className={INPUT_CLASSES}
@@ -161,15 +116,10 @@ export function FarmerFilterFields({ filters, onChange }: Readonly<FarmerFilterF
             <ul aria-label="Produtos procurados" className="flex flex-wrap gap-2 pt-3">
               {products.map((product) => (
                 <li key={product}>
-                  <button
-                    type="button"
-                    aria-label={`Remover ${product}`}
-                    onClick={() => change({ products: without(products, product) })}
-                    className={CHIP_CLASSES}
-                  >
-                    {product}
-                    <XIcon aria-hidden="true" className="size-5 shrink-0" />
-                  </button>
+                  <FilterChip
+                    label={product}
+                    onRemove={() => change({ products: without(products, product) })}
+                  />
                 </li>
               ))}
             </ul>
@@ -178,12 +128,14 @@ export function FarmerFilterFields({ filters, onChange }: Readonly<FarmerFilterF
       </div>
       <ToggleGroup
         label="Distância"
+        labelClassName={LABEL_CLASSES}
         options={DISTANCE_OPTIONS}
         value={filters.distance}
         onChange={(distance) => change({ distance })}
       />
       <ToggleGroup
         label="Ordem"
+        labelClassName={LABEL_CLASSES}
         options={SORT_OPTIONS}
         value={filters.sort}
         onChange={(sort) => change({ sort })}

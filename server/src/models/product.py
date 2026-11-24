@@ -6,9 +6,10 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from pydantic import AfterValidator, StringConstraints, field_validator
-from sqlalchemy import CheckConstraint, DateTime, String
+from sqlalchemy import CheckConstraint, DateTime, String, event
 from sqlmodel import Field, Relationship, SQLModel
 
+from src.core.search_text import fold
 from src.core.text import reject_null_character
 
 if TYPE_CHECKING:
@@ -75,7 +76,7 @@ class Product(ProductBase, table=True):
     )
 
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
-    # cópias sem acentos nem maiúsculas, preenchidas pelo serviço para a busca
+    # cópias sem acentos nem maiúsculas, preenchidas pelo evento abaixo
     name_search: str = Field(default="", index=True)
     description_search: str = Field(default="")
 
@@ -85,6 +86,13 @@ class Product(ProductBase, table=True):
     @property
     def farmer_public_id(self) -> UUID | None:
         return self.farmer.public_id if self.farmer else None
+
+
+@event.listens_for(Product, "before_insert")
+@event.listens_for(Product, "before_update")
+def fold_search_text(_mapper, _connection, product: Product) -> None:
+    product.name_search = fold(product.name)
+    product.description_search = fold(product.description)
 
 
 class ProductCreate(ProductBase):
@@ -119,10 +127,15 @@ class ProductUpdate(SQLModel):
         return value
 
 
-class ProductRead(ProductBase):
+class ProductPublicRead(ProductBase):
     public_id: UUID
     created_at: datetime
     farmer_public_id: UUID
+
+
+class ProductRead(ProductPublicRead):
+    # a resposta para o dono diz se a unidade ainda pode mudar
+    unit_locked: bool
 
 
 class ProductFarmerRead(SQLModel):
@@ -132,11 +145,11 @@ class ProductFarmerRead(SQLModel):
     picture_url: str | None
 
 
-class ProductDetailRead(ProductRead):
+class ProductDetailRead(ProductPublicRead):
     farmer: ProductFarmerRead
 
 
-class ProductCatalogRead(ProductRead):
+class ProductCatalogRead(ProductPublicRead):
     farmer_short_name: str
     farmer_farm_name: str | None
     farmer_average_rating: float | None

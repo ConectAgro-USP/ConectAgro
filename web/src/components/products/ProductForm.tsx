@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import {
   isUploadedPicture,
-  type Product,
+  type MyProduct,
   type ProductInput,
   type ProductUnit,
 } from "../../api/products";
@@ -36,7 +36,7 @@ function readProduct(form: FormData, current: string | null, unit: ProductUnit):
 }
 
 interface ProductFormProps {
-  product: Product | null;
+  product: MyProduct | null;
   onSave: (input: ProductInput, picture: Blob | null) => Promise<unknown>;
   onClose: () => void;
 }
@@ -97,7 +97,7 @@ export function ProductForm({ product, onSave, onClose }: Readonly<ProductFormPr
             </div>
           </div>
           <div className="grid gap-6 py-8 sm:grid-cols-2">
-            <UnitField value={unit} onChange={setUnit} />
+            <UnitField value={unit} onChange={setUnit} locked={product?.unit_locked} />
             <TextField
               label={priceLabel(unit)}
               name="price"

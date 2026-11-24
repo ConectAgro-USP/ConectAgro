@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import type { FarmerProduct } from "../../api/farmers";
 import type { Interest } from "../../api/interests";
 import { formatFullDate, formatMoney, formatQuantity, formatStock, pricePer } from "../../format";
-import { CART_LIMIT, useCart } from "../../hooks/useCart";
+import { CART_FULL, useCart } from "../../hooks/useCart";
 import { chosenText, deliveredText } from "../../interestState";
 import { PrimaryButton } from "../Button";
 import { ProductPicture } from "../ProductPicture";
@@ -27,7 +27,12 @@ function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
   const [full, setFull] = useState(false);
   if (!cart.enabled) return null;
   const inCart = cart.quantityOf(product.public_id);
-  const item = { productPublicId: product.public_id, quantity: 1, unitPrice: product.price };
+  const item = {
+    productPublicId: product.public_id,
+    quantity: 1,
+    unitPrice: product.price,
+    unit: product.unit,
+  };
 
   return (
     <div className="ml-auto flex flex-col items-end gap-1 sm:mt-3 sm:ml-0 sm:items-center">
@@ -47,7 +52,7 @@ function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
       </p>
       {full && (
         <p role="alert" className="font-bold text-red-700 sm:text-white">
-          O carrinho já tem {CART_LIMIT} produtos
+          {CART_FULL}
         </p>
       )}
     </div>

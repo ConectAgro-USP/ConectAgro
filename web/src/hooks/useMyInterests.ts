@@ -56,14 +56,16 @@ export function useMyInterests() {
   }
 
   async function update(before: Interest, quantity: number): Promise<void> {
-    const saved = await rereadOnConflict(updateInterest(before.public_id, quantity));
+    const saved = await rereadOnConflict(
+      updateInterest(before.public_id, quantity, before.product?.unit),
+    );
     pages.editPages(replaceItem(same(before.public_id), saved));
     track(before, saved);
   }
 
   async function remove(before: Interest): Promise<void> {
     await guard(deleteInterest(before.public_id));
-    pages.editPages(removeItem(same(before.public_id)));
+    pages.editPages(removeItem(same(before.public_id)), { dropped: 1 });
     track(before, null);
   }
 

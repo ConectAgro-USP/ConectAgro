@@ -5,6 +5,7 @@ import { countMyProducts } from "../api/products";
 import { listReceivedReviews } from "../api/reviews";
 import { listSales } from "../api/sales";
 import { useAuth } from "../auth/AuthContext";
+import { buttonClasses } from "../components/buttonClasses";
 import { CARD_SURFACE } from "../components/surface";
 import { TitleBar } from "../components/TitleBar";
 import { useLoaded } from "../hooks/useLoaded";
@@ -12,13 +13,11 @@ import { ProductsSummary, RatingSummary, SalesSummary } from "./home/Summaries";
 import { SummaryCard } from "./home/SummaryCard";
 
 const NEW_PRODUCT_PATH = "/meus-produtos?novo=1";
-const ADD_CLASSES =
-  "inline-flex h-14 items-center justify-center gap-2 rounded-full bg-lime-800 px-8 " +
-  "font-bold text-white hover:bg-lime-900 focus-visible:outline-2 " +
-  "focus-visible:outline-offset-2 focus-visible:outline-lime-800";
+const ADD_CLASSES = `inline-flex items-center justify-center gap-2 ${buttonClasses("primary")}`;
 
+// a entrega mais próxima vem primeiro, entre todas as vendas abertas
 function listSalesToDeliver() {
-  return listSales({ ...NO_FILTERS, status: "EM PROGRESSO" }, 1);
+  return listSales({ ...NO_FILTERS, status: "EM PROGRESSO" }, 1, "delivery");
 }
 
 function FirstProduct() {

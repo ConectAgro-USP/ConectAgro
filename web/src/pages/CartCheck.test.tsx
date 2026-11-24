@@ -72,6 +72,14 @@ describe("Cart check", () => {
     expect(screen.getByText(/1 produto saiu do catálogo/)).toBeVisible();
   });
 
+  it("empties the cart when a stored id is refused by the API", async () => {
+    const refused = jsonResponse({ detail: "O identificador não é válido" }, 422);
+    renderCartPage([{ ...inCart(MANDIOCA, 1), productPublicId: "abc" }], refused);
+
+    expect(await screen.findByRole("heading", { name: "Seu carrinho está vazio" })).toBeVisible();
+    expect(storedCart()).toBeNull();
+  });
+
   it("says why the products could not be checked and tries again", async () => {
     renderCartPage(
       [inCart(MANDIOCA, 1)],

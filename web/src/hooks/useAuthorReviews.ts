@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from "react";
-import { errorMessage, lostAccess } from "../api/client";
 import type { Page } from "../api/pagination";
 import {
   listAuthoredReviews,
@@ -8,30 +6,8 @@ import {
   type Review,
   type Reviewable,
 } from "../api/reviews";
-import { useAuth } from "../auth/AuthContext";
-import type { PagedList } from "../components/ShowMore";
-
-// os itens na tela e a última página lida de cada lista
-interface Listed<T> {
-  items: T[];
-  page: number;
-  hasMore: boolean;
-}
-
-interface Lists {
-  reviewables: Listed<Reviewable>;
-  authored: Listed<AuthoredReview>;
-}
-
-type Kind = keyof Lists;
-
-interface More {
-  loading: boolean;
-  error: string;
-}
-
-const IDLE: More = { loading: false, error: "" };
-const NO_MORE: Record<Kind, More> = { reviewables: IDLE, authored: IDLE };
+import { addItem, removeItem, replaceItem } from "./pageEdits";
+import { usePages } from "./usePages";
 
 function reviewableKey(reviewable: Reviewable): string {
   return `${reviewable.purchase_public_id}/${reviewable.farmer_public_id}`;
@@ -41,142 +17,56 @@ function reviewKey(review: AuthoredReview): string {
   return review.public_id;
 }
 
-// a página seguinte pode repetir um item, se a lista mudou entre os pedidos
-function listed<T>(page: Page<T>, keyOf: (item: T) => string, before: T[] = []): Listed<T> {
-  const items = [...new Map([...before, ...page.items].map((item) => [keyOf(item), item]))];
-  return {
-    items: items.map(([, item]) => item),
-    page: page.page,
-    hasMore: page.page < page.total_pages,
-  };
+// as duas listas não têm busca, só as páginas
+function loadReviewables(_search: null, page: number): Promise<Page<Reviewable>> {
+  return listReviewable(page);
 }
 
-function sameReviewable(one: Reviewable, other: Reviewable): boolean {
-  return reviewableKey(one) === reviewableKey(other);
+function loadAuthored(_search: null, page: number): Promise<Page<AuthoredReview>> {
+  return listAuthoredReviews(page);
 }
 
 export function useAuthorReviews() {
-  const { refreshUser } = useAuth();
-  const [lists, setLists] = useState<Lists | null>(null);
-  const [error, setError] = useState("");
-  const [more, setMore] = useState(NO_MORE);
-  const [request, setRequest] = useState({});
-  // a lista que ainda chega não pode desfazer o que acabou de ser salvo
-  const stopLoading = useRef(() => {});
+  const pending = usePages(loadReviewables, null, { keyOf: reviewableKey });
+  const authored = usePages(loadAuthored, null, { keyOf: reviewKey });
+  const loaded = pending.lastPage !== undefined && authored.lastPage !== undefined;
+  const error = pending.error || authored.error;
 
-  useEffect(() => {
-    let outdated = false;
-    const stop = () => {
-      outdated = true;
-    };
-    stopLoading.current = stop;
+  // pede de novo só a página que falhou
+  function retry() {
+    if (pending.error) pending.retry();
+    if (authored.error) authored.retry();
+  }
 
-    async function load() {
-      try {
-        const [reviewables, authored] = await Promise.all([
-          listReviewable(1),
-          listAuthoredReviews(1),
-        ]);
-        if (outdated) return;
-        setLists({
-          reviewables: listed(reviewables, reviewableKey),
-          authored: listed(authored, reviewKey),
-        });
-        setMore(NO_MORE);
-      } catch (loadError) {
-        if (outdated) return;
-        setError(errorMessage(loadError));
-        if (lostAccess(loadError)) {
-          await refreshUser();
-        }
-      }
-    }
-
-    load().catch((refreshError: unknown) => console.error(refreshError));
-    return stop;
-  }, [request, refreshUser]);
-
+  // com o item recusado fora do lugar, as listas voltam da primeira página
   function reload() {
-    setError("");
-    setRequest({});
-  }
-
-  function changeMore(kind: Kind, state: More) {
-    setMore((current) => ({ ...current, [kind]: state }));
-  }
-
-  async function loadMore(kind: Kind) {
-    const current = lists?.[kind];
-    if (!current?.hasMore || more[kind].loading) return;
-    changeMore(kind, { loading: true, error: "" });
-    try {
-      if (kind === "reviewables") {
-        const page = await listReviewable(current.page + 1);
-        setLists((now) => {
-          if (now === null) return null;
-          return { ...now, reviewables: listed(page, reviewableKey, now.reviewables.items) };
-        });
-      } else {
-        const page = await listAuthoredReviews(current.page + 1);
-        setLists((now) => now && { ...now, authored: listed(page, reviewKey, now.authored.items) });
-      }
-      changeMore(kind, IDLE);
-    } catch (loadError) {
-      changeMore(kind, { loading: false, error: errorMessage(loadError) });
-      if (lostAccess(loadError)) {
-        await refreshUser();
-      }
-    }
-  }
-
-  function pagesOf(kind: Kind): PagedList {
-    return {
-      hasMore: lists?.[kind].hasMore ?? false,
-      loading: more[kind].loading,
-      error: more[kind].error,
-      loadMore: () => {
-        loadMore(kind).catch((refreshError: unknown) => console.error(refreshError));
-      },
-    };
+    pending.restart();
+    authored.restart();
   }
 
   function markReviewed(reviewable: Reviewable, review: Review) {
-    stopLoading.current();
-    setError("");
-    setLists((current) => {
-      if (current === null) return null;
-      const { reviewables, authored } = current;
-      const listedReview = { ...review, farmer_short_name: reviewable.farmer_short_name };
-      return {
-        reviewables: {
-          ...reviewables,
-          items: reviewables.items.filter((item) => !sameReviewable(item, reviewable)),
-        },
-        authored: { ...authored, items: [listedReview, ...authored.items] },
-      };
-    });
+    const same = (item: Reviewable) => reviewableKey(item) === reviewableKey(reviewable);
+    const listed = { ...review, farmer_short_name: reviewable.farmer_short_name };
+    pending.editPages(removeItem(same), { dropped: 1 });
+    authored.editPages(addItem(listed, "first"));
   }
 
   function markEdited(review: Review) {
-    stopLoading.current();
-    setError("");
-    setLists((current) => {
-      if (current === null) return null;
-      const items = current.authored.items.map((item) =>
-        item.public_id === review.public_id ? { ...item, ...review } : item,
-      );
-      return { ...current, authored: { ...current.authored, items } };
-    });
+    const current = authored.items.find((item) => item.public_id === review.public_id);
+    if (current === undefined) return;
+    const same = (item: AuthoredReview) => item.public_id === review.public_id;
+    authored.editPages(replaceItem(same, { ...current, ...review }));
   }
 
   return {
-    reviewables: lists?.reviewables.items ?? [],
-    authored: lists?.authored.items ?? [],
-    pendingPages: pagesOf("reviewables"),
-    authoredPages: pagesOf("authored"),
-    loaded: lists !== null,
-    loading: lists === null && error === "",
+    reviewables: pending.items,
+    authored: authored.items,
+    pendingPages: pending,
+    authoredPages: authored,
+    loaded,
+    loading: !loaded && error === "",
     error,
+    retry,
     reload,
     markReviewed,
     markEdited,

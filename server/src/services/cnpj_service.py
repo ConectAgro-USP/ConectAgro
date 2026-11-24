@@ -2,15 +2,15 @@ import re
 
 from src.connectors.cnpja import TAX_ID_PATTERN, CnpjaConnector
 from src.connectors.models import Company
-from src.services.company_cache import CompanyCache
 from src.services.exceptions import CnpjNotActiveError, InvalidCnpjError
+from src.services.recent_cache import RecentCache
 
 NON_ALPHANUMERIC = re.compile(r"[^A-Za-z0-9]")
 WEIGHTS = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 
 
 class CnpjService:
-    def __init__(self, companies: CnpjaConnector, recent_companies: CompanyCache):
+    def __init__(self, companies: CnpjaConnector, recent_companies: RecentCache[Company]):
         self.companies = companies
         self.recent_companies = recent_companies
 

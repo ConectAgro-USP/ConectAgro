@@ -1,15 +1,20 @@
 import { useSyncExternalStore } from "react";
+import type { ProductUnit } from "../api/products";
 import { useAuth } from "../auth/AuthContext";
+import { isProductUnit } from "../format";
 
 export interface CartItem {
   productPublicId: string;
   quantity: number;
   // o preço visto quando o item entrou no carrinho
   unitPrice: string;
+  // a unidade vista junto com o preço, os carrinhos antigos não têm
+  unit?: ProductUnit;
 }
 
 // o mesmo limite de itens que a API aceita numa compra
 export const CART_LIMIT = 100;
+export const CART_FULL = `O carrinho já tem ${CART_LIMIT} produtos, o limite de uma compra`;
 
 const KEY_PREFIX = "conectagro:carrinho:";
 const EMPTY: CartItem[] = [];
@@ -29,7 +34,8 @@ function isItem(value: unknown): value is CartItem {
     Number.isInteger(item.quantity) &&
     Number(item.quantity) > 0 &&
     typeof item.unitPrice === "string" &&
-    PRICE.test(item.unitPrice)
+    PRICE.test(item.unitPrice) &&
+    (item.unit === undefined || isProductUnit(item.unit))
   );
 }
 

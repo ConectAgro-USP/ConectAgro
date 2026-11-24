@@ -1,9 +1,8 @@
+import { buttonClasses } from "./buttonClasses";
+
 // secundário, para o verde ficar só na ação principal da página
 const CONTACT_CLASSES =
-  "flex h-14 w-full items-center justify-center gap-2 rounded-full border border-stone-400 " +
-  "bg-white px-8 font-bold text-stone-900 hover:bg-stone-50 focus-visible:outline-2 " +
-  "focus-visible:outline-offset-2 focus-visible:outline-lime-800 disabled:cursor-not-allowed " +
-  "disabled:opacity-60";
+  `flex w-full items-center justify-center gap-2 text-stone-900 ${buttonClasses("secondary")}`;
 const WHATSAPP_PATH =
   "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-" +
   ".94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-" +

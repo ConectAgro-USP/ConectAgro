@@ -8,6 +8,7 @@ from src.models.farmer_search import BoundingBox
 from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
 from src.models.review import Review
+from src.repository.product_repository import on_sale
 
 
 def business_date(moment: datetime) -> date:
@@ -15,15 +16,6 @@ def business_date(moment: datetime) -> date:
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
     return moment.astimezone(BUSINESS_TZ).date()
-
-
-def visible_in_catalog(today: date) -> tuple:
-    # a regra do catálogo, sem produtos pausados, esgotados ou vencidos
-    return (
-        col(Product.is_available),
-        Product.quantity > 0,
-        Product.expiration_date >= today,
-    )
 
 
 class FarmerSearchRepository:
@@ -40,10 +32,11 @@ class FarmerSearchRepository:
                 col(Farmer.longitude).between(box.min_longitude, box.max_longitude),
             )
 
+        # os termos chegam sem acentos nem maiúsculas, como a coluna de busca
         for product in products:
             sellers = select(Product.farmer_id).where(
-                col(Product.name).icontains(product, autoescape=True),
-                *visible_in_catalog(today),
+                col(Product.name_search).contains(product, autoescape=True),
+                on_sale(today),
             )
             query = query.where(col(Farmer.id).in_(sellers))
 
@@ -59,7 +52,7 @@ class FarmerSearchRepository:
             select(Product.farmer_id, func.count(Product.id))
             .where(
                 col(Product.farmer_id).in_(farmer_ids),
-                *visible_in_catalog(today),
+                on_sale(today),
             )
             .group_by(Product.farmer_id)
         )

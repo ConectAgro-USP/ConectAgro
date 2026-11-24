@@ -68,7 +68,10 @@ class InterestRepository:
         return conditions
 
     def get_product_by_public_id(self, public_id: UUID) -> Product | None:
+        # espera a troca de unidade em curso, e a troca espera o interesse
         statement = select(Product).where(Product.public_id == public_id)
+        statement = statement.with_for_update(read=True, key_share=True)
+        statement = statement.execution_options(populate_existing=True)
         return self.session.exec(statement).first()
 
     def get_by_public_id(self, public_id: UUID) -> Interest | None:

@@ -1,7 +1,10 @@
 import { screen, within } from "@testing-library/react";
 import { jsonResponse, pageBody } from "../test/helpers";
-import { findSummary, renderHome } from "../test/home";
+import { findSummary, renderHome, salesPage } from "../test/home";
 import { orange } from "../test/products";
+import { pendingSale } from "../test/sales";
+
+const BUILDINGS = ["Ed. Ipê", "Res. Acácias", "Ed. Primavera", "Ed. Jasmim"];
 
 // a página traz um produto só, e a contagem vale para todos os do agricultor
 function countsOnly(counts: object): Response {
@@ -34,5 +37,21 @@ describe("FarmerHome, product counts", () => {
     const invite = await screen.findByRole("link", { name: "Cadastrar primeiro produto" });
 
     expect(invite).toHaveAttribute("href", "/meus-produtos?novo=1");
+  });
+
+  it("counts every open sale with the API totals and lists the first three it sends", async () => {
+    const sales = BUILDINGS.map((name, n) => ({
+      ...pendingSale,
+      purchase_public_id: `compra-${n}`,
+      building_name: name,
+    }));
+    renderHome({ products: [orange], sales: salesPage(sales, 25, "480.00") });
+    const summary = await findSummary("Vendas a entregar");
+
+    expect(await within(summary).findByText(/para entregar/)).toHaveTextContent(
+      "25 vendas para entregar, R$ 480,00 a receber.",
+    );
+    const shown = BUILDINGS.filter((name) => within(summary).queryByText(name));
+    expect(shown).toEqual(BUILDINGS.slice(0, 3));
   });
 });

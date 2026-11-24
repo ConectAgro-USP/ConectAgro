@@ -1,3 +1,4 @@
+import { MAX_SEARCH_TERM } from "../../api/pagination";
 import {
   DISTANCES,
   MAX_PRODUCTS,
@@ -8,7 +9,6 @@ import {
 export const FIRST_DISTANCE: Distance = 15;
 // no endereço, a busca sem raio fica marcada com esta palavra
 const ANY_DISTANCE = "qualquer";
-const MAX_TERM = 200;
 
 function distanceOf(value: string | null): Distance | null {
   if (value === ANY_DISTANCE) return null;
@@ -20,7 +20,7 @@ export function sameProduct(first: string, second: string): boolean {
 }
 
 export function withProduct(products: string[], product: string): string[] {
-  const term = product.trim().slice(0, MAX_TERM);
+  const term = product.trim().slice(0, MAX_SEARCH_TERM);
   const known = products.some((current) => sameProduct(current, term));
   return term === "" || known || products.length >= MAX_PRODUCTS ? products : [...products, term];
 }
@@ -28,7 +28,7 @@ export function withProduct(products: string[], product: string): string[] {
 // um link editado à mão vira a busca válida mais próxima, sem erro da API
 export function farmerFiltersOf(params: URLSearchParams): FarmerFilters {
   return {
-    name: (params.get("name") ?? "").trim().slice(0, MAX_TERM),
+    name: (params.get("name") ?? "").trim().slice(0, MAX_SEARCH_TERM),
     products: params.getAll("products").reduce(withProduct, []),
     distance: distanceOf(params.get("max_distance_km")),
     sort: params.get("sort") === "distance" ? "distance" : "reputation",
