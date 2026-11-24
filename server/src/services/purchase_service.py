@@ -29,6 +29,7 @@ from src.repository.purchase_repository import PurchaseRepository
 from src.services.exceptions import (
     ProductExpiredError,
     ProductNotFoundError,
+    ProductNotNeededError,
     ProductOutOfStockError,
     ProductPriceChangedError,
     ProductUnavailableError,
@@ -49,6 +50,10 @@ class PurchaseService:
         products = self.purchases.lock_products(list(items))
         if len(products) != len(items):
             raise ProductNotFoundError
+        product_ids = [product.id for product in products]
+        # depois da trava, a compra repetida já não acha os interesses
+        interests = self.purchases.list_building_interests(apartment.id, product_ids)
+        needed = {interest.product_id for interest in interests}
 
         today = datetime.now(BUSINESS_TZ).date()
         purchase = Purchase(
@@ -66,6 +71,8 @@ class PurchaseService:
                 raise ProductPriceChangedError(product.name)
             if product.quantity < item.quantity:
                 raise ProductOutOfStockError(product.name)
+            if product.id not in needed:
+                raise ProductNotNeededError(product.name)
             product.quantity -= item.quantity
             if product.farmer_id not in parts:
                 part = PurchasePart(farmer_id=product.farmer_id)
@@ -77,6 +84,7 @@ class PurchaseService:
             parts[product.farmer_id].purchase_products.append(purchase_product)
 
         self.purchases.add(purchase)
+        self.purchases.delete_interests(interests)
         self.purchases.commit()
         return self.purchases.get_by_public_id(purchase.public_id)
 

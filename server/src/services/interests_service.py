@@ -8,8 +8,8 @@ from src.models.interest import (
     InterestCreate,
     InterestUpdate,
 )
-from src.models.product import ProductDetailRead
-from src.repository.interest_repository import InterestRepository
+from src.models.product import UNAVAILABLE, ProductDetailRead
+from src.repository.interest_repository import InterestGoneError, InterestRepository
 from src.repository.profile_repository import DuplicateValueError
 from src.services.exceptions import (
     InterestAlreadyExistsError,
@@ -17,6 +17,7 @@ from src.services.exceptions import (
     NotInterestOwnerDeleteError,
     NotInterestOwnerUpdateError,
     ProductNotFoundError,
+    ProductUnavailableError,
 )
 from src.services.product_service import _farmer_summary
 
@@ -44,6 +45,8 @@ class InterestService:
                 "quantity": interest_in.quantity,
             },
         )
+        if interest.product_status == UNAVAILABLE:
+            raise ProductUnavailableError
 
         self.interests.create(interest)
         try:
@@ -65,7 +68,11 @@ class InterestService:
             raise NotInterestOwnerUpdateError
     
         interest.sqlmodel_update(interest_update.model_dump(exclude_unset=True))
-        return self.interests.update(interest)
+        try:
+            return self.interests.update(interest)
+        except InterestGoneError:
+            # a compra do síndico pode apagar o interesse durante a edição
+            raise InterestNotFoundError from None
         
 
     def delete(self, public_id: UUID, buyer: Buyer) -> None:

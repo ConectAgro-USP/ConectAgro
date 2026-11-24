@@ -113,6 +113,11 @@ class ProductRepository:
         return result
 
 
+    def lock_product(self, product_id: int) -> None:
+        statement = select(Product.id).where(Product.id == product_id)
+        self.session.exec(statement.with_for_update()).first()
+
+
     def has_purchases(self, product_id: int) -> bool:
         statement = select(PurchaseProduct.product_id).where(
             PurchaseProduct.product_id == product_id

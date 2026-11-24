@@ -28,6 +28,7 @@ const CANCEL_PURCHASE = {
   hint: "Os agricultores não fazem mais a entrega e o cancelamento não pode ser desfeito.",
   done: "Compra cancelada",
 };
+const NEEDS_LINK = { to: "/necessidades", label: "Ver as necessidades do prédio" };
 
 function partStatus(part: PurchasePart): string {
   const label = STATUS_LABELS[part.status];
@@ -140,8 +141,9 @@ export function BuildingPurchases() {
       statusLabels={STATUS_LABELS}
       counterpartLabel="Agricultor"
       emptyMessage={
-        "Você ainda não fez compras, confira a página inicial e faça a sua primeira compra hoje"
+        "Você ainda não fez compras, veja as necessidades do prédio e feche a sua primeira compra"
       }
+      emptyLink={NEEDS_LINK}
     >
       <HistoryMonths items={history.items} dateOf={(purchase) => purchase.created_at}>
         {(purchase) => (

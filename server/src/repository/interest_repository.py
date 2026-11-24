@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
@@ -12,6 +13,10 @@ from src.models.farmer import Farmer
 from src.models.interest import Interest
 from src.models.product import BUSINESS_TZ, Product
 from src.repository.profile_repository import DuplicateValueError
+
+
+class InterestGoneError(Exception):
+    pass
 
 
 class InterestRepository:
@@ -79,7 +84,11 @@ class InterestRepository:
 
     def update(self, interest: Interest) -> Interest:
         self.session.add(interest)
-        self.session.commit()
+        try:
+            self.session.commit()
+        except StaleDataError as error:
+            self.session.rollback()
+            raise InterestGoneError from error
         self.session.refresh(interest)
         return interest
 

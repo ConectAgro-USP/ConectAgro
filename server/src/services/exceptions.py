@@ -75,6 +75,10 @@ class ProductOutOfStockError(Exception):
     pass
 
 
+class ProductNotNeededError(Exception):
+    pass
+
+
 class PurchaseNotFoundError(Exception):
     pass
 
