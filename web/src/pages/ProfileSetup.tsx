@@ -15,7 +15,9 @@ const OPTION_CLASSES =
   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 " +
   "has-focus-visible:outline-lime-800";
 
-const OPTIONS: { type: ProfileType; label: string }[] = [
+const PROFILE_QUESTION = "Como você vai usar o ConectAgro?";
+
+const OPTIONS:{ type: ProfileType; label: string }[] = [
   { type: "buyer", label: "Quero comprar" },
   { type: "farmer", label: "Quero vender" },
   { type: "apartment", label: "Sou síndico" },
@@ -40,11 +42,12 @@ export function ProfileSetup() {
     setChoosing(false);
   }
 
+  // quem entra com o Google pula a conta, mas segue no passo 2
   return (
-    <AuthLayout title="Perfil">
+    <AuthLayout title={PROFILE_QUESTION} step={2}>
       <form onSubmit={handleSubmit} className="space-y-6">
         <fieldset className="space-y-3">
-          <legend className="sr-only">Como você vai usar o ConectAgro?</legend>
+          <legend className="sr-only">{PROFILE_QUESTION}</legend>
           {OPTIONS.map((option) => (
             <label key={option.type} className={OPTION_CLASSES}>
               <input

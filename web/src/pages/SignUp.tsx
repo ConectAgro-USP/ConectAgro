@@ -33,7 +33,7 @@ export function SignUp() {
   }
 
   return (
-    <AuthLayout title="Conta">
+    <AuthLayout title="Criar conta" step={1}>
       <GoogleButton onClick={loginWithGoogle}>Criar conta com o Google</GoogleButton>
       <p className="my-8 text-center font-bold">Ou com e-mail</p>
       <form onSubmit={handleSubmit} className="space-y-6">

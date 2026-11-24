@@ -29,7 +29,8 @@ describe("unknown address", () => {
   it("still asks a user without profile to choose one", () => {
     renderWithAuth(<App />, fakeAuth({ user: ana }), "/pagina-que-nao-existe");
 
-    expect(screen.getByRole("heading", { name: "Perfil" })).toBeInTheDocument();
+    const question = "Como você vai usar o ConectAgro?";
+    expect(screen.getByRole("heading", { name: question })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: NOT_FOUND })).not.toBeInTheDocument();
   });
 

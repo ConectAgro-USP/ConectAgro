@@ -63,7 +63,8 @@ describe("ProtectedRoute", () => {
   it("asks a user without profile to choose one", () => {
     renderRoute(ana);
 
-    expect(screen.getByRole("heading", { name: "Perfil" })).toBeInTheDocument();
+    const question = "Como você vai usar o ConectAgro?";
+    expect(screen.getByRole("heading", { name: question })).toBeInTheDocument();
   });
 
   it("shows the pending link instead of the page", () => {

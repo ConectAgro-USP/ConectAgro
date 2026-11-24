@@ -31,9 +31,9 @@ describe("useBuildingLookup", () => {
     });
     const { result } = renderLookup(find);
 
-    act(() => result.current.changeCnpj(FIRST_CNPJ));
+    act(() => result.current.changeQuery(FIRST_CNPJ));
     expect(result.current.searching).toBe(true);
-    act(() => result.current.changeCnpj(SECOND_CNPJ));
+    act(() => result.current.changeQuery(SECOND_CNPJ));
     await waitFor(() => expect(result.current.found).toBe("Edifício Bauru"));
     await act(async () => answerFirst("Edifício Araraquara"));
 
@@ -55,7 +55,7 @@ describe("useBuildingLookup", () => {
     const { result } = renderLookup(find, SECOND_CNPJ);
     await waitFor(() => expect(result.current.found).toBe("Edifício Bauru"));
 
-    act(() => result.current.changeCnpj("60.701.190/0001-0"));
+    act(() => result.current.changeQuery("60.701.190/0001-0"));
 
     expect(result.current.found).toBeNull();
     expect(result.current.searching).toBe(false);
