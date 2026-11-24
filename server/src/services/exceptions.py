@@ -79,10 +79,6 @@ class ProductOutOfStockError(Exception):
     pass
 
 
-class ProductNotNeededError(Exception):
-    pass
-
-
 class PurchaseNotFoundError(Exception):
     pass
 
@@ -124,6 +120,10 @@ class InterestAlreadyExistsError(Exception):
 
 
 class InterestNotFoundError(Exception):
+    pass
+
+
+class InterestInPurchaseError(Exception):
     pass
 
 

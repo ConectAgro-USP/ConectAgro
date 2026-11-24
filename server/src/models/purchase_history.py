@@ -35,6 +35,10 @@ class SaleRead(SQLModel):
     purchase_public_id: UUID
     apartment_public_id: UUID
     building_name: str
+    delivery_address: str | None
+    delivery_zip_code: str
+    manager_name: str
+    manager_cellphone: str | None
     purchased_at: datetime
     expected_delivery_date: date
     status: PurchaseStatus

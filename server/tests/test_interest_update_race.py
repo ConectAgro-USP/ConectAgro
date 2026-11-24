@@ -15,16 +15,16 @@ def test_update_of_an_interest_deleted_during_the_request_returns_404(
     farmer = add_farmer(session, add_user(session, "farmer@example.com"))
     interest = add_interest(session, resident, add_product(session, farmer))
     url = f"/api/interests/{interest.public_id}"
-    read = InterestRepository.get_by_public_id
+    read = InterestRepository.lock_by_public_id
 
     def read_then_lose_the_row(self, public_id):
         found = read(self, public_id)
-        # como a compra do síndico, que apaga o interesse depois da leitura
+        # como outra aba do morador, que apaga o interesse depois da leitura
         session.exec(delete(Interest).where(Interest.public_id == public_id))
         session.commit()
         return found
 
-    monkeypatch.setattr(InterestRepository, "get_by_public_id", read_then_lose_the_row)
+    monkeypatch.setattr(InterestRepository, "lock_by_public_id", read_then_lose_the_row)
     login(client, resident.user)
 
     response = client.patch(url, json={"quantity": 5})

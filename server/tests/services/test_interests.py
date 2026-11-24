@@ -97,9 +97,7 @@ def test_create_rejects_duplicate_buyer_product_pair(
     )
 
     with pytest.raises(InterestAlreadyExistsError):
-        service.create(
-            buyer, InterestCreate(quantity=2, product_public_id=product.public_id)
-        )
+        service.create(buyer, InterestCreate(quantity=2, product_public_id=product.public_id))
 
     interests.create.assert_not_called()
 
@@ -120,14 +118,14 @@ def test_update_changes_quantity_for_owner(
     buyer: Buyer,
     product: Product,
 ):
-    interest = Interest(quantity=1, buyer_id=buyer.id, product_id=product.id)
+    interest = Interest(quantity=1, buyer_id=buyer.id, product_id=product.id, product=product)
     public_id = uuid4()
-    interests.get_by_public_id.return_value = interest
+    interests.lock_by_public_id.return_value = interest
     interests.update.return_value = interest
 
     result = service.update(public_id, buyer, InterestUpdate(quantity=4))
 
-    interests.get_by_public_id.assert_called_once_with(public_id)
+    interests.lock_by_public_id.assert_called_once_with(public_id)
     assert interest.quantity == 4
     interests.update.assert_called_once_with(interest)
     assert result is interest
@@ -138,7 +136,7 @@ def test_update_rejects_unknown_interest(
     interests: InterestRepository,
     buyer: Buyer,
 ):
-    interests.get_by_public_id.return_value = None
+    interests.lock_by_public_id.return_value = None
 
     with pytest.raises(InterestNotFoundError):
         service.update(uuid4(), buyer, InterestUpdate(quantity=4))
@@ -152,7 +150,7 @@ def test_update_rejects_another_buyers_interest(
     buyer: Buyer,
     product: Product,
 ):
-    interests.get_by_public_id.return_value = Interest(
+    interests.lock_by_public_id.return_value = Interest(
         quantity=1, buyer_id=buyer.id + 1, product_id=product.id
     )
 
@@ -209,6 +207,4 @@ def test_apartment_needs_forwards_sort_direction(
 
     service.list_apartment_needs(apartment, descending=descending)
 
-    interests.list_apartment_needs.assert_called_once_with(
-        apartment, descending=descending
-    )
+    interests.list_apartment_needs.assert_called_once_with(apartment, descending=descending)

@@ -6,6 +6,7 @@ from src.api.deps import CurrentBuyer, InterestServiceDep
 from src.models.interest import InterestCreate, InterestRead, InterestUpdate
 from src.services.exceptions import (
     InterestAlreadyExistsError,
+    InterestInPurchaseError,
     InterestNotFoundError,
     NotInterestOwnerDeleteError,
     NotInterestOwnerUpdateError,
@@ -25,6 +26,10 @@ HTTP_ERRORS = {
     InterestAlreadyExistsError: (
         status.HTTP_409_CONFLICT,
         "Interesse nesse produto já registrado",
+    ),
+    InterestInPurchaseError: (
+        status.HTTP_409_CONFLICT,
+        "Este interesse já está numa compra do prédio",
     ),
     NotInterestOwnerDeleteError: (
         status.HTTP_403_FORBIDDEN,
@@ -46,8 +51,7 @@ def http_error(error: Exception) -> HTTPException:
 
 @router.post("", response_model=InterestRead, status_code=status.HTTP_201_CREATED)
 def create_interest(
-    interest_in: InterestCreate, buyer: CurrentBuyer,
-    interest_service: InterestServiceDep
+    interest_in: InterestCreate, buyer: CurrentBuyer, interest_service: InterestServiceDep
 ):
     try:
         return interest_service.create(buyer, interest_in)
@@ -62,8 +66,10 @@ def get_interests(buyer: CurrentBuyer, interest_service: InterestServiceDep):
 
 @router.patch("/{public_id}", response_model=InterestRead)
 def update_interest(
-    public_id: UUID, interest_update: InterestUpdate, buyer: CurrentBuyer,
-    interest_service: InterestServiceDep
+    public_id: UUID,
+    interest_update: InterestUpdate,
+    buyer: CurrentBuyer,
+    interest_service: InterestServiceDep,
 ):
     try:
         return interest_service.update(public_id, buyer, interest_update)

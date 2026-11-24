@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -17,6 +17,7 @@ from src.models.purchase_history import (
     PurchaseHistoryFilters,
     SalesFilters,
 )
+from src.repository.interest_repository import open_interest
 
 
 class PurchaseRepository:
@@ -48,18 +49,22 @@ class PurchaseRepository:
         statement = statement.execution_options(populate_existing=True)
         return list(self.session.exec(statement).all())
 
-    def list_building_interests(self, apartment_id: int, product_ids: list[int]) -> list[Interest]:
-        statement = select(Interest).join(Buyer)
-        statement = statement.where(
-            Buyer.apartment_id == apartment_id,
-            Buyer.link_status == LinkStatus.APROVADO,
-            Interest.product_id.in_(product_ids),
+    def link_open_interests(self, apartment_id: int, parts: list[PurchasePart]) -> None:
+        # a parte precisa de id antes de receber os interesses
+        self.session.flush()
+        approved = select(Buyer.id).where(
+            Buyer.apartment_id == apartment_id, Buyer.link_status == LinkStatus.APROVADO
         )
-        return list(self.session.exec(statement).all())
-
-    def delete_interests(self, interests: list[Interest]) -> None:
-        for interest in interests:
-            self.session.delete(interest)
+        for part in parts:
+            product_ids = [item.product_id for item in part.purchase_products]
+            statement = update(Interest).where(
+                Interest.buyer_id.in_(approved),
+                Interest.product_id.in_(product_ids),
+                open_interest(),
+            )
+            # o vínculo não é edição do morador, então updated_at fica igual
+            statement = statement.values(purchase_part_id=part.id, updated_at=Interest.updated_at)
+            self.session.exec(statement.execution_options(synchronize_session=False))
 
     def list_sales(
         self, farmer_id: int, filters: SalesFilters, since: datetime | None, until: datetime | None
@@ -72,8 +77,9 @@ class PurchaseRepository:
         count = select(func.count(PurchasePart.id)).join(Purchase).join(Apartment)
         total = self.session.exec(count.where(*conditions)).one()
         statement = select(PurchasePart).join(Purchase).join(Apartment).where(*conditions)
+        apartment = selectinload(PurchasePart.purchase).selectinload(Purchase.apartment)
         statement = statement.options(
-            selectinload(PurchasePart.purchase).selectinload(Purchase.apartment),
+            apartment.selectinload(Apartment.manager),
             selectinload(PurchasePart.purchase_products).selectinload(PurchaseProduct.product),
         )
         return self._page(statement, filters), total

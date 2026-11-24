@@ -54,15 +54,18 @@ def test_purchase_clears_the_bought_product_from_the_needs(
     assert response.status_code == status.HTTP_201_CREATED
     assert needs(client) == ["Batata"]
     login(client, resident.user)
-    mine = client.get("/api/interests/me").json()
-    assert [interest["product_name"] for interest in mine] == ["Batata"]
+    mine = {item["product_name"]: item for item in client.get("/api/interests/me").json()}
+    assert mine["Batata"]["purchase"] is None
+    assert mine["Alface"]["quantity"] == 3
+    assert mine["Alface"]["purchase"]["public_id"] == response.json()["public_id"]
 
 
-def test_purchase_keeps_interests_outside_the_building_needs(
+def test_purchase_links_only_the_interests_of_approved_residents_of_the_building(
     client: TestClient,
     session: Session,
     building: Apartment,
     other_building: Apartment,
+    resident: Buyer,
     lettuce: Product,
 ):
     pending = add_resident(session, building, add_user(session, "pendente@example.com"))
@@ -74,8 +77,10 @@ def test_purchase_keeps_interests_outside_the_building_needs(
     response = buy(client, lettuce)
 
     assert response.status_code == status.HTTP_201_CREATED
-    kept = session.exec(select(Interest.buyer_id)).all()
-    assert sorted(kept) == sorted([pending.id, outsider.id])
+    links = dict(session.exec(select(Interest.buyer_id, Interest.purchase_part_id)).all())
+    assert links[pending.id] is None
+    assert links[outsider.id] is None
+    assert links[resident.id] is not None
 
 
 def test_refused_purchase_keeps_the_interests(client: TestClient, lettuce: Product):
@@ -85,24 +90,19 @@ def test_refused_purchase_keeps_the_interests(client: TestClient, lettuce: Produ
     assert needs(client) == ["Alface"]
 
 
-def test_bought_product_needs_a_new_interest_to_be_bought_again(
-    client: TestClient, session: Session, lettuce: Product
-):
+def test_bought_product_can_be_bought_again(client: TestClient, session: Session, lettuce: Product):
     buy(client, lettuce)
 
     again = buy(client, lettuce)
 
-    assert again.status_code == status.HTTP_409_CONFLICT
-    assert again.json() == {"detail": "O produto Alface não está nas necessidades do prédio"}
-    assert len(session.exec(select(Purchase)).all()) == 1
+    assert again.status_code == status.HTTP_201_CREATED
+    assert len(session.exec(select(Purchase)).all()) == 2
 
 
-def test_cancelled_purchase_does_not_bring_the_interests_back(
-    client: TestClient, lettuce: Product
-):
+def test_cancelled_purchase_brings_the_interests_back(client: TestClient, lettuce: Product):
     purchase = buy(client, lettuce).json()
 
     response = client.post(f"/api/purchases/{purchase['public_id']}/cancel")
 
     assert response.status_code == status.HTTP_200_OK
-    assert needs(client) == []
+    assert needs(client) == ["Alface"]
