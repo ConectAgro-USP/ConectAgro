@@ -1,7 +1,8 @@
 import { useState, type SubmitEvent } from "react";
-import { Link, Navigate } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import { login, register } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
+import { rememberReturn, RETURN_PARAM, safeReturnPath, withReturn } from "../auth/returnPath";
 import { AuthLayout } from "../components/AuthLayout";
 import { GoogleButton, PrimaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
@@ -15,9 +16,16 @@ export function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const { error, setError, pending, run } = useAction();
+  const [searchParams] = useSearchParams();
+  const next = safeReturnPath(searchParams.get(RETURN_PARAM));
 
   if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={next} replace />;
+
+  function signUpWithGoogle() {
+    rememberReturn(next);
+    loginWithGoogle();
+  }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +42,7 @@ export function SignUp() {
 
   return (
     <AuthLayout title="Criar conta" step={1}>
-      <GoogleButton onClick={loginWithGoogle}>Criar conta com o Google</GoogleButton>
+      <GoogleButton onClick={signUpWithGoogle}>Criar conta com o Google</GoogleButton>
       <p className="my-8 text-center font-bold">Ou com e-mail</p>
       <form onSubmit={handleSubmit} className="space-y-6">
         <TextField
@@ -71,7 +79,7 @@ export function SignUp() {
       </form>
       <p className="mt-6 text-center text-stone-600">
         Já tem conta?{" "}
-        <Link to="/login" className="font-bold text-lime-800 underline">
+        <Link to={withReturn("/login", next)} className="font-bold text-lime-800 underline">
           Entrar
         </Link>
       </p>

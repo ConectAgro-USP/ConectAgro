@@ -20,7 +20,7 @@ def test_picture_is_served_with_its_type_and_cache_headers(
     assert response.status_code == status.HTTP_200_OK
     assert response.content == JPEG
     assert response.headers["content-type"] == "image/jpeg"
-    assert response.headers["cache-control"] == "private, max-age=86400"
+    assert response.headers["cache-control"] == "public, max-age=86400"
     assert response.headers["x-content-type-options"] == "nosniff"
     etag = response.headers["etag"]
     assert etag.startswith('"') and etag.endswith('"')

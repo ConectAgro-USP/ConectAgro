@@ -55,18 +55,6 @@ def test_upload_requires_login(client: TestClient, session: Session, seller: Far
     assert stored_pictures(session) == []
 
 
-def test_picture_requires_login_like_the_catalog(
-    client: TestClient, session: Session, farmer: Farmer
-):
-    product = add_product(session, farmer)
-    picture_url = upload(client, product, PNG).json()["picture_url"]
-    client.cookies.clear()
-
-    response = client.get(picture_url)
-
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
 def test_any_logged_in_user_sees_the_picture(
     client: TestClient, session: Session, farmer: Farmer, building: Apartment
 ):

@@ -9,6 +9,7 @@ import { FormError } from "../components/FormError";
 import { useAction } from "../hooks/useAction";
 import { useBuildingLink } from "../hooks/useBuildingLink";
 import { useFocusWithoutScroll } from "../hooks/useFocusWithoutScroll";
+import { useLogout } from "../hooks/useLogout";
 
 function SwitchBuilding({ onClose }: Readonly<{ onClose: () => void }>) {
   const { user, saveProfile } = useAuth();
@@ -52,7 +53,8 @@ function SwitchBuilding({ onClose }: Readonly<{ onClose: () => void }>) {
 }
 
 export function PendingLink() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const logout = useLogout();
   const { error, pending, run } = useAction();
   const [switching, setSwitching] = useState(false);
   const building = user?.buyer?.apartment;
@@ -92,7 +94,8 @@ export function PendingLink() {
 }
 
 export function RejectedLink() {
-  const { user, saveProfile, logout } = useAuth();
+  const { user, saveProfile } = useAuth();
+  const logout = useLogout();
   const { error, pending, run } = useAction();
   const buyer = user?.buyer;
   const link = useBuildingLink({

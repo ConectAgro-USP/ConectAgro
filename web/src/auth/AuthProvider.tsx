@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiFetch, ApiError } from "../api/client";
 import type { ProfileRead } from "../api/profiles";
 import { AuthContext } from "./AuthContext";
@@ -59,7 +59,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const logout = useCallback(async () => {
     await apiFetch("/auth/logout", { method: "POST" });
-    setUser(null);
+    // transição como a do roteador, senão a rota fechada manda ao login
+    startTransition(() => setUser(null));
   }, []);
 
   const value = useMemo(

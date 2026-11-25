@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Route, Routes } from "react-router";
+import { Outlet, Route, Routes } from "react-router";
 import { useAuth } from "./auth/AuthContext";
 import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
+import { useGoogleReturn } from "./hooks/useGoogleReturn";
 import { Cart } from "./pages/Cart";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -29,6 +30,8 @@ function Home() {
 }
 
 export default function App() {
+  useGoogleReturn();
+
   return (
     <Routes>
       <Route
@@ -49,43 +52,52 @@ export default function App() {
       />
       <Route
         element={
-          <ProtectedRoute>
+          <ProtectedRoute openToVisitors>
             <AppShell />
           </ProtectedRoute>
         }
       >
         <Route path="/" element={<Home />} />
-        <Route
-          path="/perfil"
-          element={
-            <Titled title="Meu perfil">
-              <MyProfile />
-            </Titled>
-          }
-        />
         <Route path="/produtos/:publicId" element={<ProductDetail />} />
-        {/* sem link no menu, o carrinho abre pelo ícone do cabeçalho */}
+        {/* tudo neste grupo pede login, as páginas novas entram aqui */}
         <Route
-          path="/carrinho"
           element={
-            <ProtectedRoute allowedProfiles={["apartment"]}>
-              <Titled title="Carrinho">
-                <Cart />
-              </Titled>
+            <ProtectedRoute>
+              <Outlet />
             </ProtectedRoute>
           }
-        />
-        {RESTRICTED_PAGES.map((page) => (
+        >
           <Route
-            key={page.path}
-            path={page.path}
+            path="/perfil"
             element={
-              <ProtectedRoute allowedProfiles={page.profiles}>
-                <Titled title={page.title}>{page.element}</Titled>
+              <Titled title="Meu perfil">
+                <MyProfile />
+              </Titled>
+            }
+          />
+          {/* sem link no menu, o carrinho abre pelo ícone do cabeçalho */}
+          <Route
+            path="/carrinho"
+            element={
+              <ProtectedRoute allowedProfiles={["apartment"]}>
+                <Titled title="Carrinho">
+                  <Cart />
+                </Titled>
               </ProtectedRoute>
             }
           />
-        ))}
+          {RESTRICTED_PAGES.map((page) => (
+            <Route
+              key={page.path}
+              path={page.path}
+              element={
+                <ProtectedRoute allowedProfiles={page.profiles}>
+                  <Titled title={page.title}>{page.element}</Titled>
+                </ProtectedRoute>
+              }
+            />
+          ))}
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

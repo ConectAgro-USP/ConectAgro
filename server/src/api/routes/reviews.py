@@ -1,9 +1,9 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.deps import CurrentFarmer, CurrentReviewAuthor, ReviewServiceDep, get_current_user
+from src.api.deps import CurrentFarmer, CurrentReviewAuthor, ReviewServiceDep
 from src.models.pagination import PageParams
 from src.models.review import (
     AuthorReviewsPage,
@@ -97,11 +97,7 @@ def list_my_reviews(farmer: CurrentFarmer, review_service: ReviewServiceDep):
     return review_service.list_by_farmer(farmer)
 
 
-@router.get(
-    "/farmers/{public_id}/reviews",
-    response_model=FarmerReviewsPage,
-    dependencies=[Depends(get_current_user)],
-)
+@router.get("/farmers/{public_id}/reviews", response_model=FarmerReviewsPage)
 def list_farmer_reviews(
     public_id: UUID,
     filters: Annotated[FarmerReviewsFilters, Query()],

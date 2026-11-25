@@ -1,11 +1,12 @@
 import { useAuth } from "../auth/AuthContext";
 import { ProductSearch } from "./ProductSearch";
 
-// só quem compra busca, e abaixo de 1024 px a busca fica no catálogo
+// só o visitante e quem compra buscam
 export function HeaderSearch() {
-  const { profileType } = useAuth();
-  if (profileType !== "buyer" && profileType !== "apartment") {
+  const { user, profileType } = useAuth();
+  const buys = profileType === "buyer" || profileType === "apartment";
+  if (user && !buys) {
     return null;
   }
-  return <ProductSearch className="hidden max-w-lg lg:flex" />;
+  return <ProductSearch className="max-w-lg" />;
 }

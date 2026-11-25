@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { login } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
+import { rememberReturn, RETURN_PARAM, safeReturnPath, withReturn } from "../auth/returnPath";
 import { AuthLayout } from "../components/AuthLayout";
 import { GoogleButton, PrimaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
@@ -14,9 +15,15 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { error, pending, run } = useAction();
+  const next = safeReturnPath(searchParams.get(RETURN_PARAM));
 
   if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={next} replace />;
+
+  function enterWithGoogle() {
+    rememberReturn(next);
+    loginWithGoogle();
+  }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,7 +36,7 @@ export function Login() {
   return (
     <AuthLayout title="Entrar">
       <div className="space-y-4">
-        <GoogleButton onClick={loginWithGoogle}>Entrar com o Google</GoogleButton>
+        <GoogleButton onClick={enterWithGoogle}>Entrar com o Google</GoogleButton>
         {searchParams.get("error") === "google" && (
           <FormError message="Não foi possível entrar com o Google" />
         )}
@@ -56,7 +63,7 @@ export function Login() {
       </form>
       <p className="mt-6 text-center text-stone-600">
         Ainda não tem conta?{" "}
-        <Link to="/cadastro" className="font-bold text-lime-800 underline">
+        <Link to={withReturn("/cadastro", next)} className="font-bold text-lime-800 underline">
           Criar conta
         </Link>
       </p>

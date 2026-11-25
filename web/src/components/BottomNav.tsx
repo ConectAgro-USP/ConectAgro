@@ -4,6 +4,7 @@ import { NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { useAction } from "../hooks/useAction";
 import { useFocusWithoutScroll } from "../hooks/useFocusWithoutScroll";
+import { useLogout } from "../hooks/useLogout";
 import { navigationOf, PROFILE_DESTINATION } from "../restrictedPages";
 import { FormError } from "./FormError";
 
@@ -36,7 +37,8 @@ function TabContent({ icon: Icon, label }: Readonly<{ icon: LucideIcon; label: s
 }
 
 export function BottomNav() {
-  const { logout, profileType } = useAuth();
+  const { profileType } = useAuth();
+  const logout = useLogout();
   const logoutAction = useAction();
   const location = useLocation();
   // o painel fecha sozinho quando a página muda

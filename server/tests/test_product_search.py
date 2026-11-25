@@ -12,7 +12,7 @@ from src.models.purchase import Purchase
 from src.models.review import Review
 from tests.helpers import add_building, add_farmer, add_user
 
-# a busca exige login, então todos os testes rodam com a Ana logada
+# a busca não pede login, mas os testes rodam com a Ana logada como no app
 pytestmark = pytest.mark.usefixtures("ana")
 
 

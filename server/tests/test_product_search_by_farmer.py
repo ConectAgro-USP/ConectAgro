@@ -10,7 +10,7 @@ from src.models.review import Review
 from tests.helpers import add_purchase_from
 from tests.test_product_search import add_farmer_with_name, add_product
 
-# a busca exige login, então todos os testes rodam com a Ana logada
+# a busca não pede login, mas os testes rodam com a Ana logada como no app
 pytestmark = pytest.mark.usefixtures("ana")
 
 

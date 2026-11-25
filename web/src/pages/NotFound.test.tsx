@@ -19,11 +19,12 @@ describe("unknown address", () => {
     expect(screen.getByRole("heading", { level: 1, name: NOT_FOUND })).toBeInTheDocument();
   });
 
-  it("still sends a visitor to the login", () => {
+  it("shows a visitor the not found page with the login button", () => {
     renderWithAuth(<App />, fakeAuth(), "/pagina-que-nao-existe");
 
-    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: NOT_FOUND })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: NOT_FOUND })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Perfil" })).not.toBeInTheDocument();
   });
 
   it("still asks a user without profile to choose one", () => {

@@ -422,24 +422,6 @@ def test_get_product_rejects_invalid_id(client: TestClient, public_id: str):
     assert response.json()["detail"][0]["loc"] == ["path", "public_id"]
 
 
-def test_get_product_requires_login(client: TestClient, session: Session, seller: Farmer):
-    lettuce = add_product(session, seller)
-
-    response = client.get(f"/api/products/{lettuce.public_id}")
-
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "Alface" not in response.text
-
-
-def test_catalog_requires_login(client: TestClient, session: Session, seller: Farmer):
-    add_product(session, seller)
-
-    response = client.get("/api/products")
-
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "Alface" not in response.text
-
-
 FIRST_DAY = datetime(2026, 1, 1, tzinfo=UTC)
 
 

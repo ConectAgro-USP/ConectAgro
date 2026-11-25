@@ -10,7 +10,6 @@ from src.api.deps import (
     ProductPictureServiceDep,
     ProductSearchServiceDep,
     ProductServiceDep,
-    get_current_user,
 )
 from src.api.rate_limits import limit_picture_uploads
 from src.models.my_products import MyProductsFilters, MyProductsPage
@@ -37,7 +36,8 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 PRODUCT_NOT_FOUND = "Produto não encontrado"
 PICTURE_TOO_LARGE = "A foto deve ter no máximo 1 MB"
-PICTURE_CACHE_CONTROL = "private, max-age=86400"
+# a foto é pública como o catálogo, e a URL muda quando ela muda
+PICTURE_CACHE_CONTROL = "public, max-age=86400"
 
 
 async def read_picture_body(request: Request) -> bytes:
@@ -77,7 +77,7 @@ def get_farmer_products(
     return product_service.get_current_farmer_products(farmer, filters)
 
 
-@router.get("", response_model=ProductSearchResponse, dependencies=[Depends(get_current_user)])
+@router.get("", response_model=ProductSearchResponse)
 def search_products(
     filters: Annotated[ProductSearchFilters, Query()],
     product_search: ProductSearchServiceDep,
@@ -104,9 +104,7 @@ def patch_product(
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
 
-@router.get(
-    "/{public_id}", response_model=ProductDetailRead, dependencies=[Depends(get_current_user)]
-)
+@router.get("/{public_id}", response_model=ProductDetailRead)
 def get_product_by_public_id(public_id: UUID, product_service: ProductServiceDep):
     try:
         return product_service.get_product_by_public_id(public_id)
@@ -171,11 +169,7 @@ def upload_product_picture(
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, message) from None
 
 
-@router.get(
-    "/{public_id}/picture",
-    response_class=Response,
-    dependencies=[Depends(get_current_user)],
-)
+@router.get("/{public_id}/picture", response_class=Response)
 def get_product_picture(
     public_id: UUID,
     picture_service: ProductPictureServiceDep,

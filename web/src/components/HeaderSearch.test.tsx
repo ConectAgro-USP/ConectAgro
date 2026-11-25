@@ -1,17 +1,28 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
-import { anaAsBuyer, anaAsFarmer, fakeAuth, renderWithAuth, stubSilentApi } from "../test/helpers";
+import type { ProfileRead } from "../api/profiles";
+import {
+  ana,
+  anaAsBuyer,
+  anaAsFarmer,
+  anaAsManager,
+  fakeAuth,
+  renderWithAuth,
+  stubSilentApi,
+} from "../test/helpers";
 import { Address } from "../test/RouterProbe";
 import { AppHeader } from "./AppHeader";
 
-function renderHeader(url: string, profileType: "farmer" | "apartment" | "buyer" | null) {
+const resident = anaAsBuyer("APROVADO");
+
+function renderHeader(url: string, user: ProfileRead) {
   renderWithAuth(
     <>
       <AppHeader />
       <Address />
     </>,
-    fakeAuth({ profileType }),
+    fakeAuth({ user }),
     url,
   );
 }
@@ -21,24 +32,30 @@ async function search(term: string) {
 }
 
 describe("HeaderSearch", () => {
-  it.each(["buyer", "apartment"] as const)("lets the %s profile search products", (profile) => {
-    renderHeader("/perfil", profile);
+  it.each([
+    ["resident", resident],
+    ["manager", anaAsManager],
+  ])("lets the %s search products", (_who, user) => {
+    renderHeader("/perfil", user);
 
     const box = screen.getByRole("searchbox", { name: "Buscar produto" });
     expect(box).toBeEnabled();
     expect(box).toHaveAttribute("placeholder", "Buscar produto");
-    expect(screen.getByRole("search")).toHaveClass("hidden", "lg:flex");
+    expect(screen.getByRole("search").parentElement).toHaveClass("hidden", "lg:block");
   });
 
-  it.each(["farmer", null] as const)("shows no search to the %s profile", (profile) => {
-    renderHeader("/", profile);
+  it.each([
+    ["farmer", anaAsFarmer],
+    ["user without a profile", ana],
+  ])("shows no search to the %s", (_who, user) => {
+    renderHeader("/", user);
 
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("search")).not.toBeInTheDocument();
   });
 
   it("takes the search to the catalog", async () => {
-    renderHeader("/agricultores?name=maria", "buyer");
+    renderHeader("/agricultores?name=maria", resident);
 
     await search("couve");
 
@@ -46,7 +63,7 @@ describe("HeaderSearch", () => {
   });
 
   it("keeps the order and the filters chosen in the catalog", async () => {
-    renderHeader("/?q=feijao&sort=lowest_price", "apartment");
+    renderHeader("/?q=feijao&sort=lowest_price", anaAsManager);
     const box = screen.getByRole("searchbox", { name: "Buscar produto" });
     expect(box).toHaveValue("feijao");
 
@@ -58,7 +75,7 @@ describe("HeaderSearch", () => {
 
   it("searches the catalog from another page of the app", async () => {
     const fetchMock = stubSilentApi();
-    renderWithAuth(<App />, fakeAuth({ user: anaAsBuyer("APROVADO") }), "/perfil");
+    renderWithAuth(<App />, fakeAuth({ user: resident }), "/perfil");
 
     await search("mandioca");
 

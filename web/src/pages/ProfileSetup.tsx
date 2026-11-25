@@ -1,10 +1,10 @@
 import { useState, type SubmitEvent } from "react";
 import type { ProfileType } from "../api/profiles";
-import { useAuth } from "../auth/AuthContext";
 import { AuthLayout } from "../components/AuthLayout";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { useAction } from "../hooks/useAction";
+import { useLogout } from "../hooks/useLogout";
 import { ApartmentForm } from "./profile/ApartmentForm";
 import { BuyerForm } from "./profile/BuyerForm";
 import { FarmerForm } from "./profile/FarmerForm";
@@ -24,7 +24,7 @@ const OPTIONS:{ type: ProfileType; label: string }[] = [
 ];
 
 export function ProfileSetup() {
-  const { logout } = useAuth();
+  const logout = useLogout();
   const { error, setError, pending, run } = useAction();
   const [chosenProfile, setChosenProfile] = useState<ProfileType>("buyer");
   const [choosing, setChoosing] = useState(true);

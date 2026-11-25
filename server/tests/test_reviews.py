@@ -116,9 +116,7 @@ def test_people_outside_the_building_cannot_review(
     assert client.get(REVIEWABLE_URL).json()["items"] == []
     assert client.get("/api/farmers/me/reviews").status_code == forbidden
     client.cookies.clear()
-    unauthorized = status.HTTP_401_UNAUTHORIZED
-    assert client.post(url, json={"rating": 1}).status_code == unauthorized
-    assert client.get(f"/api/farmers/{joao.public_id}/reviews").status_code == unauthorized
+    assert client.post(url, json={"rating": 1}).status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_only_the_author_updates_the_review(
