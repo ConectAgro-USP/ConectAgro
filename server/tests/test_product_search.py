@@ -6,42 +6,14 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.models.farmer import Farmer
-from src.models.product import BUSINESS_TZ, Product
+from src.models.product import BUSINESS_TZ
 from src.models.purchase import Purchase
 from src.models.review import Review
-from tests.helpers import add_building, add_farmer, add_user
+from tests.catalog import add_farmer_with_name, add_product
+from tests.helpers import add_building, add_user
 
 # a busca não pede login, mas os testes rodam com a Ana logada como no app
 pytestmark = pytest.mark.usefixtures("ana")
-
-
-def add_product(
-    session: Session,
-    farmer: Farmer,
-    name: str,
-    description: str | None = None,
-    *,
-    quantity: int = 5,
-    price: Decimal = Decimal("3.00"),
-    days_until_expiration: int = 10,
-) -> Product:
-    product = Product(
-        name=name,
-        description=description,
-        quantity=quantity,
-        price=price,
-        expiration_date=datetime.now(BUSINESS_TZ).date() + timedelta(days=days_until_expiration),
-        farmer_id=farmer.id,
-    )
-    session.add(product)
-    session.commit()
-    session.refresh(product)
-    return product
-
-
-def add_farmer_with_name(session: Session, email: str) -> Farmer:
-    return add_farmer(session, add_user(session, email))
 
 
 def test_search_matches_name_or_description_without_fuzzy_matching(

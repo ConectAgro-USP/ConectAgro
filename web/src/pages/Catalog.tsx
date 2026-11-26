@@ -7,6 +7,7 @@ import {
 } from "../api/products";
 import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
+import { ShowMore } from "../components/ShowMore";
 import { ProductRow } from "../components/farmers/ProductRow";
 import { formatCount } from "../format";
 import { useInterestLookup } from "../hooks/useInterestLookup";
@@ -107,9 +108,7 @@ export function Catalog() {
           {products.error && (
             <SecondaryButton onClick={products.retry}>Tentar de novo</SecondaryButton>
           )}
-          {products.hasMore && !products.loading && !products.error && (
-            <SecondaryButton onClick={products.loadMore}>Mostrar mais produtos</SecondaryButton>
-          )}
+          <ShowMore list={products} label="Mostrar mais produtos" />
         </div>
       </section>
     </main>

@@ -24,7 +24,7 @@ def on_postgres(statement) -> str:
 def test_reading_the_product_of_a_new_interest_takes_a_key_share_lock():
     session = mocked_session()
 
-    InterestRepository(session).get_product_by_public_id(uuid4())
+    InterestRepository(session).lock_product_by_public_id(uuid4())
 
     statement = executed(session)
     assert on_postgres(statement).endswith("FOR KEY SHARE")

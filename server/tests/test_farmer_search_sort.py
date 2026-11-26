@@ -10,12 +10,9 @@ from src.models.purchase import PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
-from tests.geo import PRACA_DA_SE, km_north
+from tests.geo import PAULISTA_POINT, km_north, locate
 from tests.helpers import add_farmer, add_purchase_from, add_user, login
-from tests.test_profiles import answer_cep
-
-# coordenadas que a BrasilAPI dá na resposta PAULISTA
-PAULISTA_POINT = (-23.5475, -46.63611)
+from tests.profiles import answer_cep
 
 
 @pytest.fixture(autouse=True)
@@ -42,11 +39,6 @@ def rate(session: Session, building: Apartment, farmer: Farmer, rating: int) -> 
             rating=rating,
         )
     )
-    session.commit()
-
-
-def locate(session: Session, building: Apartment) -> None:
-    building.latitude, building.longitude = PRACA_DA_SE
     session.commit()
 
 

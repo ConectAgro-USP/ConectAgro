@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { address, couve, feijao, renderCatalog, requested } from "../test/catalog";
+import { address } from "../test/address";
+import { couve, feijao, renderCatalog, requested } from "../test/catalog";
 import { pageOf } from "../test/farmers";
 
 describe("Catalog, the search in the address", () => {

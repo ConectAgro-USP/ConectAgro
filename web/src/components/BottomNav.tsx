@@ -10,6 +10,8 @@ import { FormError } from "./FormError";
 
 // a altura da barra, que a página reserva embaixo para nada ficar escondido
 export const BOTTOM_BAR_SPACE = "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0";
+// o que fica fixo logo acima da barra usa a mesma altura
+export const BOTTOM_BAR_OFFSET = "bottom-[calc(4rem+env(safe-area-inset-bottom))]";
 
 const TAB_CLASSES =
   "group flex h-16 w-full flex-col items-center justify-center gap-1 px-1 text-xs " +
@@ -83,7 +85,7 @@ export function BottomNav() {
         id={panelId}
         hidden={!open}
         className={
-          "fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 max-h-[70dvh] " +
+          `fixed inset-x-0 ${BOTTOM_BAR_OFFSET} z-40 max-h-[70dvh] ` +
           "overflow-y-auto rounded-t-3xl bg-white p-3 shadow-lg"
         }
       >

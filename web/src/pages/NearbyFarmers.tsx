@@ -3,6 +3,7 @@ import { DISTANCES, searchNearbyFarmers, type FarmerFilters } from "../api/farme
 import { SecondaryButton } from "../components/Button";
 import { FarmerCard } from "../components/farmers/FarmerCard";
 import { FormError } from "../components/FormError";
+import { ShowMore } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
 import { formatCount } from "../format";
 import { useInterestLookup } from "../hooks/useInterestLookup";
@@ -118,9 +119,7 @@ export function NearbyFarmers() {
           {farmers.error && !noBuildingPoint && (
             <SecondaryButton onClick={farmers.retry}>Tentar de novo</SecondaryButton>
           )}
-          {farmers.hasMore && !farmers.loading && !farmers.error && (
-            <SecondaryButton onClick={farmers.loadMore}>Mostrar mais agricultores</SecondaryButton>
-          )}
+          <ShowMore list={farmers} label="Mostrar mais agricultores" />
         </div>
       </div>
     </main>

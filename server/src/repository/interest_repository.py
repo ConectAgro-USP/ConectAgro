@@ -62,7 +62,7 @@ class InterestRepository:
             conditions.append(Interest.product_id == product_id.scalar_subquery())
         return conditions
 
-    def get_product_by_public_id(self, public_id: UUID) -> Product | None:
+    def lock_product_by_public_id(self, public_id: UUID) -> Product | None:
         # espera a troca de unidade em curso, e a troca espera o interesse
         statement = select(Product).where(Product.public_id == public_id)
         statement = statement.with_for_update(read=True, key_share=True)

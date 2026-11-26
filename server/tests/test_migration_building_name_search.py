@@ -1,21 +1,12 @@
-from pathlib import Path
-
 import pytest
 from sqlalchemy import text
 from sqlmodel import create_engine
 
 from alembic import command
 from src.core.config import settings
-from tests.test_migrations import alembic_config
+from tests.migrations import alembic_config
 
 BEFORE_SEARCH = "ff9291f5b288"
-
-
-@pytest.fixture()
-def db_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
-    url = f"sqlite:///{(tmp_path / 'migrations.db').as_posix()}"
-    monkeypatch.setattr(settings, "DATABASE_URL", url)
-    return url
 
 
 def test_upgrade_folds_the_names_of_existing_buildings(db_url: str) -> None:

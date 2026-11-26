@@ -2,7 +2,13 @@ import { Link } from "react-router";
 import type { Interest } from "../../api/interests";
 import { ProductPicture } from "../../components/ProductPicture";
 import { formatMoney, pricePer, sellerName } from "../../format";
-import { AVAILABLE, costInCents, interestState } from "../../interestState";
+import {
+  AVAILABLE,
+  DELIVERED,
+  IN_PURCHASE,
+  costInCents,
+  interestState,
+} from "../../interestState";
 
 const NAME_LINK_CLASSES =
   "rounded text-lime-800 underline focus-visible:outline-2 focus-visible:outline-lime-800";
@@ -13,8 +19,8 @@ const IDLE_COLORS = "bg-stone-200 text-stone-700";
 // em compra ou entregue, o estado do pedido vale mais que o do produto
 function statusOf(interest: Interest): { label: string; active: boolean } {
   const state = interestState(interest);
-  if (state === "purchase") return { label: "Na compra do prédio", active: true };
-  if (state === "delivered") return { label: "Entregue", active: false };
+  if (state === "purchase") return { label: IN_PURCHASE, active: true };
+  if (state === "delivered") return { label: DELIVERED, active: false };
   return { label: interest.product_status, active: interest.product_status === AVAILABLE };
 }
 

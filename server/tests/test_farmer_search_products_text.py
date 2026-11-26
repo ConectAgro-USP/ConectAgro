@@ -18,7 +18,7 @@ def carlos(session: Session) -> Farmer:
     return add_farmer(session, add_user(session, "carlos@example.com", name="Carlos Silva"))
 
 
-def farm_names(client: TestClient, *products: str) -> list[str]:
+def farmer_names(client: TestClient, *products: str) -> list[str]:
     response = client.get("/api/farmers", params={"products": list(products)})
     return [item["name"] for item in response.json()["items"]]
 
@@ -29,7 +29,7 @@ def test_products_filter_ignores_accents_case_and_spaces(
 ):
     add_product(session, carlos, "Feijão Carioca")
 
-    assert farm_names(client, term) == ["Carlos S."]
+    assert farmer_names(client, term) == ["Carlos S."]
 
 
 def test_products_filter_finds_an_accented_term_in_an_unaccented_name(
@@ -37,7 +37,7 @@ def test_products_filter_finds_an_accented_term_in_an_unaccented_name(
 ):
     add_product(session, carlos, "Oleo de coco")
 
-    assert farm_names(client, "Óleo") == ["Carlos S."]
+    assert farmer_names(client, "Óleo") == ["Carlos S."]
 
 
 def test_products_filter_still_needs_every_term(
@@ -45,7 +45,7 @@ def test_products_filter_still_needs_every_term(
 ):
     add_product(session, carlos, "Feijão Carioca")
 
-    assert farm_names(client, "feijao", "maçã") == []
+    assert farmer_names(client, "feijao", "maçã") == []
 
 
 def test_products_filter_treats_wildcards_as_plain_text(
@@ -53,5 +53,5 @@ def test_products_filter_treats_wildcards_as_plain_text(
 ):
     add_product(session, carlos, "Feijão Carioca")
 
-    assert farm_names(client, "%") == []
-    assert farm_names(client, "feij_o") == []
+    assert farmer_names(client, "%") == []
+    assert farmer_names(client, "feij_o") == []

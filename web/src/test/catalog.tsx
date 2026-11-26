@@ -1,4 +1,3 @@
-import { screen } from "@testing-library/react";
 import type { CatalogProduct } from "../api/products";
 import { Dashboard } from "../pages/Dashboard";
 import { pageOf } from "./farmers";
@@ -44,10 +43,6 @@ export function renderCatalog(url: string, ...responses: Response[]) {
     url,
   );
   return fetchMock;
-}
-
-export function address(): string | null {
-  return screen.getByTestId("address").textContent;
 }
 
 export function requested(fetchMock: ReturnType<typeof renderCatalog>): string[] {

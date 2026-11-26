@@ -8,7 +8,7 @@ from src.models.apartment import Apartment
 from src.models.buyer import Buyer
 from src.models.farmer import Farmer
 from tests.helpers import add_product, login
-from tests.test_product_picture_upload import PNG, stored_pictures, upload
+from tests.pictures import PNG, stored_pictures, upload
 
 
 def test_farmer_cannot_upload_a_picture_to_another_farmer_product(

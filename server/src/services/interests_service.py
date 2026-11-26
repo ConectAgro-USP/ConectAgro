@@ -36,7 +36,7 @@ class InterestService:
         self.interests = interests
 
     def create(self, buyer: Buyer, interest_in: InterestCreate) -> Interest:
-        product = self.interests.get_product_by_public_id(interest_in.product_public_id)
+        product = self.interests.lock_product_by_public_id(interest_in.product_public_id)
         if product is None:
             raise ProductNotFoundError
         if interest_in.unit is not None and interest_in.unit != product.unit:

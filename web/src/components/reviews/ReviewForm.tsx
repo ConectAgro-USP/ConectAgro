@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState, type SubmitEvent } from "react";
 import { COMMENT_MAX_LENGTH, type ReviewCreate } from "../../api/reviews";
 import { useAction } from "../../hooks/useAction";
+import { Avatar } from "../Avatar";
 import { PrimaryButton, SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
-import { FarmerAvatar } from "./FarmerAvatar";
 import { StarRatingField } from "./StarRating";
 
 const TEXTAREA_CLASSES =
@@ -67,7 +67,7 @@ export function ReviewForm({
       className="rounded-4xl border border-stone-200 bg-stone-100 px-6 sm:px-10"
     >
       <div className="flex items-center gap-5 py-8">
-        <FarmerAvatar name={farmerName} />
+        <Avatar name={farmerName} />
         <div className="min-w-0">
           <h2 ref={heading} tabIndex={-1} className="text-2xl outline-none sm:text-3xl">
             {farmerName}

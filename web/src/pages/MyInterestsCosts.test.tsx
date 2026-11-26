@@ -1,6 +1,13 @@
 import { screen, within } from "@testing-library/react";
 import type { Interest } from "../api/interests";
-import { findCard, interestsResponse, laranja, mandioca, renderInterests } from "../test/interests";
+import {
+  findCard,
+  interestsResponse,
+  laranja,
+  mandioca,
+  renderInterests,
+  total,
+} from "../test/interests";
 import { inPurchase } from "../test/productInterest";
 
 const couve: Interest = {
@@ -51,10 +58,9 @@ describe("MyInterests, prices and costs", () => {
     renderInterests(interestsResponse([couve, mandioca, offSale, bought]));
 
     await findCard("Mandioca");
-    const total = screen.getByText("Total estimado").parentElement!.parentElement!;
 
-    expect(total).toHaveTextContent("R$ 31,47");
-    expect(within(total).getByText(/Soma dos interesses abertos/)).toBeInTheDocument();
+    expect(total()).toHaveTextContent("R$ 31,47");
+    expect(within(total()).getByText(/Soma dos interesses abertos/)).toBeInTheDocument();
   });
 
   it("leaves the total out when nothing open is on sale", async () => {

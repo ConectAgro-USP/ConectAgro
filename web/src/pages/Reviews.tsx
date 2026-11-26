@@ -14,13 +14,13 @@ import {
   type AuthoredReview,
   type Reviewable,
 } from "../api/reviews";
+import { Avatar } from "../components/Avatar";
 import { SecondaryButton } from "../components/Button";
 import { buttonClasses } from "../components/buttonClasses";
 import { CARD_SURFACE } from "../components/surface";
 import { FormError } from "../components/FormError";
 import { ShowMore, type PagedList } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
-import { FarmerAvatar } from "../components/reviews/FarmerAvatar";
 import {
   editReviewPath,
   FROM_APP,
@@ -89,7 +89,7 @@ function PendingCard({ reviewable }: Readonly<{ reviewable: Reviewable }>) {
     <li className={CARD_CLASSES}>
       <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-2">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
-          <FarmerAvatar name={name} />
+          <Avatar name={name} />
           <div className="min-w-0">
             <h3 className="text-2xl sm:text-3xl">{name}</h3>
             <p className="line-clamp-2 text-stone-600">{formatNames(reviewable.product_names)}</p>
@@ -117,7 +117,7 @@ function AuthoredCard({ review }: Readonly<{ review: AuthoredReview }>) {
     <li className={CARD_CLASSES}>
       <div className="flex flex-wrap items-center justify-between gap-x-10 gap-y-4">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
-          <FarmerAvatar name={name} />
+          <Avatar name={name} />
           <div className="min-w-0 space-y-1">
             <h3 id={nameId} className="text-2xl sm:text-3xl">
               {name}

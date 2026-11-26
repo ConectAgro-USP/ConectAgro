@@ -8,8 +8,7 @@ from src.models.product import Product
 from src.repository.product_picture_repository import ProductPictureRepository
 from src.repository.product_repository import ProductRepository
 from src.services.product_picture_service import ProductPictureService
-
-PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 16
+from tests.pictures import PNG
 
 
 def test_saving_a_picture_locks_the_product_before_reading_its_picture():

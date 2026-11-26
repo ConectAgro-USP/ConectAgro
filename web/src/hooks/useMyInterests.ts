@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ApiError } from "../api/client";
 import {
   deleteInterest,
@@ -8,9 +7,10 @@ import {
   type Interest,
   type MyInterestsPage,
 } from "../api/interests";
-import { openCostInCents } from "../interestState";
+import { centsOf, openCostInCents } from "../interestState";
 import { removeItem, replaceItem } from "./pageEdits";
 import { usePages } from "./usePages";
+import { useTracked } from "./useTracked";
 import { useWriteGuard } from "./useWriteGuard";
 
 // a lista não tem busca, só as páginas
@@ -22,24 +22,18 @@ function keyOf(interest: Interest): string {
   return interest.public_id;
 }
 
-// o total que chegou da API e o que segue as escritas feitas depois
-interface Total {
-  from: string;
-  cents: number;
-}
-
 export function useMyInterests() {
   const guard = useWriteGuard();
   const pages = usePages(loadMyInterests, null, { keyOf });
-  const [total, setTotal] = useState<Total | null>(null);
   const latest = pages.lastPage?.estimated_total;
-  if (latest !== undefined && latest !== total?.from) {
-    setTotal({ from: latest, cents: Math.round(Number(latest) * 100) });
-  }
+  const [total, adjustTotal] = useTracked(
+    pages.received,
+    latest === undefined ? undefined : centsOf(latest),
+  );
 
   function track(before: Interest, after: Interest | null) {
     const change = (after ? openCostInCents(after) : 0) - openCostInCents(before);
-    setTotal((current) => current && { ...current, cents: current.cents + change });
+    adjustTotal((cents) => cents + change);
   }
 
   const same = (publicId: string) => (interest: Interest) => interest.public_id === publicId;
@@ -56,14 +50,14 @@ export function useMyInterests() {
   // o total vem da API, que já pode ter tirado o interesse comprado
   async function rereadTotal(): Promise<number> {
     const first = await guard(listMyInterests(1, 1));
-    return Math.round(Number(first.estimated_total) * 100);
+    return centsOf(first.estimated_total);
   }
 
   // sem o total da API, a diferença do cartão relido ainda serve
   async function reread(before: Interest): Promise<void> {
     const [card, sum] = await Promise.allSettled([rereadCard(before), rereadTotal()]);
     if (sum.status === "fulfilled") {
-      setTotal((current) => current && { ...current, cents: sum.value });
+      adjustTotal(() => sum.value);
     } else if (card.status === "fulfilled" && card.value !== null) {
       track(before, card.value);
     }
@@ -101,7 +95,7 @@ export function useMyInterests() {
 
   return {
     items: pages.items,
-    totalInCents: total?.cents ?? 0,
+    totalInCents: total ?? 0,
     loading: pages.loading,
     error: pages.error,
     hasMore: pages.hasMore,

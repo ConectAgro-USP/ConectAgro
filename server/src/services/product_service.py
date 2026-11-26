@@ -102,7 +102,7 @@ class ProductService:
             interest = f"Tenho interesse no seu produto {product.name}"
         else:
             recipient = building.manager
-            farmer_name = short_name(product.farmer.user.name)
+            farmer_name = product.farmer.short_name
             by_farmer = f" do agricultor {farmer_name}" if farmer_name else ""
             interest = f"Tenho interesse no produto {product.name}{by_farmer}"
         recipient_name = short_name(recipient.name)
@@ -129,6 +129,6 @@ def farmer_summary(farmer: Farmer) -> ProductFarmerRead:
     return ProductFarmerRead(
         public_id=farmer.public_id,
         farm_name=farmer.farm_name,
-        short_name=short_name(farmer.user.name),
+        short_name=farmer.short_name,
         picture_url=farmer.user.picture_url,
     )

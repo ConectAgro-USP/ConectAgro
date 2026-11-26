@@ -68,10 +68,10 @@ def test_list_by_buyer_id_returns_only_requested_buyers_interests(
     assert total == 1
 
 
-def test_get_product_by_public_id_returns_none_for_unknown_product(
+def test_lock_product_by_public_id_returns_none_for_unknown_product(
     interest_repository: InterestRepository,
 ):
-    assert interest_repository.get_product_by_public_id(uuid4()) is None
+    assert interest_repository.lock_product_by_public_id(uuid4()) is None
 
 
 def test_interest_lookups_find_existing_rows_by_public_id_and_pair(
@@ -82,7 +82,7 @@ def test_interest_lookups_find_existing_rows_by_public_id_and_pair(
     farmer = add_farmer(session, add_user(session, "farmer@example.com"))
     product = add_product(session, farmer)
     interest = _add_interest(session, buyer.id, product.id, quantity=2)
-    assert interest_repository.get_product_by_public_id(product.public_id) == product
+    assert interest_repository.lock_product_by_public_id(product.public_id) == product
     assert interest_repository.get_by_public_id(interest.public_id) == interest
     assert interest_repository.get_by_buyer_and_product(buyer, product) == interest
 

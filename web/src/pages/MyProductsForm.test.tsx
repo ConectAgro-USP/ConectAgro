@@ -1,22 +1,17 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jsonResponse, sentBody } from "../test/helpers";
-import { findCard, orange, press, productsResponse, renderProducts } from "../test/products";
+import {
+  fillRequired,
+  findCard,
+  openNewForm,
+  orange,
+  press,
+  productsResponse,
+  renderProducts,
+} from "../test/products";
 
 const LINK = /^Link para a imagem/;
-
-async function openNewForm() {
-  await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
-}
-
-async function fillRequired(name: string) {
-  await userEvent.type(screen.getByLabelText("Nome do produto"), name);
-  await userEvent.type(screen.getByLabelText("Preço por quilo (R$)"), "4.99");
-  await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
-  fireEvent.change(screen.getByLabelText("Data de vencimento"), {
-    target: { value: "2030-10-25" },
-  });
-}
 
 function refusal(field: string, msg: string): Response {
   return jsonResponse({ detail: [{ loc: ["body", field], msg }] }, 422);

@@ -33,7 +33,7 @@ export function availabilityOf(tab: ProductTab): Availability | null {
 }
 
 // o mesmo prazo que a API usa para contar os que vencem logo
-const EXPIRING_SOON_DAYS = 7;
+export const EXPIRING_SOON_DAYS = 7;
 
 function countsOf(product: MyProduct): MyProductCounts {
   const available = stateOf(product) === "available";

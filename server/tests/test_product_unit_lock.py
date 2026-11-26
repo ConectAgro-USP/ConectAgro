@@ -6,18 +6,10 @@ from sqlmodel import Session
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import Product
-from tests.helpers import add_interest, add_product, add_purchase, add_resident, add_user
+from tests.helpers import add_product
+from tests.unit_history import sold, wanted
 
 LOCKED = "A unidade não pode mudar depois que o produto recebeu interesse ou foi vendido"
-
-
-def wanted(session: Session, building: Apartment, product: Product) -> None:
-    resident = add_resident(session, building, add_user(session, "bia@example.com"))
-    add_interest(session, resident, product, quantity=3)
-
-
-def sold(session: Session, building: Apartment, product: Product) -> None:
-    add_purchase(session, building, (product, 5))
 
 
 def patch(client: TestClient, product: Product, changes: dict):

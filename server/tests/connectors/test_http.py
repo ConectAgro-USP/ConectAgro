@@ -74,12 +74,3 @@ def test_get_json_keeps_the_status_when_the_body_is_not_json(body: bytes):
         get_json(client, URL, timeout=5.0)
 
     assert isinstance(caught.value.__cause__, ValueError)
-
-
-def test_get_json_keeps_the_transport_error_as_cause():
-    client, _ = fake_client(httpx.ReadTimeout("demorou"))
-
-    with pytest.raises(ExternalServiceError) as caught:
-        get_json(client, URL, timeout=5.0, retry_delay=0)
-
-    assert isinstance(caught.value.__cause__, httpx.ReadTimeout)

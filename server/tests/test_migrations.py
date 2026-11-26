@@ -1,4 +1,3 @@
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -6,24 +5,9 @@ from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from alembic import command
-from alembic.config import Config
 from src.core.config import settings
 from src.models import User
-
-SERVER_DIR = Path(__file__).resolve().parent.parent
-
-
-def alembic_config() -> Config:
-    config = Config()
-    config.set_main_option("script_location", str(SERVER_DIR / "alembic"))
-    return config
-
-
-@pytest.fixture()
-def db_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
-    url = f"sqlite:///{(tmp_path / 'migrations.db').as_posix()}"
-    monkeypatch.setattr(settings, "DATABASE_URL", url)
-    return url
+from tests.migrations import alembic_config
 
 
 @pytest.fixture()

@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
-from src.core.text import hide_email, short_name
+from src.core.text import hide_email
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, INT4_MAX
@@ -142,7 +142,7 @@ class PurchaseService:
         totals = self.purchases.building_totals(apartment.id, filters, since, until)
         items = [BuildingPurchaseRead.model_validate(purchase) for purchase in purchases]
         farmers = [
-            CounterpartRead(public_id=farmer.public_id, name=short_name(farmer.user.name))
+            CounterpartRead(public_id=farmer.public_id, name=farmer.short_name)
             for farmer in self.purchases.list_purchase_farmers(apartment.id)
         ]
         farmers.sort(key=lambda farmer: farmer.name)

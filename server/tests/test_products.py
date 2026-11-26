@@ -1,5 +1,3 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -7,7 +5,6 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlalchemy import event
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
@@ -17,6 +14,7 @@ from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct
 from src.models.user import User
 from tests.helpers import add_farmer, add_product, add_resident, add_user, login
+from tests.queries import counted_queries
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -432,21 +430,6 @@ def add_products_in_order(session: Session, farmer: Farmer, *names: str) -> list
     ]
 
 
-@contextmanager
-def recorded_queries(session: Session) -> Iterator[list[str]]:
-    queries: list[str] = []
-
-    def record(conn, cursor, statement, parameters, context, executemany):
-        queries.append(statement)
-
-    engine = session.get_bind()
-    event.listen(engine, "before_cursor_execute", record)
-    try:
-        yield queries
-    finally:
-        event.remove(engine, "before_cursor_execute", record)
-
-
 @pytest.mark.usefixtures("ana")
 def test_catalog_lists_products_of_every_farmer(
     client: TestClient, session: Session, seller: Farmer
@@ -655,11 +638,11 @@ def test_catalog_queries_do_not_grow_with_the_number_of_products(
         add_product(session, add_farmer(session, user))
 
     add_farmer_with_product(0)
-    with recorded_queries(session) as one_product:
+    with counted_queries(session) as one_product:
         client.get("/api/products")
     for number in range(1, 6):
         add_farmer_with_product(number)
-    with recorded_queries(session) as six_products:
+    with counted_queries(session) as six_products:
         response = client.get("/api/products")
 
     assert len(response.json()["items"]) == 6

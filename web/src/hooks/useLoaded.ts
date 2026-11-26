@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { errorMessage, lostAccess } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
-interface Loaded<T> {
+interface Loaded<K, T> {
+  key: K | undefined;
   request: object;
   data: T;
 }
@@ -12,13 +13,17 @@ export interface LoadedState<T> {
   loading: boolean;
   error: string;
   retry: () => void;
+  // troca o dado na tela depois de uma escrita, sem pedir de novo
+  setData: (data: T) => void;
 }
 
-// load precisa ser estável, como uma função do módulo da API
-export function useLoaded<T>(load: () => Promise<T>): LoadedState<T> {
+// load precisa ser estável, como as funções da API, e a key muda o pedido
+export function useLoaded<T>(load: () => Promise<T>): LoadedState<T>;
+export function useLoaded<T, K>(load: (key: K) => Promise<T>, key: K): LoadedState<T>;
+export function useLoaded<T, K>(load: (key?: K) => Promise<T>, key?: K): LoadedState<T> {
   const { refreshUser } = useAuth();
   const [request, setRequest] = useState({});
-  const [loaded, setLoaded] = useState<Loaded<T> | null>(null);
+  const [loaded, setLoaded] = useState<Loaded<K, T> | null>(null);
   const [error, setError] = useState("");
 
   function retry() {
@@ -31,8 +36,8 @@ export function useLoaded<T>(load: () => Promise<T>): LoadedState<T> {
 
     async function run() {
       try {
-        const data = await load();
-        if (!outdated) setLoaded({ request, data });
+        const data = await load(key);
+        if (!outdated) setLoaded({ key, request, data });
       } catch (loadError) {
         if (outdated) return;
         setError(errorMessage(loadError));
@@ -46,12 +51,15 @@ export function useLoaded<T>(load: () => Promise<T>): LoadedState<T> {
     return () => {
       outdated = true;
     };
-  }, [load, request, refreshUser]);
+  }, [load, key, request, refreshUser]);
 
+  // o dado de outra key não responde a esta
+  const current = loaded?.key === key ? loaded : null;
   return {
-    data: loaded?.data ?? null,
-    loading: loaded?.request !== request && error === "",
+    data: current?.data ?? null,
+    loading: current?.request !== request && error === "",
     error,
     retry,
+    setData: (data) => setLoaded({ key, request, data }),
   };
 }

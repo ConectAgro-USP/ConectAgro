@@ -1,17 +1,11 @@
-import { useState } from "react";
 import type { LinkStatus } from "../api/profiles";
 import { listResidents, type Resident } from "../api/residents";
 import { replaceItem } from "./pageEdits";
 import { usePages } from "./usePages";
+import { useTracked } from "./useTracked";
 
 function keyOf(resident: Resident): string {
   return resident.public_id;
-}
-
-// a contagem da última página que chegou e a que segue as respostas
-interface Counted {
-  from: object | null;
-  value: number;
 }
 
 export function useResidents() {
@@ -19,11 +13,7 @@ export function useResidents() {
   const status = pages.search;
   // ao trocar de situação a lista antiga some, ao recarregar a mesma ela fica na tela
   const residents = pages.lastPage === undefined ? null : pages.items;
-  const [counted, setCounted] = useState<Counted | null>(null);
-  const latest = pages.lastPage?.total;
-  if (latest !== undefined && pages.received !== counted?.from) {
-    setCounted({ from: pages.received, value: latest });
-  }
+  const [count, adjustCount] = useTracked(pages.received, pages.lastPage?.total);
 
   // quem recebe a resposta fica na lista, para os outros não mudarem de lugar
   function markAnswered(answered: Resident, linkStatus: LinkStatus) {
@@ -35,7 +25,7 @@ export function useResidents() {
     });
     // quem acabou de receber outra resposta continua na tela, mas sai da conta
     const change = Number(back) - Number(left);
-    setCounted((current) => current && { ...current, value: current.value + change });
+    adjustCount((value) => value + change);
   }
 
   return {
@@ -43,7 +33,7 @@ export function useResidents() {
     changeStatus: pages.changeSearch,
     residents,
     markAnswered,
-    count: counted?.value ?? 0,
+    count: count ?? 0,
     loading: pages.loading,
     error: pages.error,
     hasMore: pages.hasMore,

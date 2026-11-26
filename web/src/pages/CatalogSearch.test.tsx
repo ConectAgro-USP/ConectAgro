@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { address, couve, feijao, renderCatalog, requested } from "../test/catalog";
+import { address } from "../test/address";
+import { couve, feijao, renderCatalog, requested } from "../test/catalog";
 import { pageOf } from "../test/farmers";
 import { anaAsManager, fakeAuth, renderWithAuth, stubSilentApi } from "../test/helpers";
 import { Dashboard } from "./Dashboard";

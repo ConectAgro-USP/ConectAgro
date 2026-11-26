@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { address, findCard, joao, maria, pageOf, renderFarmersAt, RETRY } from "../test/farmers";
+import { address } from "../test/address";
+import { findCard, joao, maria, pageOf, renderFarmersAt, RETRY } from "../test/farmers";
 import { jsonResponse } from "../test/helpers";
 
 const PAGE = "page=1&page_size=100";

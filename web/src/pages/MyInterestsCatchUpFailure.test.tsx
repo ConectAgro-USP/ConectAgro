@@ -2,7 +2,13 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Interest } from "../api/interests";
 import { jsonResponse } from "../test/helpers";
-import { findCard, interestsResponse, mandioca, renderInterests } from "../test/interests";
+import {
+  abobora,
+  findCard,
+  interestsResponse,
+  mandioca,
+  renderInterests,
+} from "../test/interests";
 import { press } from "../test/products";
 
 const MORE = "Mostrar mais interesses";
@@ -17,7 +23,6 @@ function interest(id: number, name: string): Interest {
   };
 }
 
-const abobora = interest(3, "Abóbora");
 const batata = interest(4, "Batata");
 
 describe("MyInterests, catch-up page that fails", () => {

@@ -1,33 +1,16 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
 from decimal import Decimal
 
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlalchemy import event
 from sqlmodel import Session
 
 from src.models.buyer import Buyer
 from src.models.farmer import Farmer
 from src.models.product import ProductUnit
 from tests.helpers import add_farmer, add_interest, add_product, add_user, login
+from tests.queries import counted_queries
 
 URL = "/api/interests/me"
-
-
-@contextmanager
-def counted_queries(session: Session) -> Iterator[list[str]]:
-    queries: list[str] = []
-
-    def record(conn, cursor, statement, parameters, context, executemany):
-        queries.append(statement)
-
-    engine = session.get_bind()
-    event.listen(engine, "before_cursor_execute", record)
-    try:
-        yield queries
-    finally:
-        event.remove(engine, "before_cursor_execute", record)
 
 
 def my_interests(client: TestClient, resident: Buyer) -> list[dict]:

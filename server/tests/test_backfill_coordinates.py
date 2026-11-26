@@ -9,9 +9,9 @@ from src.repository.profile_repository import ProfileRepository
 from src.scripts import backfill_coordinates as script
 from src.services.cep_service import CepService
 from src.services.recent_cache import RecentCache
-from tests.conftest import engine_test
 from tests.connectors.fakes import fake_client
 from tests.connectors.test_brasilapi import ACRELANDIA, NOT_FOUND, PAULISTA
+from tests.geo import PAULISTA_POINT
 from tests.helpers import add_building, add_farmer, add_user
 
 ANSWERS = {
@@ -19,7 +19,6 @@ ANSWERS = {
     "69945000": httpx.Response(200, json={**ACRELANDIA, "location": None}),
     "99999999": httpx.Response(404, json=NOT_FOUND),
 }
-PAULISTA_POINT = (-23.5475, -46.63611)
 
 
 def by_cep(request: httpx.Request) -> httpx.Response:
@@ -122,7 +121,7 @@ def test_main_prints_the_summary(
     farmer = farmer_with_cep(session, "a@example.com", "99999999")
     add_building(session, add_user(session, "s@example.com"))
     client, _ = fake_client(by_cep)
-    monkeypatch.setattr(script, "engine", engine_test)
+    monkeypatch.setattr(script, "engine", session.get_bind())
     monkeypatch.setattr(script.httpx, "Client", lambda: client)
 
     script.main()

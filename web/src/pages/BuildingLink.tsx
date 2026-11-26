@@ -11,12 +11,34 @@ import { useBuildingLink } from "../hooks/useBuildingLink";
 import { useFocusWithoutScroll } from "../hooks/useFocusWithoutScroll";
 import { useLogout } from "../hooks/useLogout";
 
-function SwitchBuilding({ onClose }: Readonly<{ onClose: () => void }>) {
+type Run = (action: () => Promise<void>) => void;
+
+interface LinkRequestFormProps {
+  title: string;
+  titleId?: string;
+  intro: string;
+  initialCnpj: string;
+  // o botão ao lado do Pedir vínculo, que pode usar o mesmo run do pedido
+  secondary: { label: string; onClick: (run: Run) => void };
+  onSaved?: () => void;
+}
+
+function LinkRequestForm({
+  title,
+  titleId,
+  intro,
+  initialCnpj,
+  secondary,
+  onSaved,
+}: Readonly<LinkRequestFormProps>) {
   const { user, saveProfile } = useAuth();
   const { error, pending, run } = useAction();
-  const titleId = useFocusWithoutScroll(true);
   const buyer = user?.buyer;
-  const link = useBuildingLink({ cnpj: "", block: buyer?.block ?? "", unit: buyer?.unit ?? "" });
+  const link = useBuildingLink({
+    cnpj: initialCnpj,
+    block: buyer?.block ?? "",
+    unit: buyer?.unit ?? "",
+  });
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,22 +48,19 @@ function SwitchBuilding({ onClose }: Readonly<{ onClose: () => void }>) {
     }
     run(async () => {
       await saveProfile(updateBuyerLink(buyerLink));
-      onClose();
+      onSaved?.();
     });
   }
 
   return (
-    <AuthLayout title="Trocar de prédio" titleId={titleId}>
+    <AuthLayout title={title} titleId={titleId}>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <p>
-          Escolha o novo prédio. O pedido atual sai e o síndico do novo prédio recebe o seu
-          pedido.
-        </p>
+        <p>{intro}</p>
         <BuildingLinkFields link={link} />
         <FormError message={error} />
         <div className="flex gap-3">
-          <SecondaryButton disabled={pending} onClick={onClose}>
-            Cancelar
+          <SecondaryButton disabled={pending} onClick={() => secondary.onClick(run)}>
+            {secondary.label}
           </SecondaryButton>
           <PrimaryButton disabled={pending} className="flex-1">
             Pedir vínculo
@@ -49,6 +68,21 @@ function SwitchBuilding({ onClose }: Readonly<{ onClose: () => void }>) {
         </div>
       </form>
     </AuthLayout>
+  );
+}
+
+function SwitchBuilding({ onClose }: Readonly<{ onClose: () => void }>) {
+  const titleId = useFocusWithoutScroll(true);
+
+  return (
+    <LinkRequestForm
+      title="Trocar de prédio"
+      titleId={titleId}
+      intro="Escolha o novo prédio. O pedido atual sai e o síndico do novo prédio recebe o seu pedido."
+      initialCnpj=""
+      secondary={{ label: "Cancelar", onClick: onClose }}
+      onSaved={onClose}
+    />
   );
 }
 
@@ -94,43 +128,15 @@ export function PendingLink() {
 }
 
 export function RejectedLink() {
-  const { user, saveProfile } = useAuth();
+  const { user } = useAuth();
   const logout = useLogout();
-  const { error, pending, run } = useAction();
-  const buyer = user?.buyer;
-  const link = useBuildingLink({
-    cnpj: buyer?.apartment?.building_cnpj ?? "",
-    block: buyer?.block ?? "",
-    unit: buyer?.unit ?? "",
-  });
-
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const buyerLink = link.readLink();
-    if (buyerLink === null) {
-      return;
-    }
-    run(() => saveProfile(updateBuyerLink(buyerLink)));
-  }
 
   return (
-    <AuthLayout title="Vínculo recusado">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <p>
-          O síndico recusou seu pedido. Confira os dados e peça de novo, ou escolha
-          outro prédio.
-        </p>
-        <BuildingLinkFields link={link} />
-        <FormError message={error} />
-        <div className="flex gap-3">
-          <SecondaryButton disabled={pending} onClick={() => run(logout)}>
-            Sair
-          </SecondaryButton>
-          <PrimaryButton disabled={pending} className="flex-1">
-            Pedir vínculo
-          </PrimaryButton>
-        </div>
-      </form>
-    </AuthLayout>
+    <LinkRequestForm
+      title="Vínculo recusado"
+      intro="O síndico recusou seu pedido. Confira os dados e peça de novo, ou escolha outro prédio."
+      initialCnpj={user?.buyer?.apartment?.building_cnpj ?? ""}
+      secondary={{ label: "Sair", onClick: (run) => run(logout) }}
+    />
   );
 }

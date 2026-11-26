@@ -1,7 +1,7 @@
 import ast
 from pathlib import Path
 
-from tests.test_migrations import SERVER_DIR
+from tests.migrations import SERVER_DIR
 
 VERSIONS = sorted((SERVER_DIR / "alembic" / "versions").glob("*.py"))
 

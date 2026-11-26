@@ -15,6 +15,7 @@ from src.models.my_products import (
     MyProductsFilters,
     ProductAvailability,
 )
+from src.models.pagination import page_offset
 from src.models.product import Product
 from src.models.product_picture import ProductPicture
 from src.models.product_search import (
@@ -67,7 +68,7 @@ class ProductRepository:
             .options(selectinload(Product.farmer).selectinload(Farmer.user))
         )
         statement = self._order_statement(statement, filters.sort, filters.q, ratings)
-        offset = (filters.page - 1) * PRODUCTS_PER_PAGE
+        offset = page_offset(filters.page, PRODUCTS_PER_PAGE)
         rows = self.session.exec(statement.offset(offset).limit(PRODUCTS_PER_PAGE)).all()
         total = self.session.exec(select(func.count(Product.id)).where(*conditions)).one()
         return list(rows), total

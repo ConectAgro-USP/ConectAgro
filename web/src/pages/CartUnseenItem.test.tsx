@@ -1,8 +1,7 @@
 import { act, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MANAGER_CART_KEY, storeCart } from "../test/cart";
 import {
-  fillDeliveryDate,
+  confirm,
   findQuantity,
   inCart,
   LARANJA,
@@ -31,8 +30,7 @@ describe("Cart, an item the page never showed", () => {
     fetchMock.mockResolvedValueOnce(productsOf(MANDIOCA)[0]);
     fetchMock.mockResolvedValueOnce(productsOf(LARANJA)[0]);
 
-    fillDeliveryDate("2026-12-01");
-    await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
+    await confirm();
 
     expect(await screen.findByText(CHANGED)).toBeVisible();
     expect(screen.getByRole("link", { name: "Laranja" })).toBeVisible();

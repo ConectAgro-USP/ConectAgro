@@ -3,6 +3,7 @@ import { usePages } from "../../hooks/usePages";
 import type { InterestLookup } from "../../hooks/useInterestLookup";
 import { SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
+import { ShowMore } from "../ShowMore";
 import { ProductRow } from "./ProductRow";
 
 interface FarmerProductsProps {
@@ -40,9 +41,7 @@ export function FarmerProducts({ farmerPublicId, interests }: Readonly<FarmerPro
         {products.error && (
           <SecondaryButton onClick={products.retry}>Tentar de novo</SecondaryButton>
         )}
-        {products.hasMore && !products.loading && !products.error && (
-          <SecondaryButton onClick={products.loadMore}>Mostrar mais produtos</SecondaryButton>
-        )}
+        <ShowMore list={products} label="Mostrar mais produtos" />
       </div>
     </>
   );

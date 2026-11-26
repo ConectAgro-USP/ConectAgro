@@ -7,16 +7,13 @@ import {
   laranja,
   mandioca,
   renderInterests,
+  total,
 } from "../test/interests";
 
 const MORE = "Mostrar mais interesses";
 // a API soma os interesses abertos das duas páginas, não só os da tela
 const FIRST = { page: 1, total: 21, total_pages: 2, estimated_total: "100.00" };
 const SECOND = { page: 2, total: 21, total_pages: 2, estimated_total: "100.00" };
-
-function total(): HTMLElement {
-  return screen.getByText("Total estimado").parentElement!.parentElement!;
-}
 
 function press(card: HTMLElement, name: string) {
   return userEvent.click(within(card).getByRole("button", { name }));

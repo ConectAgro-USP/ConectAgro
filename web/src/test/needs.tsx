@@ -1,3 +1,5 @@
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import type { BuildingNeed } from "../api/interests";
 import { BuildingNeeds } from "../pages/BuildingNeeds";
@@ -55,4 +57,11 @@ export function renderNeeds(...responses: Response[]) {
     fakeAuth({ user: anaAsManager }),
   );
   return fetchMock;
+}
+
+export async function select(...names: string[]) {
+  for (const name of names) {
+    const box = await screen.findByRole("checkbox", { name: new RegExp(`^Selecionar ${name} de`) });
+    await userEvent.click(box);
+  }
 }

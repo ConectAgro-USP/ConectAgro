@@ -8,8 +8,6 @@ from pydantic import field_validator
 from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.core.text import short_name
-
 from .product import BUSINESS_TZ, INT4_MAX, ProductUnit
 
 if TYPE_CHECKING:
@@ -101,7 +99,7 @@ class PurchasePart(SQLModel, table=True):
 
     @property
     def farmer_short_name(self) -> str | None:
-        return short_name(self.farmer.user.name) if self.farmer else None
+        return self.farmer.short_name if self.farmer else None
 
     @property
     def total(self) -> Decimal:

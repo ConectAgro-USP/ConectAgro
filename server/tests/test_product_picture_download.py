@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from src.models.farmer import Farmer
 from tests.helpers import add_product
-from tests.test_product_picture_upload import JPEG, PNG, stored_pictures, upload
+from tests.pictures import JPEG, PNG, stored_pictures, upload
 
 
 def test_picture_is_served_with_its_type_and_cache_headers(
@@ -39,6 +39,7 @@ def test_matching_etag_answers_not_modified(client: TestClient, session: Session
     assert same.status_code == status.HTTP_304_NOT_MODIFIED
     assert same.content == b""
     assert same.headers["etag"] == etag
+    assert same.headers["cache-control"] == "public, max-age=86400"
     assert weak_in_list.status_code == status.HTTP_304_NOT_MODIFIED
     assert other.status_code == status.HTTP_200_OK
     assert other.content == PNG

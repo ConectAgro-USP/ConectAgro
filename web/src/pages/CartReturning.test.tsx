@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   ALFACE,
-  fillDeliveryDate,
+  confirm,
   findQuantity,
   inCart,
   MANDIOCA,
@@ -13,11 +13,6 @@ import { jsonResponse, sentBody } from "../test/helpers";
 
 const PAUSED_ALFACE = { ...ALFACE, is_available: false };
 const SOLD_OUT_ALFACE = { ...ALFACE, quantity: 0 };
-
-async function confirm() {
-  fillDeliveryDate("2026-12-01");
-  await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
-}
 
 describe("Cart submit with a product that came back", () => {
   beforeEach(() => localStorage.clear());

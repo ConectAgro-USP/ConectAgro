@@ -3,12 +3,10 @@ import type { LinkStatus } from "../api/profiles";
 import type { Resident } from "../api/residents";
 import { formatDay } from "../format";
 import { useFocusWithoutScroll } from "../hooks/useFocusWithoutScroll";
+import { Avatar } from "./Avatar";
 import { DangerButton, PrimaryButton, SecondaryButton } from "./Button";
 import { CARD_SURFACE } from "./surface";
 
-const AVATAR_CLASSES =
-  "flex size-14 shrink-0 items-center justify-center rounded-full bg-stone-800 text-xl " +
-  "text-white uppercase";
 const ACTIONS_CLASSES = "mt-6 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
 // no celular os dois botões dividem a largura do cartão
 const BUTTON_ROW_CLASSES = "flex w-full gap-3 sm:w-auto";
@@ -87,9 +85,7 @@ export function ResidentCard({
     <li className={`px-6 py-6 sm:px-10 ${CARD_SURFACE}`}>
       <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
         <div className="flex min-w-0 flex-1 basis-64 items-start gap-5">
-          <span aria-hidden="true" className={AVATAR_CLASSES}>
-            {name.charAt(0)}
-          </span>
+          <Avatar name={name} plain />
           <div className="min-w-0">
             <h2 id={nameId} className="text-2xl">
               {name}

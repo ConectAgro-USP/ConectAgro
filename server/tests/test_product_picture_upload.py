@@ -1,29 +1,14 @@
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from src.models.farmer import Farmer
-from src.models.product import Product
-from src.models.product_picture import ProductPicture
 from src.services.product_picture_service import MAX_PICTURE_BYTES
 from tests.helpers import add_product
+from tests.pictures import JPEG, PNG, stored_pictures, upload
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 32
 WEBP = b"RIFF\x00\x00\x00\x00WEBPVP8 " + b"\x00" * 32
-
-
-def upload(client: TestClient, product: Product, data: bytes, content_type: str = "image/png"):
-    return client.post(
-        f"/api/products/{product.public_id}/picture",
-        content=data,
-        headers={"Content-Type": content_type},
-    )
-
-
-def stored_pictures(session: Session) -> list[ProductPicture]:
-    return list(session.exec(select(ProductPicture)).all())
 
 
 @pytest.mark.parametrize(

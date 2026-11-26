@@ -2,7 +2,14 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Interest } from "../api/interests";
 import { jsonResponse } from "../test/helpers";
-import { findCard, interestsResponse, mandioca, renderInterests } from "../test/interests";
+import {
+  abobora,
+  findCard,
+  interestsResponse,
+  mandioca,
+  renderInterests,
+  total,
+} from "../test/interests";
 import { inPurchase } from "../test/productInterest";
 
 const QUANTITY = "Quantidade (kg)";
@@ -12,12 +19,6 @@ const REFUSED = "Este interesse já está numa compra do prédio";
 const FIRST = { page: 1, page_size: 1, total: 2, total_pages: 2, estimated_total: "45.00" };
 const SECOND = { ...FIRST, page: 2 };
 
-const abobora: Interest = {
-  ...mandioca,
-  public_id: "interesse-3",
-  product_public_id: "produto-3",
-  product_name: "Abóbora",
-};
 const bought: Interest = { ...abobora, purchase: inPurchase.purchase };
 
 // a API de agora, com a abóbora já na compra do prédio
@@ -29,10 +30,6 @@ function afterThePurchase(url: string): Response {
   return query.get("page") === "1"
     ? interestsResponse([mandioca], { ...FIRST, ...now })
     : interestsResponse([bought], { ...SECOND, ...now });
-}
-
-function total(): HTMLElement {
-  return screen.getByText("Total estimado").parentElement!.parentElement!;
 }
 
 describe("MyInterests, refusal of an interest on a later page", () => {

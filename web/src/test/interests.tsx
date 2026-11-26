@@ -32,6 +32,17 @@ export const laranja: Interest = {
   product_status: "Indisponível",
   quantity: 3,
 };
+// um terceiro interesse aberto, igual à mandioca
+export const abobora: Interest = {
+  ...mandioca,
+  public_id: "interesse-3",
+  product_public_id: "produto-3",
+  product_name: "Abóbora",
+};
+
+export function total(): HTMLElement {
+  return screen.getByText("Total estimado").parentElement!.parentElement!;
+}
 
 // a página da API, com o total que ela soma dos interesses abertos
 export function interestsPage(interests: Interest[], extra: object = {}) {

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
 from tests.connectors.test_cnpja import BANCO_DO_BRASIL
-from tests.test_profiles import APARTMENT, FARMER, answer_cep, answer_cnpj
+from tests.profiles import APARTMENT, FARMER, answer_cep, answer_cnpj
 
 WITHOUT_COORDINATES = {**PAULISTA, "location": None}
 WHAT_TO_DO = (

@@ -338,7 +338,9 @@ def test_api_performance_with_10k_products(client: TestClient, session: Session)
     )
 
 
-def test_api_search_without_distance_filter_has_no_distance(client: TestClient, session: Session):
+def test_api_search_has_no_distance_for_farmer_without_saved_coordinates(
+    client: TestClient, session: Session
+):
     create_farmer(session, name="Carlos Silva", email="carlos@example.com")
 
     response = client.get("/api/farmers")

@@ -1,4 +1,5 @@
 import { fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import type { ProductDetail } from "../api/products";
 import type { CartItem } from "../hooks/useCart";
@@ -60,4 +61,9 @@ export function lineOf(name: string): HTMLElement {
 
 export function fillDeliveryDate(date: string) {
   fireEvent.change(screen.getByLabelText("Entrega prevista"), { target: { value: date } });
+}
+
+export async function confirm(date = "2026-12-01") {
+  fillDeliveryDate(date);
+  await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
 }

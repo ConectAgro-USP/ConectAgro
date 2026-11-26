@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { storedCart } from "../test/cart";
 import {
   ALFACE,
-  fillDeliveryDate,
+  confirm,
   findQuantity,
   inCart,
   LARANJA,
@@ -25,11 +25,6 @@ const PAST_DATE = {
   ],
 };
 const SOLD_OUT_ALFACE = { ...ALFACE, quantity: 0 };
-
-async function confirm(date = "2026-12-01") {
-  fillDeliveryDate(date);
-  await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
-}
 
 describe("Cart submit", () => {
   beforeEach(() => localStorage.clear());

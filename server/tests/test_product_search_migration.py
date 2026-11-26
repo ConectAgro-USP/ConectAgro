@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -8,17 +7,10 @@ from sqlmodel import create_engine
 
 from alembic import command
 from src.core.config import settings
-from tests.test_migrations import alembic_config
+from tests.migrations import alembic_config
 
 BEFORE_SEARCH_COLUMNS = "ff9291f5b288"
 SEARCH_COLUMNS = "c8940e9e4b4c"
-
-
-@pytest.fixture()
-def db_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
-    url = f"sqlite:///{(tmp_path / 'migrations.db').as_posix()}"
-    monkeypatch.setattr(settings, "DATABASE_URL", url)
-    return url
 
 
 def test_upgrade_fills_the_search_columns_of_existing_products(db_url: str) -> None:

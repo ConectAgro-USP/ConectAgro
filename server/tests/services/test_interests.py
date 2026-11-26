@@ -59,13 +59,13 @@ def test_create_uses_buyer_profile_and_product_ids(
     buyer: Buyer,
     product: Product,
 ):
-    interests.get_product_by_public_id.return_value = product
+    interests.lock_product_by_public_id.return_value = product
     interests.get_by_buyer_and_product.return_value = None
     interest_in = InterestCreate(product_public_id=product.public_id, quantity=3)
 
     created = service.create(buyer, interest_in)
 
-    interests.get_product_by_public_id.assert_called_once_with(product.public_id)
+    interests.lock_product_by_public_id.assert_called_once_with(product.public_id)
     interests.get_by_buyer_and_product.assert_called_once_with(buyer, product)
     interests.create.assert_called_once()
     saved_interest = interests.create.call_args.args[0]
@@ -83,7 +83,7 @@ def test_create_rejects_unknown_product(
     interests: InterestRepository,
     buyer: Buyer,
 ):
-    interests.get_product_by_public_id.return_value = None
+    interests.lock_product_by_public_id.return_value = None
 
     with pytest.raises(ProductNotFoundError):
         service.create(buyer, InterestCreate(quantity=1, product_public_id=uuid4()))
@@ -97,7 +97,7 @@ def test_create_rejects_duplicate_buyer_product_pair(
     buyer: Buyer,
     product: Product,
 ):
-    interests.get_product_by_public_id.return_value = product
+    interests.lock_product_by_public_id.return_value = product
     interests.get_by_buyer_and_product.return_value = Interest(
         quantity=1, buyer_id=buyer.id, product_id=product.id
     )

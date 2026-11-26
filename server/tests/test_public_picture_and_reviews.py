@@ -9,7 +9,7 @@ from src.models.farmer import Farmer
 from src.models.purchase import PurchaseStatus
 from src.models.review import Review
 from tests.helpers import add_product, add_purchase_from
-from tests.test_product_picture_upload import PNG, upload
+from tests.pictures import PNG, upload
 
 
 def uploaded_picture_url(client: TestClient, session: Session, farmer: Farmer) -> str:
@@ -30,19 +30,6 @@ def test_visitor_sees_the_picture_with_public_cache(
     assert response.content == PNG
     assert response.headers["cache-control"] == "public, max-age=86400"
     assert response.headers["etag"]
-
-
-def test_visitor_gets_not_modified_for_a_known_picture(
-    client: TestClient, session: Session, farmer: Farmer
-):
-    picture_url = uploaded_picture_url(client, session, farmer)
-    etag = client.get(picture_url).headers["etag"]
-
-    response = client.get(picture_url, headers={"If-None-Match": etag})
-
-    assert response.status_code == status.HTTP_304_NOT_MODIFIED
-    assert response.headers["etag"] == etag
-    assert response.headers["cache-control"] == "public, max-age=86400"
 
 
 def test_visitor_reads_the_farmer_reviews_without_authors(

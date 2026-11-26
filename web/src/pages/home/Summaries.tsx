@@ -3,8 +3,10 @@ import type { HistoryPage } from "../../api/history";
 import type { MyProductCounts } from "../../api/products";
 import type { ReceivedReviews } from "../../api/reviews";
 import type { Sale } from "../../api/sales";
-import { RatingStars } from "../../components/reviews/StarRating";
-import { formatCount, formatDate, formatMoney, formatRating } from "../../format";
+import { EXPIRING_SOON_DAYS } from "../../components/products/productState";
+import { AverageRating } from "../../components/reviews/AverageRating";
+import { averageOf } from "../../components/reviews/average";
+import { formatCount, formatDate, formatMoney } from "../../format";
 
 const SHOWN_SALES = 3;
 const SALE_LINK_CLASSES =
@@ -52,7 +54,11 @@ function countLines(counts: MyProductCounts) {
   return [
     { label: "Disponíveis", count: counts.available, dot: "bg-lime-700" },
     { label: "Esgotados", count: counts.sold_out, dot: "bg-amber-700" },
-    { label: "Vencem em até 7 dias", count: counts.expiring_soon, dot: "bg-red-700" },
+    {
+      label: `Vencem em até ${EXPIRING_SOON_DAYS} dias`,
+      count: counts.expiring_soon,
+      dot: "bg-red-700",
+    },
   ];
 }
 
@@ -73,8 +79,8 @@ export function ProductsSummary({ counts }: Readonly<{ counts: MyProductCounts }
 }
 
 export function RatingSummary({ reviews }: Readonly<{ reviews: ReceivedReviews }>) {
-  const { average_rating: average, reviews_count: count } = reviews;
-  if (average === null || count === 0) {
+  const average = averageOf(reviews);
+  if (average === null) {
     return (
       <p className="text-lg text-stone-700">
         Você ainda não recebeu avaliações. Elas chegam depois das entregas.
@@ -84,12 +90,11 @@ export function RatingSummary({ reviews }: Readonly<{ reviews: ReceivedReviews }
   return (
     <div className="space-y-1">
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="sr-only">Nota média</span>
-        <span className="text-4xl font-bold tabular-nums">{formatRating(average)}</span>
-        <span className="sr-only">de 5</span>
-        <RatingStars rating={average} starClassName="size-7" />
+        <AverageRating average={average} starClassName="size-7" />
       </p>
-      <p className="text-lg text-stone-700">{formatCount(count, "avaliação", "avaliações")}</p>
+      <p className="text-lg text-stone-700">
+        {formatCount(reviews.reviews_count, "avaliação", "avaliações")}
+      </p>
     </div>
   );
 }

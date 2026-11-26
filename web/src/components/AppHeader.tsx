@@ -9,20 +9,17 @@ import { navigationOf, PROFILE_DESTINATION, type NavDestination } from "../restr
 import { buttonClasses } from "./buttonClasses";
 import { CartLink } from "./CartLink";
 import { FormError } from "./FormError";
+import { HEADER_ACTION_CLASSES, HEADER_FOCUS_CLASSES } from "./headerClasses";
 import { HeaderSearch } from "./HeaderSearch";
 import { Logo } from "./Logo";
 
-const FOCUS_CLASSES = "focus-visible:outline-2 focus-visible:outline-lime-800";
-const ACCOUNT_CLASSES =
-  "flex h-12 items-center gap-2 rounded-full px-3 font-bold whitespace-nowrap text-stone-800 " +
-  "hover:bg-stone-100 aria-[current=page]:bg-lime-100 aria-[current=page]:text-lime-900 " +
-  `disabled:opacity-60 ${FOCUS_CLASSES}`;
+const ACCOUNT_CLASSES = `${HEADER_ACTION_CLASSES} disabled:opacity-60`;
 const LOGIN_CLASSES =
   `flex shrink-0 items-center gap-2 whitespace-nowrap ${buttonClasses("primary", "compact")}`;
 const PAGE_LINK_CLASSES =
   "flex h-11 items-center gap-2 rounded-full px-2 text-sm font-bold whitespace-nowrap lg:px-3 " +
   "text-stone-700 hover:bg-stone-100 aria-[current=page]:bg-lime-100 " +
-  `aria-[current=page]:text-lime-900 lg:text-base ${FOCUS_CLASSES}`;
+  `aria-[current=page]:text-lime-900 lg:text-base ${HEADER_FOCUS_CLASSES}`;
 
 interface DestinationLinkProps {
   page: NavDestination;
@@ -40,7 +37,7 @@ function DestinationLink({ page, className }: Readonly<DestinationLinkProps>) {
 
 function HomeLink() {
   return (
-    <Link to="/" className={`shrink-0 rounded-lg text-3xl ${FOCUS_CLASSES}`}>
+    <Link to="/" className={`shrink-0 rounded-lg text-3xl ${HEADER_FOCUS_CLASSES}`}>
       <Logo />
     </Link>
   );

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -9,11 +8,10 @@ from sqlalchemy import text
 from sqlmodel import Session, create_engine
 
 from alembic import command
-from src.core.config import settings
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ
 from tests.helpers import add_product
-from tests.test_migrations import alembic_config
+from tests.migrations import alembic_config
 
 UNITS = ["kg", "unidade", "duzia", "maco", "litro"]
 
@@ -84,13 +82,9 @@ def test_update_refuses_a_null_or_unknown_unit(
     assert eggs.unit == "kg"
 
 
-def test_upgrade_sells_existing_products_by_kilo(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    url = f"sqlite:///{(tmp_path / 'migrations.db').as_posix()}"
-    monkeypatch.setattr(settings, "DATABASE_URL", url)
+def test_upgrade_sells_existing_products_by_kilo(db_url: str) -> None:
     command.upgrade(alembic_config(), "c8940e9e4b4c")
-    engine = create_engine(url)
+    engine = create_engine(db_url)
     with engine.begin() as connection:
         # SQL cru, porque o model Product descreve o schema do head
         connection.execute(

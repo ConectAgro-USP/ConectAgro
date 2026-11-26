@@ -8,13 +8,8 @@ from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.services.distance_service import DistanceService, km_between, saved_point
 from src.services.exceptions import BuildingWithoutCoordinatesError, CepNotFoundError
+from tests.geo import PRACA_DA_SE_ADDRESS
 
-PRACA_DA_SE = Address(
-    cep="01001000",
-    state="SP",
-    city="São Paulo",
-    coordinates=Coordinates(latitude=-23.5503898, longitude=-46.633081),
-)
 BRASILIA = Address(
     cep="70040010",
     state="DF",
@@ -32,7 +27,7 @@ def fake_service(*answers: Address | Exception) -> tuple[DistanceService, NonCal
 
 
 def test_km_between_uses_the_saved_coordinates():
-    building = Apartment(zip_code="01001-000", **PRACA_DA_SE.coordinates.model_dump())
+    building = Apartment(zip_code="01001-000", **PRACA_DA_SE_ADDRESS.coordinates.model_dump())
     farmer = Farmer(zip_code="70040-010", **BRASILIA.coordinates.model_dump())
 
     distance = km_between(saved_point(building), saved_point(farmer))
@@ -45,7 +40,7 @@ def test_saved_point_is_none_for_old_profiles():
 
 
 def test_look_up_building_keeps_the_coordinates():
-    service, ceps = fake_service(PRACA_DA_SE)
+    service, ceps = fake_service(PRACA_DA_SE_ADDRESS)
     building = Apartment(zip_code="01001-000")
 
     assert service.look_up_building(building) == (-23.5503898, -46.633081)
@@ -54,7 +49,7 @@ def test_look_up_building_keeps_the_coordinates():
 
 
 def test_look_up_building_rejects_a_cep_without_coordinates():
-    service, _ = fake_service(PRACA_DA_SE.model_copy(update={"coordinates": None}))
+    service, _ = fake_service(PRACA_DA_SE_ADDRESS.model_copy(update={"coordinates": None}))
     building = Apartment(zip_code="01001-000")
 
     with pytest.raises(BuildingWithoutCoordinatesError):

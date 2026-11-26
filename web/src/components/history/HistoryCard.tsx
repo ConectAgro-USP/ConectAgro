@@ -2,19 +2,14 @@ import { ChevronDownIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { PurchaseItem, PurchaseStatus } from "../../api/history";
 import { formatDate, formatDay, formatMoney, formatNames } from "../../format";
-import { CARD_SURFACE, CARD_TAB } from "../surface";
+import { Avatar } from "../Avatar";
+import { CARD_PANEL, CARD_SURFACE, CARD_TAB, CARD_TOGGLE } from "../surface";
 
 const STATUS_CLASSES: Record<PurchaseStatus, string> = {
   "EM PROGRESSO": "bg-amber-700",
   ENTREGUE: "bg-lime-700",
   CANCELADA: "bg-stone-500",
 };
-const AVATAR_CLASSES =
-  "flex size-14 shrink-0 items-center justify-center rounded-full bg-stone-800 text-xl " +
-  "text-white uppercase ring-4 ring-white sm:size-16";
-const DETAILS_BUTTON_CLASSES =
-  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg hover:bg-stone-100 " +
-  "focus-visible:outline-2 focus-visible:outline-lime-800";
 
 interface HistoryCardProps {
   names: string[];
@@ -58,11 +53,7 @@ export function HistoryCard({
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
           {avatars && (
             <div aria-hidden="true" className="flex -space-x-3">
-              {people.map((name) => (
-                <span key={name} className={AVATAR_CLASSES}>
-                  {name.charAt(0)}
-                </span>
-              ))}
+              {people.map((name) => <Avatar key={name} name={name} />)}
             </div>
           )}
           <div>
@@ -103,14 +94,14 @@ export function HistoryCard({
           aria-expanded={open}
           aria-controls={detailsId}
           onClick={() => setOpen(!open)}
-          className={DETAILS_BUTTON_CLASSES}
+          className={CARD_TOGGLE}
         >
           {open ? "Ocultar detalhes" : "Ver detalhes"}
           <ChevronDownIcon aria-hidden="true" className={open ? "rotate-180" : ""} />
         </button>
       </div>
       {/* fica sempre no HTML para o botão ter para onde apontar */}
-      <div id={detailsId} hidden={!open} className="mt-2 border-t border-stone-300 py-4">
+      <div id={detailsId} hidden={!open} className={CARD_PANEL}>
         {children}
       </div>
     </li>

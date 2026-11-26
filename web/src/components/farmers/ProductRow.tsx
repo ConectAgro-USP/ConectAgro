@@ -5,7 +5,7 @@ import type { FarmerProduct } from "../../api/farmers";
 import type { Interest } from "../../api/interests";
 import { formatFullDate, formatMoney, formatQuantity, formatStock, pricePer } from "../../format";
 import { CART_FULL, useCart } from "../../hooks/useCart";
-import { chosenText, deliveredText } from "../../interestState";
+import { IN_PURCHASE, chosenText, deliveredText, interestState } from "../../interestState";
 import { PrimaryButton } from "../Button";
 import { ProductPicture } from "../ProductPicture";
 import { CARD_SURFACE } from "../surface";
@@ -59,9 +59,11 @@ function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
   );
 }
 
-function markText({ quantity, purchase }: Interest, unit: string): string {
-  if (!purchase) return chosenText(quantity, unit);
-  return purchase.status === "ENTREGUE" ? deliveredText(purchase) : "Na compra do prédio";
+function markText(interest: Interest, unit: string): string {
+  const state = interestState(interest);
+  if (interest.purchase && state === "delivered") return deliveredText(interest.purchase);
+  if (state === "purchase") return IN_PURCHASE;
+  return chosenText(interest.quantity, unit);
 }
 
 // marca para o morador o que ele já escolheu

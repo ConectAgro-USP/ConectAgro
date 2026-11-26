@@ -6,11 +6,11 @@ from sqlmodel import Session
 
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
-from src.models.product import BUSINESS_TZ, Product
+from src.models.product import BUSINESS_TZ
 from tests.helpers import add_product
-from tests.test_product_picture_upload import PNG
-from tests.test_product_unit_lock import sold, wanted
-from tests.test_sales_delivery_contact import counted_queries
+from tests.pictures import upload
+from tests.queries import counted_queries
+from tests.unit_history import sold, wanted
 
 
 def my_products(client: TestClient) -> dict[str, bool]:
@@ -58,14 +58,6 @@ def test_a_new_product_starts_with_the_unit_free(client: TestClient, farmer: Far
 
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["unit_locked"] is False
-
-
-def upload(client: TestClient, product: Product):
-    return client.post(
-        f"/api/products/{product.public_id}/picture",
-        content=PNG,
-        headers={"Content-Type": "image/png"},
-    )
 
 
 def test_picture_upload_answers_with_the_lock_of_the_unit(

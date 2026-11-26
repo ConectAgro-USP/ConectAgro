@@ -84,10 +84,6 @@ export function renderFarmersAt(url: string, ...answers: Answer[]) {
   return { fetchMock, auth };
 }
 
-export function address(): string | null {
-  return screen.getByTestId("address").textContent;
-}
-
 export async function findCard(name: string): Promise<HTMLElement> {
   const title = await screen.findByRole("heading", { level: 2, name });
   return title.closest("li")!;

@@ -6,7 +6,7 @@ from pydantic import AfterValidator, Strict
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.core.text import reject_null_character, short_name
+from src.core.text import reject_null_character
 
 from .pagination import PageParams, PaginatedResponse
 
@@ -116,7 +116,7 @@ class Review(ReviewBase, table=True):
 
     @property
     def farmer_short_name(self) -> str | None:
-        return short_name(self.farmer.user.name) if self.farmer else None
+        return self.farmer.short_name if self.farmer else None
 
     @property
     def purchase_public_id(self) -> UUID | None:

@@ -6,12 +6,10 @@ from sqlmodel import Session
 from src.models.apartment import Apartment
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
+from tests.geo import PAULISTA_POINT, PRACA_DA_SE
 from tests.helpers import add_farmer, add_user, login
-from tests.test_profiles import answer_cep
+from tests.profiles import answer_cep
 
-# coordenadas que a BrasilAPI dá na resposta PAULISTA, do CEP 01310200
-PAULISTA_POINT = (-23.5475, -46.63611)
-PRACA_DA_SE_POINT = (-23.5503898, -46.633081)
 SEARCH_5KM = {"max_distance_km": 5}
 
 
@@ -20,7 +18,7 @@ def test_search_uses_the_saved_coordinates_without_the_brasilapi(
 ):
     building.latitude, building.longitude = PAULISTA_POINT
     farmer = add_farmer(session, add_user(session, "carlos@example.com", name="Carlos Souza"))
-    farmer.latitude, farmer.longitude = PRACA_DA_SE_POINT
+    farmer.latitude, farmer.longitude = PRACA_DA_SE
     session.commit()
     cep_requests = answer_cep(httpx.Response(500))
     login(client, manager)

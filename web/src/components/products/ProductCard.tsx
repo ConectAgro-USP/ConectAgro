@@ -9,7 +9,7 @@ import { DangerButton, PrimaryButton, SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
 import { ProductPicture } from "../ProductPicture";
 import { CARD_SURFACE, CARD_TAB } from "../surface";
-import { STATE_LABELS, stateOf, type ProductState } from "./productState";
+import { EXPIRING_SOON_DAYS, STATE_LABELS, stateOf, type ProductState } from "./productState";
 
 const CARD_CLASSES = `relative flex flex-col overflow-hidden sm:flex-row ${CARD_SURFACE}`;
 const PICTURE_CLASSES = "w-full shrink-0 sm:my-6 sm:ml-6 sm:w-48 sm:rounded-2xl";
@@ -54,6 +54,7 @@ export function ProductCard({
     size: "compact" as const,
   };
   const days = daysUntil(product.expiration_date);
+  const tabColor = days <= EXPIRING_SOON_DAYS ? "bg-amber-700" : "bg-lime-700";
   const state = stateOf(product);
 
   function goBack() {
@@ -145,7 +146,7 @@ export function ProductCard({
           )}
         </div>
       </div>
-      <p className={`${CARD_TAB} tabular-nums ${days <= 7 ? "bg-amber-700" : "bg-lime-700"}`}>
+      <p className={`${CARD_TAB} tabular-nums ${tabColor}`}>
         {days < 0 ? "Venceu" : "Vence"} {formatFullDate(product.expiration_date)}
       </p>
     </li>

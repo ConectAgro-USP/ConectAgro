@@ -7,9 +7,9 @@ from sqlmodel import Session
 from src.models.apartment import Apartment
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
-from tests.geo import PRACA_DA_SE, km_north
+from tests.geo import km_north, locate
 from tests.helpers import add_farmer, add_user, login
-from tests.test_profiles import answer_cep
+from tests.profiles import answer_cep
 
 SEARCH_5KM = {"max_distance_km": 5}
 WITHOUT_COORDINATES = {**PAULISTA, "location": {"type": "Point", "coordinates": {}}}
@@ -28,11 +28,6 @@ def add_farmer_at(session: Session, email: str, km: float | None) -> None:
     farmer = add_farmer(session, add_user(session, email, name="Carlos Souza"))
     if km is not None:
         farmer.latitude, farmer.longitude = km_north(km)
-    session.commit()
-
-
-def locate(session: Session, building: Apartment) -> None:
-    building.latitude, building.longitude = PRACA_DA_SE
     session.commit()
 
 

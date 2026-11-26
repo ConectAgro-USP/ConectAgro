@@ -6,6 +6,7 @@ import type { History } from "../../hooks/useHistory";
 import { SecondaryButton } from "../Button";
 import { buttonClasses } from "../buttonClasses";
 import { FormError } from "../FormError";
+import { ShowMore } from "../ShowMore";
 import { TitleBar } from "../TitleBar";
 import { formatMoney } from "../../format";
 import { HistoryFilterFields } from "./HistoryFilterFields";
@@ -125,9 +126,7 @@ export function HistoryLayout({
           <output className="text-stone-600">{loading ? "Carregando..." : ""}</output>
           <FormError message={error} />
           {error && <SecondaryButton onClick={history.retry}>Tentar de novo</SecondaryButton>}
-          {history.hasMore && !loading && !error && (
-            <SecondaryButton onClick={history.loadMore}>Mostrar pedidos mais antigos</SecondaryButton>
-          )}
+          <ShowMore list={history} label="Mostrar pedidos mais antigos" />
         </div>
       </div>
     </main>

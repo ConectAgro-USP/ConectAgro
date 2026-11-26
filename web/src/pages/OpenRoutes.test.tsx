@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import type { ProfileRead } from "../api/profiles";
+import { address } from "../test/address";
 import { ana, anaAsBuyer, anaAsFarmer, anaAsManager, fakeAuth } from "../test/helpers";
 import { renderVisitorApp } from "../test/visitor";
 
@@ -7,10 +8,6 @@ const PROFILE_QUESTION = "Como você vai usar o ConectAgro?";
 
 function openAs(url: string, user: ProfileRead | null) {
   return renderVisitorApp(url, {}, fakeAuth({ user }));
-}
-
-function address(): string | null {
-  return screen.getByTestId("address").textContent;
 }
 
 describe("pages that ask for a login", () => {

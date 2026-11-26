@@ -6,7 +6,7 @@ from sqlmodel import Session
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
 from tests.helpers import add_user, login
-from tests.test_profiles import FARMER, answer_cep
+from tests.profiles import FARMER, answer_cep
 
 OTHER_CPF = "111.444.777-35"
 

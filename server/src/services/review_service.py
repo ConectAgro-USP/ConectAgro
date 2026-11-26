@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from src.core.text import short_name
 from src.models.farmer import Farmer
 from src.models.pagination import PageParams
 from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
@@ -85,7 +84,7 @@ class ReviewService:
             ReviewableRead(
                 purchase_public_id=part.purchase.public_id,
                 farmer_public_id=part.farmer.public_id,
-                farmer_short_name=short_name(part.farmer.user.name),
+                farmer_short_name=part.farmer.short_name,
                 delivered_at=part.closed_at,
                 product_names=[
                     item.product_name for item in part.purchase_products if item.product_name

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   createProduct as sendCreateProduct,
   deleteProduct as sendDeleteProduct,
@@ -6,7 +5,6 @@ import {
   updateProduct as sendUpdateProduct,
   uploadProductPicture,
   type MyProduct,
-  type MyProductCounts,
   type ProductInput,
 } from "../api/products";
 import {
@@ -17,6 +15,7 @@ import {
 } from "../components/products/productState";
 import { addItem, removeItem, replaceItem } from "./pageEdits";
 import { usePages } from "./usePages";
+import { useTracked } from "./useTracked";
 import { useWriteGuard } from "./useWriteGuard";
 
 function loadMyProducts(tab: ProductTab, page: number) {
@@ -27,25 +26,13 @@ function keyOf(product: MyProduct): string {
   return product.public_id;
 }
 
-// a contagem que chegou da API e a que segue as escritas feitas depois
-interface Counted {
-  from: MyProductCounts;
-  value: MyProductCounts;
-}
-
 export function useProducts() {
   const guard = useWriteGuard();
   const pages = usePages(loadMyProducts, "all" as ProductTab, { keyOf });
-  const [counted, setCounted] = useState<Counted | null>(null);
-  const latest = pages.lastPage?.counts;
-  if (latest !== undefined && latest !== counted?.from) {
-    setCounted({ from: latest, value: latest });
-  }
+  const [counts, adjustCounts] = useTracked(pages.received, pages.lastPage?.counts);
 
   function track(before: MyProduct | null, after: MyProduct | null) {
-    setCounted(
-      (current) => current && { ...current, value: recount(current.value, before, after) },
-    );
+    adjustCounts((current) => recount(current, before, after));
   }
 
   const same = (publicId: string) => (product: MyProduct) => product.public_id === publicId;
@@ -91,7 +78,7 @@ export function useProducts() {
 
   return {
     items: pages.items,
-    counts: counted?.value ?? null,
+    counts,
     tab: pages.search,
     changeTab: pages.changeSearch,
     loading: pages.loading,

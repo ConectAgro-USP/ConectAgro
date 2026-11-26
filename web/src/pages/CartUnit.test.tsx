@@ -1,8 +1,7 @@
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { storedCart } from "../test/cart";
 import {
-  fillDeliveryDate,
+  confirm,
   findQuantity,
   inCart,
   MANDIOCA,
@@ -15,11 +14,6 @@ const BY_DOZEN = { ...MANDIOCA, unit: "duzia" as const };
 const UNIT_NOTE = "A unidade mudou de quilo para dúzia";
 const UNIT_CHANGED = "A unidade do produto Mandioca mudou. Confira o carrinho antes de confirmar";
 const IN_DOZENS = { name: "Quantidade de Mandioca em dúzias" };
-
-async function confirm() {
-  fillDeliveryDate("2026-12-01");
-  await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
-}
 
 describe("Cart, product unit", () => {
   beforeEach(() => localStorage.clear());

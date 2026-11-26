@@ -2,16 +2,11 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { item, storedCart } from "../test/cart";
 import { jsonResponse, pageResponse } from "../test/helpers";
-import { laranja, mandioca, renderNeeds } from "../test/needs";
+import { laranja, mandioca, renderNeeds, select } from "../test/needs";
 
 const MORE = { name: "Mostrar mais produtos" };
 const FIRST = { total: 21, total_pages: 2 };
 const SECOND = { page: 2, total: 21, total_pages: 2 };
-
-async function select(name: string) {
-  const box = await screen.findByRole("checkbox", { name: new RegExp(`^Selecionar ${name} de`) });
-  await userEvent.click(box);
-}
 
 describe("BuildingNeeds, pages", () => {
   beforeEach(() => localStorage.clear());

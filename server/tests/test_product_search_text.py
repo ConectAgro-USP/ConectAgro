@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ
-from tests.test_product_search import add_farmer_with_name, add_product
+from tests.catalog import add_farmer_with_name, add_product
 
 
 def new_product(client: TestClient, name: str, description: str | None = None) -> dict:

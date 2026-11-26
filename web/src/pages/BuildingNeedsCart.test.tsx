@@ -3,16 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { CART_LIMIT } from "../hooks/useCart";
 import { item, storeCart, storedCart } from "../test/cart";
 import { pageResponse } from "../test/helpers";
-import { alface, laranja, mandioca, renderNeeds, soldOutAlface } from "../test/needs";
+import { alface, laranja, mandioca, renderNeeds, select, soldOutAlface } from "../test/needs";
 
 const ADD = { name: "Adicionar ao carrinho" };
-
-async function select(...names: string[]) {
-  for (const name of names) {
-    const box = await screen.findByRole("checkbox", { name: new RegExp(`^Selecionar ${name} de`) });
-    await userEvent.click(box);
-  }
-}
 
 describe("BuildingNeeds cart", () => {
   beforeEach(() => localStorage.clear());

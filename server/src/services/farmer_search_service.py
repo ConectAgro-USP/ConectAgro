@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from src.core.search_text import fold
-from src.core.text import hide_email, short_name
+from src.core.text import hide_email
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer, FarmerSearchRead
 from src.models.farmer_search import FarmerSearchFilters, FarmerSearchResponse, FarmerSort
@@ -78,7 +78,7 @@ class FarmerSearchService:
 
             farmer_search_item = FarmerSearchRead(
                 public_id=farmer.public_id,
-                name=short_name(farmer.user.name),
+                name=farmer.short_name,
                 farm_name=farmer.farm_name,
                 zip_code=farmer.zip_code,
                 distance_km=distances.get(farmer.id),

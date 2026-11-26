@@ -5,18 +5,16 @@ from uuid import UUID
 
 from sqlmodel import Field, SQLModel
 
-from src.models.pagination import PaginatedResponse
-from src.models.product import INT4_MAX, ProductUnit
+from src.models.pagination import PageParams, PaginatedResponse
+from src.models.product import ProductUnit
 from src.models.purchase import PurchasePartRead, PurchaseProductRead, PurchaseRead, PurchaseStatus
 
 
-class PurchaseHistoryFilters(SQLModel):
+class PurchaseHistoryFilters(PageParams):
     status: PurchaseStatus | None = None
     date_from: date | None = None
     # o filtro soma um dia a esta data, e o último dia do calendário daria erro
     date_to: date | None = Field(default=None, lt=date.max)
-    page: int = Field(default=1, ge=1, le=INT4_MAX)
-    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class SalesSort(StrEnum):

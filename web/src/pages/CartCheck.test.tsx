@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { storedCart } from "../test/cart";
 import {
   ALFACE,
-  fillDeliveryDate,
+  confirm,
   findQuantity,
   inCart,
   LARANJA,
@@ -105,9 +105,8 @@ describe("Cart check", () => {
       ...productsOf(MANDIOCA),
     );
     await findQuantity("Mandioca");
-    fillDeliveryDate("2026-12-01");
 
-    await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
+    await confirm();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Sem acesso");
     expect(auth.refreshUser).toHaveBeenCalledOnce();

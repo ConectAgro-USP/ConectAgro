@@ -12,13 +12,9 @@ from src.models.farmer import Farmer
 from src.models.interest import Interest
 from src.models.product import Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
-from src.models.purchase_history import (
-    BuildingPurchasesFilters,
-    PurchaseHistoryFilters,
-    SalesFilters,
-    SalesSort,
-)
+from src.models.purchase_history import BuildingPurchasesFilters, SalesFilters, SalesSort
 from src.repository.interest_repository import open_interest
+from src.repository.pagination import fetch_page
 
 NEWEST = (Purchase.created_at.desc(), Purchase.id.desc())
 NEAREST_DELIVERY = (Purchase.expected_delivery_date, Purchase.created_at, Purchase.id)
@@ -78,8 +74,6 @@ class PurchaseRepository:
             conditions.append(PurchasePart.status == filters.status)
         if filters.apartment_public_id is not None:
             conditions.append(Apartment.public_id == filters.apartment_public_id)
-        count = select(func.count(PurchasePart.id)).join(Purchase).join(Apartment)
-        total = self.session.exec(count.where(*conditions)).one()
         statement = select(PurchasePart).join(Purchase).join(Apartment).where(*conditions)
         apartment = selectinload(PurchasePart.purchase).selectinload(Purchase.apartment)
         statement = statement.options(
@@ -87,7 +81,7 @@ class PurchaseRepository:
             selectinload(PurchasePart.purchase_products).selectinload(PurchaseProduct.product),
         )
         order = NEAREST_DELIVERY if filters.sort == SalesSort.DELIVERY else NEWEST
-        return self._page(statement, filters, order), total
+        return fetch_page(self.session, statement.order_by(*order), filters)
 
     def list_building_purchases(
         self,
@@ -102,7 +96,6 @@ class PurchaseRepository:
         if filters.farmer_public_id is not None:
             of_farmer = PurchasePart.farmer.has(Farmer.public_id == filters.farmer_public_id)
             conditions.append(Purchase.purchase_parts.any(of_farmer))
-        count = select(func.count(Purchase.id)).where(*conditions)
         parts = selectinload(Purchase.purchase_parts)
         items = parts.selectinload(PurchasePart.purchase_products)
         statement = select(Purchase).where(*conditions)
@@ -110,7 +103,7 @@ class PurchaseRepository:
             parts.selectinload(PurchasePart.farmer).selectinload(Farmer.user),
             items.selectinload(PurchaseProduct.product),
         )
-        return self._page(statement, filters), self.session.exec(count).one()
+        return fetch_page(self.session, statement.order_by(*NEWEST), filters)
 
     def sales_totals(
         self, farmer_id: int, filters: SalesFilters, since: datetime | None, until: datetime | None
@@ -150,11 +143,6 @@ class PurchaseRepository:
         statement = select(PurchasePart.status, value).join(Purchase).join(PurchaseProduct)
         statement = statement.where(*conditions)
         return dict(self.session.exec(statement.group_by(PurchasePart.status)).all())
-
-    def _page(self, statement, filters: PurchaseHistoryFilters, order: tuple = NEWEST) -> list:
-        statement = statement.order_by(*order)
-        offset = (filters.page - 1) * filters.page_size
-        return list(self.session.exec(statement.offset(offset).limit(filters.page_size)).all())
 
     def add(self, purchase: Purchase) -> None:
         self.session.add(purchase)

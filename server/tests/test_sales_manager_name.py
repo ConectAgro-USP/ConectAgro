@@ -7,7 +7,7 @@ from src.models.farmer import Farmer
 from src.models.product import Product
 from src.models.user import User
 from tests.helpers import add_product, add_purchase
-from tests.test_sales_delivery_contact import sales_of
+from tests.sales import sales_of
 
 
 @pytest.fixture

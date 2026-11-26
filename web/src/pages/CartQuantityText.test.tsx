@@ -1,8 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { storedCart } from "../test/cart";
 import {
-  fillDeliveryDate,
+  confirm,
   findQuantity,
   inCart,
   lineOf,
@@ -24,8 +23,7 @@ describe("Cart, quantity typed with a decimal point", () => {
 
     // o campo de número aceita o texto colado por cima do 12
     fireEvent.change(await findQuantity("Mandioca"), { target: { value: "2.0" } });
-    fillDeliveryDate("2026-12-01");
-    await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
+    await confirm();
 
     expect(await screen.findByRole("heading", { name: "Compras do prédio" })).toBeVisible();
     expect(sentBody(fetchMock, 2)).toMatchObject({ items: [{ quantity: 2 }] });

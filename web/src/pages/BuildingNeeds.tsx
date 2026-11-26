@@ -2,6 +2,7 @@ import { ShoppingCartIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { BuildingNeed } from "../api/interests";
+import { BOTTOM_BAR_OFFSET } from "../components/BottomNav";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductPicture } from "../components/ProductPicture";
@@ -31,7 +32,7 @@ const LINK_CLASSES =
   "focus-visible:outline-lime-800";
 // no celular a barra fica sobre a navegação, na tela larga no fim da lista
 const BAR_CLASSES =
-  "fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 border-t " +
+  `fixed inset-x-0 ${BOTTOM_BAR_OFFSET} z-20 border-t ` +
   "border-stone-300 bg-white px-4 py-3 md:sticky md:bottom-4 md:mt-6 md:rounded-3xl " +
   "md:border md:px-6 md:py-4 md:shadow-sm";
 const MAIN_CLASSES = "min-h-screen bg-stone-50 text-stone-900 md:pb-16";
