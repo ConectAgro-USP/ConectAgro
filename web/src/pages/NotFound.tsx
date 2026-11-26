@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { buttonClasses } from "../components/buttonClasses";
+import { LogoMark } from "../components/Logo";
 import { TitleBar } from "../components/TitleBar";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
@@ -18,6 +19,7 @@ function MessagePage({ title, tabTitle, message }: Readonly<MessagePageProps>) {
     <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
       <TitleBar title={title} />
       <div className="mx-auto flex max-w-xl flex-col items-center gap-6 px-4 pt-12 text-center">
+        <LogoMark />
         <p className="text-xl text-balance">{message}</p>
         <Link to="/" className={HOME_LINK_CLASSES}>
           Voltar ao início

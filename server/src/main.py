@@ -78,11 +78,18 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "commit": settings.RENDER_GIT_COMMIT}
 
 
-if STATIC_DIR.is_dir():
-    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+def serve_web_build(app: FastAPI, static_dir: Path) -> None:
+    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+    # ícones da raiz lidos na subida, o endereço pedido nunca chega ao disco
+    root_files = {file.name: file for file in static_dir.iterdir() if file.is_file()}
+    index = static_dir / "index.html"
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str) -> FileResponse:
         if full_path.startswith("api/"):
             raise HTTPException(status.HTTP_404_NOT_FOUND)
-        return FileResponse(STATIC_DIR / "index.html", headers=SPA_HEADERS)
+        return FileResponse(root_files.get(full_path, index), headers=SPA_HEADERS)
+
+
+if STATIC_DIR.is_dir():
+    serve_web_build(app, STATIC_DIR)

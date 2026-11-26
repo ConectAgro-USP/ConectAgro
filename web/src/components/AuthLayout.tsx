@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Logo } from "./Logo";
+import { Logo, LogoMark } from "./Logo";
 
 const TITLE_CLASSES = "mb-8 text-4xl font-extrabold text-balance";
 const STEP_COUNT = 3;
@@ -36,9 +36,12 @@ export function AuthLayout({ title, step, titleId, children }: Readonly<AuthLayo
   return (
     <main className="min-h-screen bg-white px-6 py-12 text-stone-900 sm:py-16">
       <div className="mx-auto max-w-lg">
-        <p className="text-center text-3xl">
-          <Logo />
-        </p>
+        <div className="flex flex-col items-center gap-2">
+          <LogoMark />
+          <p className="text-3xl">
+            <Logo />
+          </p>
+        </div>
         {step !== undefined && <StepIndicator step={step} />}
         <h1
           id={titleId}
