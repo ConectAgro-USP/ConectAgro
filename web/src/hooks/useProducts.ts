@@ -60,7 +60,7 @@ export function useProducts() {
 
   // quem chama passa o produto como estava, para a contagem descontar
   function replace(before: MyProduct, saved: MyProduct) {
-    // o produto que sai da aba fica na tela, mas sai da lista do servidor
+    // fica nas páginas e conta como tirado da lista, a tela o esconde pela aba
     const left = inTab(pages.search, before) && !inTab(pages.search, saved);
     pages.editPages(replaceItem(same(saved.public_id), saved), { dropped: left ? 1 : 0 });
     track(before, saved);

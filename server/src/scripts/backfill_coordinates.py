@@ -36,11 +36,17 @@ class BackfillSummary:
 
 def backfill_coordinates(profiles: ProfileRepository, ceps: CepService) -> BackfillSummary:
     summary = BackfillSummary()
+    # o CepService só guarda os CEPs achados, então a rodada lembra as falhas
+    failures: dict[str, str] = {}
     for profile in profiles.list_profiles_without_coordinates():
+        if profile.zip_code in failures:
+            summary.skipped.append(_describe(profile, failures[profile.zip_code]))
+            continue
         try:
             address = ceps.get_address(profile.zip_code)
         except LOOKUP_ERRORS as error:
-            summary.skipped.append(_describe(profile, type(error).__name__))
+            failures[profile.zip_code] = type(error).__name__
+            summary.skipped.append(_describe(profile, failures[profile.zip_code]))
             continue
         if address.coordinates is None:
             summary.skipped.append(_describe(profile, "CEP sem coordenadas"))

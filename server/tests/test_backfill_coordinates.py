@@ -86,6 +86,21 @@ def test_skips_ceps_without_coordinates_or_not_found(session: Session, run):
     ]
 
 
+def test_asks_a_failing_cep_once_and_lists_every_profile_with_it(
+    session: Session, run, cep_requests: list[httpx.Request]
+):
+    first = farmer_with_cep(session, "a@example.com", "99999999")
+    second = farmer_with_cep(session, "b@example.com", "99999999")
+
+    summary = run()
+
+    assert len(cep_requests) == 1
+    assert summary.skipped == [
+        f"agricultor {first.public_id}, CEP 99999999: CepNotFoundError",
+        f"agricultor {second.public_id}, CEP 99999999: CepNotFoundError",
+    ]
+
+
 def test_leaves_profiles_with_coordinates_alone(
     session: Session, run, cep_requests: list[httpx.Request]
 ):

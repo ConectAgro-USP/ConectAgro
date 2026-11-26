@@ -16,7 +16,7 @@ from src.models.interest import (
 )
 from src.models.product import BUSINESS_TZ, UNAVAILABLE, ProductDetailRead
 from src.models.purchase import PurchaseStatus
-from src.repository.interest_repository import InterestGoneError, InterestRepository
+from src.repository.interest_repository import InterestRepository
 from src.repository.profile_repository import DuplicateValueError
 from src.services.exceptions import (
     InterestAlreadyExistsError,
@@ -95,11 +95,7 @@ class InterestService:
         if reopening:
             interest.purchase_part = None
         interest.sqlmodel_update(changes)
-        try:
-            return self.interests.update(interest)
-        except InterestGoneError:
-            # o morador pode apagar o interesse em outra aba durante a edição
-            raise InterestNotFoundError from None
+        return self.interests.update(interest)
 
     def delete(self, public_id: UUID, buyer: Buyer) -> None:
         interest = self.interests.get_by_public_id(public_id)

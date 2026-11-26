@@ -39,8 +39,12 @@ def upgrade() -> None:
         )
     op.create_index(op.f("ix_products_name_search"), "products", ["name_search"], unique=False)
 
-    # o sql gerado offline não lê as linhas, e a aplicação preenche ao salvar
     if context.is_offline_mode():
+        # o sql gerado offline não lê as linhas, então só tira as maiúsculas
+        op.execute(
+            "UPDATE products SET name_search = lower(name), "
+            "description_search = lower(coalesce(description, ''))"
+        )
         return
     connection = op.get_bind()
     products = connection.execute(sa.text("SELECT id, name, description FROM products"))

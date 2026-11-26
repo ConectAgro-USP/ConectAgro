@@ -82,3 +82,16 @@ def test_downgrade_removes_the_search_columns(db_url: str) -> None:
     engine.dispose()
 
     assert {"name_search", "description_search"}.isdisjoint(column.name for column in columns)
+
+
+def test_offline_sql_lowercases_the_search_columns(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://u:p@localhost/db")
+
+    command.upgrade(alembic_config(), f"{BEFORE_SEARCH_COLUMNS}:{SEARCH_COLUMNS}", sql=True)
+
+    assert (
+        "UPDATE products SET name_search = lower(name), "
+        "description_search = lower(coalesce(description, ''))"
+    ) in capsys.readouterr().out

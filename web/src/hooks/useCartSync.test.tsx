@@ -28,12 +28,16 @@ describe("useCart sync", () => {
   it("ignores other keys changed in another tab", () => {
     const { result } = renderCart();
     const before = result.current.items;
+    const getItem = vi.spyOn(Storage.prototype, "getItem");
 
     act(() => {
       window.dispatchEvent(new StorageEvent("storage", { key: "outra-chave" }));
     });
 
+    // o carrinho igual não muda a tela, então só a leitura mostra o aviso
+    expect(getItem).not.toHaveBeenCalled();
     expect(result.current.items).toBe(before);
+    getItem.mockRestore();
   });
 
   it("keeps the cart in the tab when the browser refuses to save it", () => {

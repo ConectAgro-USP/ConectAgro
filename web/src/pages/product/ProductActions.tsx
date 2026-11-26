@@ -73,15 +73,6 @@ export function ProductActions({ product, onConflict }: Readonly<ProductActionsP
     return <CartBox product={product} isAvailable={isAvailable} stock={stock} />;
   }
 
-  // o agricultor e o síndico ainda sem prédio veem só o estoque
-  return (
-    <>
-      <p className="mt-4 font-medium text-stone-700">{stock}</p>
-      {profileType === "apartment" && (
-        <div className="mt-6">
-          <ProductContact productPublicId={product.public_id} recipient="agricultor" />
-        </div>
-      )}
-    </>
-  );
+  // o agricultor vê só o estoque
+  return <p className="mt-4 font-medium text-stone-700">{stock}</p>;
 }

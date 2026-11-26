@@ -71,6 +71,17 @@ def test_a_blocked_account_does_not_spend_the_email_and_ip_counter(client: TestC
     assert not rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP.is_blocked(key)
 
 
+def test_a_blocked_account_leaves_no_keys_for_new_ips(client: TestClient):
+    fail_from_new_ips(client, 3)
+    stored_before = [dict(limiter._attempts) for limiter in rate_limits.ALL_LIMITERS]
+
+    for number in range(100, 110):
+        response = client.post("/api/auth/login", json=WRONG_PASSWORD, headers=from_ip(number))
+        assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+    assert [dict(limiter._attempts) for limiter in rate_limits.ALL_LIMITERS] == stored_before
+
+
 def test_the_account_limit_is_fifty_failures_in_fifteen_minutes(
     monkeypatch: pytest.MonkeyPatch,
 ):

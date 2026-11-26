@@ -65,4 +65,3 @@ def test_unit_changes_while_nobody_wanted_or_bought_the_product(
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["unit"] == "duzia"
     assert response.json()["unit_locked"] is False
-

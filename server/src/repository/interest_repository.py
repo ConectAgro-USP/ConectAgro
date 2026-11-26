@@ -5,7 +5,6 @@ from uuid import UUID
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
-from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
@@ -19,10 +18,6 @@ from src.repository.product_repository import on_sale
 from src.repository.profile_repository import DuplicateValueError
 
 CENT = Decimal("0.01")
-
-
-class InterestGoneError(Exception):
-    pass
 
 
 def open_interest():
@@ -117,11 +112,7 @@ class InterestRepository:
 
     def update(self, interest: Interest) -> Interest:
         self.session.add(interest)
-        try:
-            self.session.commit()
-        except StaleDataError as error:
-            self.session.rollback()
-            raise InterestGoneError from error
+        self.session.commit()
         self.session.refresh(interest)
         return interest
 

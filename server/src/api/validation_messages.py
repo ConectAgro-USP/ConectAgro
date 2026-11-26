@@ -1,7 +1,10 @@
+import re
 from collections.abc import Callable
 from typing import Any
 
 INVALID_VALUE = "Valor inválido"
+# num literal de enum o pydantic mostra o repr do membro, e fica só o valor
+ENUM_MEMBER_REPR = re.compile(r"<\w+\.\w+: (.+?)>(?=, | or |$)")
 
 
 def _plural(count: Any, singular: str, plural: str) -> str:
@@ -9,7 +12,8 @@ def _plural(count: Any, singular: str, plural: str) -> str:
 
 
 def _options(expected: Any) -> str:
-    return f"Escolha uma destas opções: {str(expected).replace(' or ', ' ou ')}"
+    options = ENUM_MEMBER_REPR.sub(r"\1", str(expected)).replace(" or ", " ou ")
+    return f"Escolha uma destas opções: {options}"
 
 
 def _text_too_short(ctx: dict[str, Any]) -> str:

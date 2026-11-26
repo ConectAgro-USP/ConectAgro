@@ -26,7 +26,7 @@ jobs:
     needs: [ci, build_frontend]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # o plano gratuito do Render leva alguns minutos para buildar e trocar a versão
+    # o plano gratuito do Render leva minutos para buildar e trocar a versão
     timeout-minutes: 25
     environment: producao
 

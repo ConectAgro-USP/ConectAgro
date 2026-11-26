@@ -6,13 +6,13 @@ Create Date: 2026-11-24 10:00:00.000000
 
 """
 
+import unicodedata
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 import sqlmodel
 
 from alembic import context, op
-from src.core.search_text import fold
 
 # revision identifiers, used by Alembic.
 revision: str = "7f5f8a3cc230"
@@ -21,13 +21,22 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def fold(text: str | None) -> str:
+    # cópia do fold da aplicação, que a migração não importa
+    if not text:
+        return ""
+    decomposed = unicodedata.normalize("NFKD", text)
+    letters = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return " ".join(letters.casefold().split())
+
+
 def upgrade() -> None:
     op.add_column(
         "apartments",
         sa.Column("building_name_search", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     )
     if context.is_offline_mode():
-        # o SQL gerado não lê as linhas, então só tira as maiúsculas
+        # o sql gerado offline não lê as linhas, então só tira as maiúsculas
         op.execute("UPDATE apartments SET building_name_search = lower(building_name)")
     else:
         _fold_existing_names()

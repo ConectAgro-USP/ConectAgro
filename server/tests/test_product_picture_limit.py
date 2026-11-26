@@ -6,6 +6,7 @@ from sqlmodel import Session
 from src.api import rate_limits
 from src.models.farmer import Farmer
 from src.models.product import Product
+from src.services.product_picture_service import MAX_PICTURE_BYTES
 from tests.helpers import add_farmer, add_product, add_user, login
 from tests.test_product_picture_upload import PNG, stored_pictures
 
@@ -58,16 +59,23 @@ def test_uploads_of_many_accounts_block_the_ip(
     assert elsewhere.status_code == status.HTTP_200_OK
 
 
+@pytest.mark.parametrize("declared", [True, False], ids=["com-tamanho", "sem-tamanho"])
 def test_the_limit_applies_before_the_picture_is_read(
-    client: TestClient, session: Session, farmer: Farmer, monkeypatch: pytest.MonkeyPatch
+    client: TestClient,
+    session: Session,
+    farmer: Farmer,
+    monkeypatch: pytest.MonkeyPatch,
+    declared: bool,
 ):
     monkeypatch.setattr(rate_limits.PICTURE_UPLOADS_PER_USER, "max_attempts", 0)
     product = add_product(session, farmer)
+    # lido antes do limite, este corpo daria 413
+    too_large = b"x" * (MAX_PICTURE_BYTES + 1)
 
     response = client.post(
         f"/api/products/{product.public_id}/picture",
-        content=b"nao e uma foto",
-        headers={"Content-Type": "text/plain"},
+        content=too_large if declared else iter([too_large]),
+        headers={"Content-Type": "image/png"},
     )
 
     assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS

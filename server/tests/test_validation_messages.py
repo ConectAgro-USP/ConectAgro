@@ -1,4 +1,5 @@
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from fastapi import status
@@ -60,6 +61,16 @@ def test_unknown_field_and_bad_query_are_explained(client: TestClient, manager: 
     assert bad_query["msg"] == "Escolha uma destas opções: 'PENDENTE', 'APROVADO' ou 'RECUSADO'"
 
 
+@pytest.mark.usefixtures("farmer")
+def test_status_options_show_only_the_values(client: TestClient):
+    url = f"/api/purchases/{uuid4()}/parts/me/status"
+
+    error = first_error(client.patch(url, json={"status": "EM PROGRESSO"}))
+
+    assert error["loc"] == ["body", "status"]
+    assert error["msg"] == "Escolha uma destas opções: 'ENTREGUE' ou 'CANCELADA'"
+
+
 @pytest.mark.parametrize(
     "error, message",
     [
@@ -73,6 +84,13 @@ def test_unknown_field_and_bad_query_are_explained(client: TestClient, manager: 
         (
             {"type": "decimal_max_places", "ctx": {"decimal_places": 2}},
             "Use no máximo 2 casas decimais",
+        ),
+        (
+            {
+                "type": "literal_error",
+                "ctx": {"expected": "<Cor.VERDE: 'verde'>, <Cor.AZUL: 'azul claro'> or 'roxo'"},
+            },
+            "Escolha uma destas opções: 'verde', 'azul claro' ou 'roxo'",
         ),
         ({"type": "uuid_parsing", "ctx": {}}, "Identificador inválido"),
         ({"type": "date_from_datetime_parsing"}, "Informe uma data válida"),
