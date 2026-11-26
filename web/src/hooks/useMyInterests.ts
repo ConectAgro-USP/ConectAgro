@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../api/client";
 import {
   deleteInterest,
+  findMyInterest,
   listMyInterests,
   updateInterest,
   type Interest,
@@ -12,8 +13,8 @@ import { removeItem, replaceItem } from "./pageEdits";
 import { usePages } from "./usePages";
 import { useWriteGuard } from "./useWriteGuard";
 
-// a busca é só um contador, que relê a lista da primeira página
-function loadMyInterests(_reading: number, page: number): Promise<MyInterestsPage> {
+// a lista não tem busca, só as páginas
+function loadMyInterests(_search: null, page: number): Promise<MyInterestsPage> {
   return listMyInterests(page);
 }
 
@@ -29,7 +30,7 @@ interface Total {
 
 export function useMyInterests() {
   const guard = useWriteGuard();
-  const pages = usePages(loadMyInterests, 0 as number, { keepPrevious: true, keyOf });
+  const pages = usePages(loadMyInterests, null, { keyOf });
   const [total, setTotal] = useState<Total | null>(null);
   const latest = pages.lastPage?.estimated_total;
   if (latest !== undefined && latest !== total?.from) {
@@ -43,13 +44,41 @@ export function useMyInterests() {
 
   const same = (publicId: string) => (interest: Interest) => interest.public_id === publicId;
 
-  // outra aba ou a compra mudou o interesse, então a lista é relida
-  async function rereadOnConflict<T>(request: Promise<T>): Promise<T> {
+  // só o interesse é relido, e as páginas na tela ficam
+  async function rereadCard(before: Interest): Promise<Interest | null> {
+    if (before.product_public_id === null) return null;
+    const now = await guard(findMyInterest(before.product_public_id));
+    // sem achar pelo produto, o cartão fica como está
+    if (now !== null) pages.editPages(replaceItem(same(before.public_id), now));
+    return now;
+  }
+
+  // o total vem da API, que já pode ter tirado o interesse comprado
+  async function rereadTotal(): Promise<number> {
+    const first = await guard(listMyInterests(1, 1));
+    return Math.round(Number(first.estimated_total) * 100);
+  }
+
+  // sem o total da API, a diferença do cartão relido ainda serve
+  async function reread(before: Interest): Promise<void> {
+    const [card, sum] = await Promise.allSettled([rereadCard(before), rereadTotal()]);
+    if (sum.status === "fulfilled") {
+      setTotal((current) => current && { ...current, cents: sum.value });
+    } else if (card.status === "fulfilled" && card.value !== null) {
+      track(before, card.value);
+    }
+    const reads = [card, sum];
+    const failed = reads.filter((read): read is PromiseRejectedResult => read.status === "rejected");
+    for (const failure of failed) console.error(failure.reason);
+  }
+
+  // outra aba ou a compra mudou o interesse, e a recusa fica no cartão
+  async function rereadOnConflict<T>(before: Interest, request: Promise<T>): Promise<T> {
     try {
       return await guard(request);
     } catch (writeError) {
       if (writeError instanceof ApiError && writeError.status === 409) {
-        pages.changeSearch(pages.search + 1);
+        await reread(before);
       }
       throw writeError;
     }
@@ -57,6 +86,7 @@ export function useMyInterests() {
 
   async function update(before: Interest, quantity: number): Promise<void> {
     const saved = await rereadOnConflict(
+      before,
       updateInterest(before.public_id, quantity, before.product?.unit),
     );
     pages.editPages(replaceItem(same(before.public_id), saved));

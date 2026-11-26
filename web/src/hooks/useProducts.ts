@@ -66,7 +66,7 @@ export function useProducts() {
     track(before, saved);
   }
 
-  async function update(before: MyProduct, changes: ProductInput): Promise<MyProduct> {
+  async function update(before: MyProduct, changes: Partial<ProductInput>): Promise<MyProduct> {
     const saved = await guard(sendUpdateProduct(before.public_id, changes));
     replace(before, saved);
     return saved;

@@ -1,8 +1,9 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { storedCart } from "../test/cart";
 import {
   ALFACE,
+  fillDeliveryDate,
   findQuantity,
   inCart,
   LARANJA,
@@ -95,12 +96,20 @@ describe("Cart check", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it.each([401, 403])("reloads the user when the API answers %i", async (status) => {
+  it.each([401, 403])("reloads the user when the purchase is refused with %i", async (status) => {
     const { auth } = renderCartPage(
       [inCart(MANDIOCA, 1)],
+      // o produto é público, então só a compra diz que a sessão acabou
+      ...productsOf(MANDIOCA, MANDIOCA),
       jsonResponse({ detail: "Sem acesso" }, status),
+      ...productsOf(MANDIOCA),
     );
+    await findQuantity("Mandioca");
+    fillDeliveryDate("2026-12-01");
 
-    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar compra" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sem acesso");
+    expect(auth.refreshUser).toHaveBeenCalledOnce();
   });
 });

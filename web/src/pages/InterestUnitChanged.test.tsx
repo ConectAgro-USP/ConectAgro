@@ -23,11 +23,12 @@ describe("Interest, product unit changed meanwhile", () => {
     expect(urls.filter((url) => url === "/api/products/prod-123")).toHaveLength(2);
   });
 
-  it("shows the API message and reads the interests again", async () => {
+  it("shows the API message and reads the interest again", async () => {
     const product = { ...mandioca.product!, unit: "duzia" as const };
     const fetchMock = renderInterests(
       interestsResponse([mandioca]),
       refusal(),
+      interestsResponse([{ ...mandioca, product }]),
       interestsResponse([{ ...mandioca, product }]),
     );
     const card = await findCard("Mandioca");
@@ -39,6 +40,7 @@ describe("Interest, product unit changed meanwhile", () => {
 
     expect(await within(card).findByRole("alert")).toHaveTextContent(UNIT_CHANGED);
     expect(await within(card).findByLabelText("Quantidade (dúzias)")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[3][0]).toBe("/api/interests/me?page=1&page_size=1");
   });
 });

@@ -48,7 +48,8 @@ export function useResidents() {
     error: pages.error,
     hasMore: pages.hasMore,
     loadMore: pages.loadMore,
-    // relê a última página pedida, e a lista na tela fica até a resposta
-    reload: pages.retry,
+    retry: pages.retry,
+    // as respostas mudam as linhas de página, e a releitura começa na primeira
+    restart: pages.restart,
   };
 }

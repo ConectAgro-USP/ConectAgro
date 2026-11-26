@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { ApiError, errorMessage } from "../api/client";
-import type { MyProduct, ProductInput } from "../api/products";
+import { changedFields, type MyProduct, type ProductInput } from "../api/products";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductCard } from "../components/products/ProductCard";
@@ -18,13 +18,17 @@ export function MyProducts() {
   // a página inicial abre o cadastro direto pelo endereço
   const [showForm, setShowForm] = useState(params.get("novo") === "1");
   const [editing, setEditing] = useState<MyProduct | null>(null);
+  // o que o formulário mostrou ao abrir, com o que ele já mandou por cima
+  const [base, setBase] = useState<MyProduct | null>(null);
   const { tab, counts } = products;
   const empty = counts?.all === 0;
   // quem sai da aba por uma escrita some na hora, sem pedir a lista de novo
   const shown = products.items.filter((product) => inTab(tab, product));
+  const emptyTab = shown.length === 0 && !products.loading && !products.hasMore && !products.error;
 
   function openForm(product: MyProduct | null) {
     setEditing(product);
+    setBase(product);
     setShowForm(true);
   }
 
@@ -34,9 +38,14 @@ export function MyProducts() {
   }
 
   async function save(input: ProductInput, picture: Blob | null) {
-    const saved = editing ? await products.update(editing, input) : await products.create(input);
+    const changes = editing ? changedFields(base ?? editing, input) : input;
+    const saved = editing
+      ? await products.update(editing, changes)
+      : await products.create(input);
     // salvar de novo depois de a foto falhar altera o produto, sem duplicar
     setEditing(saved);
+    // a nova tentativa compara com o formulário, não com o estoque da resposta
+    setBase((current) => ({ ...(current ?? saved), ...changes }));
     if (picture) {
       await products.uploadPicture(saved.public_id, picture).catch((uploadError: unknown) => {
         const status = uploadError instanceof ApiError ? uploadError.status : 0;
@@ -77,7 +86,7 @@ export function MyProducts() {
             {counts !== null && counts.all > 0 && (
               <>
                 <ProductTabs counts={counts} chosen={tab} onChoose={products.changeTab} />
-                {shown.length === 0 && !products.loading && !products.hasMore && (
+                {emptyTab && (
                   <p className="mt-6 text-lg">
                     {tab === "available"
                       ? "Nenhum produto à venda agora."

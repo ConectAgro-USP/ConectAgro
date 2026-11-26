@@ -141,9 +141,17 @@ export function createProduct(product: ProductInput): Promise<MyProduct> {
   return apiFetch<MyProduct>("/products", { method: "POST", body: JSON.stringify(product) });
 }
 
+// só o que mudou, para o estoque antigo do formulário não voltar
+export function changedFields(before: MyProduct, input: ProductInput): Partial<ProductInput> {
+  const changed = Object.entries(input).filter(
+    ([field, value]) => value !== before[field as keyof ProductInput],
+  );
+  return Object.fromEntries(changed) as Partial<ProductInput>;
+}
+
 export function updateProduct(
   publicId: string,
-  changes: ProductInput | { is_available: boolean },
+  changes: Partial<ProductInput> | { is_available: boolean },
 ): Promise<MyProduct> {
   return apiFetch<MyProduct>(`/products/${publicId}`, {
     method: "PATCH",

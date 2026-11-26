@@ -9,6 +9,9 @@ const MODE_CLASSES =
   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 " +
   "has-focus-visible:outline-lime-800";
 
+// o tamanho que a busca por nome aceita no servidor
+const NAME_MAX_LENGTH = 150;
+
 const MODES: { mode: SearchMode; label: string }[] = [
   { mode: "name", label: "Pelo nome" },
   { mode: "cnpj", label: "Pelo CNPJ" },
@@ -48,6 +51,7 @@ export function BuildingLinkFields({ link }: Readonly<{ link: BuildingLinkForm }
         label={byName ? "Nome do prédio" : "CNPJ do Prédio"}
         hint={byName ? "Digite ao menos 3 letras do nome." : undefined}
         autoComplete="off"
+        maxLength={byName ? NAME_MAX_LENGTH : undefined}
         value={search.query}
         onChange={(event) => link.changeQuery(event.target.value)}
       />

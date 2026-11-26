@@ -75,7 +75,7 @@ describe("MyProducts form", () => {
     expect(await findCard("Laranja doce")).toBeInTheDocument();
     expect(fetchMock.mock.calls[1][0]).toBe("/api/products/produto-1");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("PATCH");
-    expect(sentBody(fetchMock, 1)).toMatchObject({ name: "Laranja doce", quantity: 12 });
+    expect(sentBody(fetchMock, 1)).toEqual({ name: "Laranja doce" });
   });
 
   it("previews the picture once the farmer leaves the link", async () => {

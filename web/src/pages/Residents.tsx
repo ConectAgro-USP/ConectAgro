@@ -67,7 +67,7 @@ export function Residents() {
         await review(resident.public_id);
       } catch (answerError) {
         // o pedido pode ter mudado ou a sessão acabado, a lista nova mostra o que vale
-        list.reload();
+        list.restart();
         throw answerError;
       }
       list.markAnswered(resident, linkStatus);
@@ -102,7 +102,7 @@ export function Residents() {
         <div className="mt-4 space-y-4">
           {/* sem rede a resposta e a lista falham juntas, e um aviso só basta */}
           <FormError message={list.error || answer.error} />
-          {list.error && <SecondaryButton onClick={list.reload}>Tentar de novo</SecondaryButton>}
+          {list.error && <SecondaryButton onClick={list.retry}>Tentar de novo</SecondaryButton>}
         </div>
         {residents.length > 0 && (
           <ul className="space-y-4 pt-4">

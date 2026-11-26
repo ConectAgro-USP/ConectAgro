@@ -74,7 +74,7 @@ describe("MyProducts, sending the product's photo", () => {
     await save();
 
     await findCard("Laranja");
-    expect(sentBody(fetchMock, 1)).toMatchObject({ picture_url: orange.picture_url });
+    expect(sentBody(fetchMock, 1)).not.toHaveProperty("picture_url");
     expect(fetchMock.mock.calls[2][0]).toBe("/api/products/produto-1/picture");
   });
 
@@ -86,7 +86,7 @@ describe("MyProducts, sending the product's photo", () => {
     await save();
 
     await findCard("Laranja");
-    expect(sentBody(fetchMock, 1)).toMatchObject({ picture_url: UPLOADED_URL });
+    expect(sentBody(fetchMock, 1)).not.toHaveProperty("picture_url");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

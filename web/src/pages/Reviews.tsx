@@ -245,6 +245,8 @@ export function Reviews() {
   if (view.kind === "create" && !reviewable) searched = reviews.pendingPages;
   if (view.kind === "edit" && !review) searched = reviews.authoredPages;
   const searching = reviews.loaded && searched !== null && searched.hasMore && !searched.error;
+  // a busca parou numa página que falhou, e o item pode estar nas que faltam
+  const searchFailed = searched !== null && searched.error !== "";
 
   useEffect(() => {
     if (searching && searched && !searched.loading) searched.loadMore();
@@ -276,7 +278,7 @@ export function Reviews() {
   }
 
   function content() {
-    if (!reviews.loaded || searching) {
+    if (!reviews.loaded || searching || searchFailed) {
       return null;
     }
     if (view.kind === "create") {
@@ -343,7 +345,7 @@ export function Reviews() {
         <output className="block text-lg font-bold text-lime-800">
           {view.kind === "list" && navigationType !== "POP" ? message : ""}
         </output>
-        {reviews.error && (view.kind === "list" || !reviews.loaded) && (
+        {reviews.error && (view.kind === "list" || !reviews.loaded || searchFailed) && (
           <div className="space-y-4 pt-4">
             <FormError message={reviews.error} />
             <SecondaryButton onClick={reviews.retry}>Tentar de novo</SecondaryButton>

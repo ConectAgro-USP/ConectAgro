@@ -11,6 +11,7 @@ import { TitleBar } from "../components/TitleBar";
 import { formatCount, formatMoney, sellerName } from "../format";
 import { useAction } from "../hooks/useAction";
 import { CART_FULL, useCart, type CartItem } from "../hooks/useCart";
+import { useWriteGuard } from "../hooks/useWriteGuard";
 import { BlockedLine, QuantityLine, RemovedLine } from "./cart/CartLines";
 import { problemOf, useCartCheck } from "./cart/useCartCheck";
 
@@ -52,6 +53,7 @@ export function Cart() {
   const cart = useCart();
   const checked = useCartCheck(cart);
   const { error, setError, pending, run } = useAction();
+  const guard = useWriteGuard();
   const navigate = useNavigate();
   const [sent, setSent] = useState(false);
   const [drafts, setDrafts] = useState<Partial<Record<string, string>>>({});
@@ -78,8 +80,10 @@ export function Cart() {
     );
 
   function changeQuantity(item: CartItem, text: string) {
-    const valid = /^\d+$/.test(text) && Number(text) > 0;
-    if (valid) cart.change(item.productPublicId, { quantity: Number(text) });
+    // lê o texto como o total lê, para a compra levar o que a linha mostra
+    const quantity = Number(text);
+    const valid = Number.isInteger(quantity) && quantity > 0;
+    if (valid) cart.change(item.productPublicId, { quantity });
     setDrafts((current) => ({ ...current, [item.productPublicId]: valid ? undefined : text }));
   }
 
@@ -120,7 +124,7 @@ export function Cart() {
         };
       });
       try {
-        await createPurchase({ expected_delivery_date: date, items: purchased });
+        await guard(createPurchase({ expected_delivery_date: date, items: purchased }));
       } catch (purchaseError) {
         // a recusa fica na tela, e a conferência mostra o que mudou
         await checked.check().catch(() => null);

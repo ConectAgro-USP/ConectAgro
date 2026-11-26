@@ -17,6 +17,8 @@ interface Query<Search> {
   page: number;
   // quantas linhas saíram antes de pedir de novo a página, que entra no fim
   catchUp?: number;
+  // relê da primeira até esta página, e todas trocam de uma vez
+  through?: number;
 }
 
 // as páginas na tela e o último pedido respondido, com página ou com erro
@@ -53,6 +55,8 @@ export interface Pages<Search, P extends PageOf> {
   retry: () => void;
   // relê da primeira página, e a lista de agora fica até a resposta
   restart: () => void;
+  // relê todas as páginas na tela, que trocam juntas quando chegam
+  refresh: () => void;
   // muda a cada página que chega, mas não com as falhas nem com as escritas
   received: object | null;
   // muda as páginas na tela depois de uma escrita, sem pedir de novo
@@ -101,6 +105,11 @@ export function usePages<Search, P extends PageOf>(
   const lastPage = pages.at(-1);
   const items: ItemOf<P>[] = pages.flatMap((page) => page.items);
   const loading = loaded.query !== query;
+  // a última página na tela, para quem relê depois de uma escrita demorada
+  const lastShown = useRef(0);
+  useEffect(() => {
+    lastShown.current = lastPage?.page ?? 0;
+  });
 
   function changeSearch(search: Search) {
     if (search === query.search) return;
@@ -133,10 +142,18 @@ export function usePages<Search, P extends PageOf>(
     setQuery({ ...query });
   }
 
+  // chamada depois de uma escrita, vale a busca de agora, não a do clique
   function restart() {
     clearError();
     setDropped(0);
-    setQuery({ search: query.search, page: 1 });
+    setQuery((current) => ({ search: current.search, page: 1 }));
+  }
+
+  function refresh() {
+    clearError();
+    setDropped(0);
+    const through = Math.max(1, lastShown.current);
+    setQuery((current) => ({ search: current.search, page: 1, through }));
   }
 
   // a escrita cala o erro da página que falhou, e o Mostrar mais volta
@@ -164,6 +181,12 @@ export function usePages<Search, P extends PageOf>(
       });
     }
 
+    // as páginas voltam juntas, sem a lista encolher enquanto chegam
+    function replaceAll(results: P[]) {
+      const fresh = edits.current.reduce((pages, edit) => edit(pages), results);
+      setLoaded({ query, pages: fresh, arrived: query });
+    }
+
     // ao reler a mesma busca a lista fica, a de outra busca sai
     function keepAfterError() {
       setLoaded((previous) => {
@@ -174,6 +197,13 @@ export function usePages<Search, P extends PageOf>(
 
     async function load() {
       try {
+        if (query.through !== undefined) {
+          const numbers = Array.from({ length: query.through }, (_, index) => index + 1);
+          const results = await Promise.all(numbers.map((page) => loadPage(query.search, page)));
+          if (outdated) return;
+          replaceAll(results);
+          return;
+        }
         const result = await loadPage(query.search, query.page);
         if (outdated) return;
         replaceFromThisPage(result);
@@ -209,6 +239,7 @@ export function usePages<Search, P extends PageOf>(
     loadMore,
     retry,
     restart,
+    refresh,
     received: loaded.arrived,
     editPages,
   };

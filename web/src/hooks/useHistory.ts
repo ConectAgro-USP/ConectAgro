@@ -33,16 +33,12 @@ export function useHistory<Item>(loadPage: LoadPage<Item>): History<Item> {
     setCounterparts(latest);
   }
 
-  function reload() {
-    // a cópia dos filtros faz a lista pedir a primeira página de novo
-    pages.changeSearch({ ...pages.search });
-  }
-
   return {
     ...pages,
     filters: pages.search,
     changeFilters: pages.changeSearch,
     counterparts,
-    reload,
+    // o pedido que acabou de mudar fica no lugar, e os totais voltam da API
+    reload: pages.refresh,
   };
 }

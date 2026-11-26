@@ -71,7 +71,7 @@ describe("MyInterests, states of the interest", () => {
     expect(within(card).getByRole("button", { name: "Remover" })).toBeEnabled();
   });
 
-  it("rereads the list when the interest joined a purchase meanwhile", async () => {
+  it("rereads the interest when it joined a purchase meanwhile", async () => {
     const refusal = jsonResponse({ detail: "Este interesse já está numa compra do prédio" }, 409);
     renderInterests(interestsResponse([mandioca]), refusal, interestsResponse([bought]));
     const card = await findCard("Mandioca");
