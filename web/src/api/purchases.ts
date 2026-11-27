@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { ProductUnit } from "./products";
 import {
   fetchHistory,
   type HistoryFilters,
@@ -27,9 +28,17 @@ export interface BuildingPurchase {
   purchase_parts: PurchasePart[];
 }
 
+// o preço e a unidade que o síndico viu, a API recusa se mudaram
+export interface PurchaseItemInput {
+  product_public_id: string;
+  quantity: number;
+  unit_price: string;
+  unit: ProductUnit;
+}
+
 export interface PurchaseInput {
   expected_delivery_date: string;
-  items: { product_public_id: string; quantity: number; unit_price: string }[];
+  items: PurchaseItemInput[];
 }
 
 export function listBuildingPurchases(

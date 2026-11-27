@@ -21,7 +21,7 @@ export function ApartmentForm({ onBack }: Readonly<{ onBack: () => void }>) {
   const zipCode = editedZipCode ?? lookup.found?.zip_code ?? "";
 
   function handleCnpjChange(cnpj: string) {
-    lookup.changeCnpj(cnpj);
+    lookup.changeQuery(cnpj);
     setEditedZipCode(null);
   }
 
@@ -34,23 +34,27 @@ export function ApartmentForm({ onBack }: Readonly<{ onBack: () => void }>) {
       cpf,
       cellphone: phones.cellphone,
       homephone: emptyToNull(phones.homephone),
-      building_cnpj: lookup.cnpj,
+      building_cnpj: lookup.query,
       zip_code: zipCode,
     };
     run(() => saveProfile(createApartment(apartment)));
   }
 
   return (
-    <ProfileForm onSubmit={handleSubmit} onBack={onBack} error={error} pending={pending}>
+    <ProfileForm
+      title="Dados do prédio"
+      onSubmit={handleSubmit}
+      onBack={onBack}
+      error={error}
+      pending={pending}
+    >
       <PhoneFields phones={phones} onChange={setPhones} />
-      <div className="grid grid-cols-2 gap-4">
-        <CpfField label="CPF do síndico" value={cpf} onChange={setCpf} />
-        <TextField
-          label="CNPJ do Prédio"
-          value={lookup.cnpj}
-          onChange={(event) => handleCnpjChange(event.target.value)}
-        />
-      </div>
+      <CpfField label="CPF do síndico" value={cpf} onChange={setCpf} />
+      <TextField
+        label="CNPJ do Prédio"
+        value={lookup.query}
+        onChange={(event) => handleCnpjChange(event.target.value)}
+      />
       <LookupStatus searching={lookup.searching} error={lookup.error} />
       {lookup.found && (
         <>

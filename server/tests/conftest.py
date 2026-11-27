@@ -1,5 +1,6 @@
 import os
 from collections.abc import Generator
+from pathlib import Path
 
 os.environ.update(
     APP_FLAVOR="dev",
@@ -16,7 +17,8 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from src.api import rate_limits
-from src.api.deps import RECENT_COMPANIES, get_session
+from src.api.deps import RECENT_ADDRESSES, RECENT_COMPANIES, get_session
+from src.core.config import settings
 from src.main import app
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
@@ -61,8 +63,9 @@ def reset_rate_limits():
 
 
 @pytest.fixture(autouse=True)
-def reset_recent_companies():
+def reset_recent_lookups():
     RECENT_COMPANIES.reset()
+    RECENT_ADDRESSES.reset()
 
 
 @pytest.fixture
@@ -75,6 +78,14 @@ def session() -> Generator[Session, None, None]:
 def client() -> Generator[TestClient, None, None]:
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def db_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    # banco em arquivo para os testes das migrações
+    url = f"sqlite:///{(tmp_path / 'migrations.db').as_posix()}"
+    monkeypatch.setattr(settings, "DATABASE_URL", url)
+    return url
 
 
 @pytest.fixture

@@ -1,27 +1,30 @@
 import { useId, useState, type SubmitEvent } from "react";
-import { Link } from "react-router";
 import type { Interest } from "../../api/interests";
 import { DangerButton, PrimaryButton, SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
+import { CARD_SURFACE } from "../../components/surface";
+import { formatQuantity, quantityLabel } from "../../format";
 import { useAction } from "../../hooks/useAction";
 import { useFocusWithoutScroll } from "../../hooks/useFocusWithoutScroll";
+import { AVAILABLE, deliveredText, interestState, purchaseText } from "../../interestState";
+import { InterestSummary } from "./InterestSummary";
 
-const CARD_CLASSES = "rounded-3xl border border-stone-200 bg-stone-100 p-5 sm:px-6";
-const NAME_LINK_CLASSES =
-  "rounded text-lime-800 underline focus-visible:outline-2 focus-visible:outline-lime-800";
-const STATUS_CLASSES = "shrink-0 rounded-full px-3 py-1 text-sm font-bold";
-const AVAILABLE_COLORS = "bg-lime-100 text-lime-800";
-const UNAVAILABLE_COLORS = "bg-stone-200 text-stone-700";
+const CARD_CLASSES = `p-5 sm:px-6 ${CARD_SURFACE}`;
 const QUANTITY_CLASSES =
-  "h-14 w-full min-w-0 rounded-xl border border-stone-400 bg-white px-4 text-lg font-bold " +
+  "h-11 w-full min-w-0 rounded-xl border border-stone-400 bg-white px-4 text-lg font-bold " +
   "text-stone-900 tabular-nums focus:border-lime-800 focus:outline-1 focus:outline-lime-800 " +
   "disabled:cursor-not-allowed disabled:bg-stone-100 sm:w-36";
 const BODY_CLASSES = "mt-4 sm:grid sm:grid-cols-[1fr_auto] sm:items-end sm:gap-x-6";
 const ACTIONS_CLASSES = "mt-4 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
 const CONFIRM_ROW_CLASSES = "flex w-full flex-col gap-3 sm:w-auto sm:flex-row";
-const AVAILABLE = "Disponível";
 // nove dígitos sempre cabem no inteiro da API
 const MAX_DIGITS = 9;
+// o que muda para o morador ao remover, conforme o estado do pedido
+const REMOVAL_EFFECTS = {
+  open: "O síndico deixa de contar a sua quantidade nas necessidades do prédio.",
+  purchase: "A compra do prédio continua, você só deixa de acompanhar o pedido aqui.",
+  delivered: "Você deixa de ver esta entrega aqui.",
+};
 
 interface InterestCardProps {
   interest: Interest;
@@ -31,9 +34,14 @@ interface InterestCardProps {
 
 export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCardProps>) {
   const name = interest.product_name ?? "Produto removido";
+  const state = interestState(interest);
+  const unit = interest.product?.unit;
+  const atLeastOne = `Informe uma quantidade de pelo menos ${formatQuantity(1, unit)}`;
   const available = interest.product_status === AVAILABLE;
+  // em compra não se edita, e entregue se pede de novo se estiver à venda
+  const editable = available && state !== "purchase";
   const [quantity, setQuantity] = useState(String(interest.quantity));
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState("");
   const [confirming, setConfirming] = useState(false);
   const save = useAction();
   const removal = useAction();
@@ -42,16 +50,22 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
   const backId = useFocusWithoutScroll(confirming);
   const requested = Number(quantity);
   const invalid = requested < 1;
-  const removalProps = { "aria-describedby": nameId, disabled: removal.pending };
+  const reordering = state === "delivered";
+  const unchanged = !reordering && requested === interest.quantity;
+  const removalProps = {
+    "aria-describedby": nameId,
+    disabled: removal.pending,
+    size: "compact" as const,
+  };
   // abaixo do rótulo, o Remover fica na altura do campo e não das mensagens
-  const idleActions = available ? "sm:self-start sm:mt-7" : "sm:mt-0";
+  const idleActions = editable ? "sm:self-start sm:mt-7" : "sm:mt-0";
 
   function change(value: string) {
     if (/\D/.test(value)) {
       return;
     }
     setQuantity(value);
-    setSaved(false);
+    setSaved("");
     save.setError("");
   }
 
@@ -59,7 +73,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
     event.preventDefault();
     save.run(async () => {
       await onSave(requested);
-      setSaved(true);
+      setSaved(reordering ? "Interesse registrado de novo" : "Quantidade atualizada");
     });
   }
 
@@ -68,27 +82,23 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
     setConfirming(false);
   }
 
+  let details = "Como o produto está indisponível, o interesse só pode ser removido.";
+  if (interest.purchase && state === "purchase") details = purchaseText(interest.purchase);
+  if (interest.purchase && reordering) {
+    details = available
+      ? deliveredText(interest.purchase)
+      : `${deliveredText(interest.purchase)}. O produto não está à venda agora.`;
+  }
+
   return (
     <li className={CARD_CLASSES}>
-      <div className="flex items-start justify-between gap-4">
-        <h2 id={nameId} className="min-w-0 text-xl font-bold break-words">
-          {interest.product_public_id ? (
-            <Link to={`/produtos/${interest.product_public_id}`} className={NAME_LINK_CLASSES}>
-              {name}
-            </Link>
-          ) : (
-            name
-          )}
-        </h2>
-        <span className={`${STATUS_CLASSES} ${available ? AVAILABLE_COLORS : UNAVAILABLE_COLORS}`}>
-          {interest.product_status}
-        </span>
-      </div>
+      <InterestSummary interest={interest} name={name} nameId={nameId} />
       <div className={BODY_CLASSES}>
-        {available ? (
+        {editable ? (
           <form onSubmit={handleSubmit} className="space-y-2">
+            {reordering && <p className="font-bold text-stone-900">{details}</p>}
             <label htmlFor={quantityId} className="block text-sm font-bold">
-              Quantidade (kg)
+              {quantityLabel(unit)}
             </label>
             <div className="flex gap-3">
               <input
@@ -102,19 +112,25 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
                 className={QUANTITY_CLASSES}
               />
               <PrimaryButton
+                size="compact"
                 aria-describedby={nameId}
-                disabled={invalid || requested === interest.quantity || save.pending}
+                disabled={invalid || unchanged || save.pending}
+                className="shrink-0"
               >
-                Salvar
+                {reordering ? "Pedir de novo" : "Salvar"}
               </PrimaryButton>
             </div>
-            {invalid && <FormError message="Informe uma quantidade de pelo menos 1 kg" />}
+            {invalid && <FormError message={atLeastOne} />}
             <FormError message={save.error} />
           </form>
         ) : (
           <div className="text-stone-600">
-            <p className="text-lg font-bold text-stone-900 tabular-nums">{interest.quantity} kg</p>
-            <p>Como o produto está indisponível, o interesse só pode ser removido.</p>
+            <p className="text-lg font-bold text-stone-900 tabular-nums">
+              {formatQuantity(interest.quantity, unit)}
+            </p>
+            <p>{details}</p>
+            {/* a recusa segue à vista depois da releitura */}
+            <FormError message={save.error} />
           </div>
         )}
         <div className={`${ACTIONS_CLASSES} ${confirming ? "sm:col-span-2" : idleActions}`}>
@@ -123,7 +139,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
               {/* em duas linhas os botões descem, longe do primeiro toque */}
               <div className="w-full space-y-3 sm:text-right">
                 <p className="font-bold">Remover o interesse em {name}?</p>
-                <p>O síndico deixa de contar a sua quantidade nas necessidades do prédio.</p>
+                <p>{REMOVAL_EFFECTS[state]}</p>
               </div>
               <FormError message={removal.error} />
               <div className={CONFIRM_ROW_CLASSES}>
@@ -137,6 +153,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
             </>
           ) : (
             <SecondaryButton
+              size="compact"
               aria-describedby={nameId}
               disabled={save.pending}
               onClick={() => setConfirming(true)}
@@ -147,9 +164,7 @@ export function InterestCard({ interest, onSave, onRemove }: Readonly<InterestCa
         </div>
       </div>
       {/* fica sempre no HTML para o leitor de tela anunciar a mudança */}
-      <output className={saved ? "mt-4 block font-bold text-lime-800" : "block"}>
-        {saved ? "Quantidade atualizada" : ""}
-      </output>
+      <output className={saved ? "mt-4 block font-bold text-lime-800" : "block"}>{saved}</output>
     </li>
   );
 }

@@ -1,6 +1,5 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { use, type ReactNode } from "react";
 import { Route, Routes } from "react-router";
 import type { BuildingNeed } from "../api/interests";
 import { BuildingNeeds } from "../pages/BuildingNeeds";
@@ -48,43 +47,21 @@ export const soldOutAlface: BuildingNeed = {
   product: { ...alface.product, quantity: 0 },
 };
 
-function renderRoutes(purchases: ReactNode, responses: Response[]) {
+export function renderNeeds(...responses: Response[]) {
   const fetchMock = stubFetch(...responses);
   renderWithAuth(
     <Routes>
       <Route path="/" element={<BuildingNeeds />} />
-      <Route path="/compras" element={purchases} />
+      <Route path="/carrinho" element={<h1>Carrinho</h1>} />
     </Routes>,
     fakeAuth({ user: anaAsManager }),
   );
   return fetchMock;
 }
 
-export function renderNeeds(...responses: Response[]) {
-  return renderRoutes(<h1>Compras do prédio</h1>, responses);
-}
-
-// a troca de página espera a promessa, e o formulário fica na tela
-export function renderNeedsWithSlowPurchases(...responses: Response[]) {
-  const neverLoaded = new Promise<ReactNode>(() => {});
-  function SlowPurchases() {
-    return use(neverLoaded);
-  }
-  return renderRoutes(<SlowPurchases />, responses);
-}
-
-export async function openPurchase(...names: string[]) {
+export async function select(...names: string[]) {
   for (const name of names) {
-    const selection = new RegExp(`^Selecionar ${name} de`);
-    await userEvent.click(await screen.findByRole("checkbox", { name: selection }));
+    const box = await screen.findByRole("checkbox", { name: new RegExp(`^Selecionar ${name} de`) });
+    await userEvent.click(box);
   }
-  await userEvent.click(screen.getByRole("button", { name: "Fechar compra" }));
-}
-
-export function groupOf(farmer: string): HTMLElement {
-  return screen.getByRole("heading", { name: farmer }).closest("section")!;
-}
-
-export function fillDeliveryDate(date: string) {
-  fireEvent.change(screen.getByLabelText("Entrega prevista"), { target: { value: date } });
 }

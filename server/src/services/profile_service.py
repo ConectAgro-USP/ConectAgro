@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from src.connectors.brasilapi import BrasilApiConnector, normalize_cep
+from src.connectors.brasilapi import normalize_cep
 from src.connectors.models import Company
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
@@ -18,6 +18,7 @@ from src.models.profile import (
 )
 from src.models.user import User
 from src.repository.profile_repository import DuplicateValueError, ProfileRepository
+from src.services.cep_service import CepService
 from src.services.cnpj_service import CnpjService, normalize_cnpj
 from src.services.exceptions import (
     ApartmentNotFoundError,
@@ -38,7 +39,7 @@ PROFILE_FIELDS = {
 
 
 class ProfileService:
-    def __init__(self, profiles: ProfileRepository, ceps: BrasilApiConnector, cnpjs: CnpjService):
+    def __init__(self, profiles: ProfileRepository, ceps: CepService, cnpjs: CnpjService):
         self.profiles = profiles
         self.ceps = ceps
         self.cnpjs = cnpjs

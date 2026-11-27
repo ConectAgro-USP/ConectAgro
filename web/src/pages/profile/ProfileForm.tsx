@@ -4,6 +4,7 @@ import { PrimaryButton, SecondaryButton } from "../../components/Button";
 import { FormError } from "../../components/FormError";
 
 interface ProfileFormProps {
+  title: string;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   onBack: () => void;
   error: string;
@@ -12,6 +13,7 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({
+  title,
   onSubmit,
   onBack,
   error,
@@ -19,7 +21,7 @@ export function ProfileForm({
   children,
 }: Readonly<ProfileFormProps>) {
   return (
-    <AuthLayout title="Local e Contato">
+    <AuthLayout title={title} step={3}>
       <form onSubmit={onSubmit} className="space-y-6">
         {children}
         <FormError message={error} />

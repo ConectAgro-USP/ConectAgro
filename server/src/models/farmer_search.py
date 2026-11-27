@@ -1,12 +1,11 @@
-from enum import IntEnum
-from typing import Annotated
+from enum import IntEnum, StrEnum
+from typing import Annotated, NamedTuple
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
+from src.core.text import reject_null_character
 from src.models.farmer import FarmerSearchRead
-from src.models.pagination import PaginatedResponse
-from src.models.product import INT4_MAX
-from src.services.text_service import reject_null_character
+from src.models.pagination import PageParams, PaginatedResponse
 
 
 class AllowedDistance(IntEnum):
@@ -15,14 +14,25 @@ class AllowedDistance(IntEnum):
     FIFTEEN = 15
 
 
-class FarmerSearchFilters(BaseModel):
+class FarmerSort(StrEnum):
+    REPUTATION = "reputation"
+    DISTANCE = "distance"
+
+
+class BoundingBox(NamedTuple):
+    min_latitude: float
+    max_latitude: float
+    min_longitude: float
+    max_longitude: float
+
+
+class FarmerSearchFilters(PageParams):
     name: str | None = Field(default=None, max_length=200)
     products: list[Annotated[str, Field(max_length=200)]] = Field(
         default_factory=list, max_length=10
     )
     max_distance_km: AllowedDistance | None = None
-    page: int = Field(default=1, ge=1, le=INT4_MAX)
-    page_size: int = Field(default=20, ge=1, le=100)
+    sort: FarmerSort = FarmerSort.REPUTATION
 
     @field_validator("name")
     @classmethod

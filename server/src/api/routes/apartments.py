@@ -10,30 +10,52 @@ from src.api.deps import (
     PurchaseServiceDep,
     get_current_user,
 )
-from src.models.buyer import LinkStatus
-from src.models.interest import ApartmentNeedRead
-from src.models.profile import ApartmentMatch, Cnpj, ResidentRead
+from src.models.interest import ApartmentNeedsFilters, ApartmentNeedsPage
+from src.models.profile import (
+    ApartmentMatch,
+    BuildingNameQuery,
+    Cnpj,
+    ResidentRead,
+    ResidentsFilters,
+    ResidentsPage,
+)
 from src.models.purchase_history import BuildingPurchasesFilters, BuildingPurchasesHistory
-from src.services.exceptions import InvalidCnpjError, ResidentNotFoundError
+from src.services.exceptions import (
+    BuildingNameTooShortError,
+    InvalidCnpjError,
+    ResidentNotFoundError,
+)
 
 router = APIRouter(prefix="/apartments", tags=["apartments"])
 
 
 @router.get("", response_model=list[ApartmentMatch], dependencies=[Depends(get_current_user)])
-def list_apartments(cnpj: Cnpj, apartment_service: ApartmentServiceDep):
+def list_apartments(
+    apartment_service: ApartmentServiceDep,
+    cnpj: Cnpj | None = None,
+    name: BuildingNameQuery | None = None,
+):
+    if (cnpj is None) == (name is None):
+        message = "Informe o CNPJ ou o nome do prédio, apenas um dos dois"
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, message)
     try:
+        if name is not None:
+            return apartment_service.list_by_name(name)
         return apartment_service.list_by_cnpj(cnpj)
     except InvalidCnpjError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "CNPJ inválido") from None
+    except BuildingNameTooShortError:
+        message = "Informe ao menos 3 letras do nome do prédio"
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, message) from None
 
 
-@router.get("/me/buyers", response_model=list[ResidentRead])
+@router.get("/me/buyers", response_model=ResidentsPage)
 def list_my_residents(
+    filters: Annotated[ResidentsFilters, Query()],
     apartment: CurrentApartment,
     apartment_service: ApartmentServiceDep,
-    link_status: Annotated[LinkStatus | None, Query(alias="status")] = None,
 ):
-    return apartment_service.list_residents(apartment, link_status)
+    return apartment_service.list_residents(apartment, filters)
 
 
 @router.post("/me/buyers/{public_id}/approve", response_model=ResidentRead)
@@ -63,12 +85,12 @@ def list_my_purchases(
     purchase_service: PurchaseServiceDep,
 ):
     return purchase_service.list_building_purchases(apartment, filters)
-    
 
-@router.get("/me/needs", response_model=list[ApartmentNeedRead])
+
+@router.get("/me/needs", response_model=ApartmentNeedsPage)
 def list_apartment_needs(
+    filters: Annotated[ApartmentNeedsFilters, Query()],
     apartment: CurrentApartment,
     interest_service: InterestServiceDep,
-    descending: bool = Query(default=True),
 ):
-    return interest_service.list_apartment_needs(apartment, descending=descending)
+    return interest_service.list_apartment_needs(apartment, filters)

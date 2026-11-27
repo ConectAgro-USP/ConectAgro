@@ -1,7 +1,10 @@
 import { Route, Routes } from "react-router";
+import type { Interest } from "../api/interests";
 import type { ProductDetail as ProductDetailType } from "../api/products";
 import { ProductDetail } from "../pages/ProductDetail";
-import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth } from "./helpers";
+import type { ReceivedReview } from "../api/reviews";
+import { anaAsBuyer, fakeAuth, jsonResponse, pageBody, renderWithAuth } from "./helpers";
+import { answerMyInterests } from "./interests";
 
 export const sampleProduct: ProductDetailType = {
   public_id: "prod-123",
@@ -10,6 +13,7 @@ export const sampleProduct: ProductDetailType = {
   picture_url: "https://example.com/mandioca.jpg",
   quantity: 25,
   price: "20.00",
+  unit: "kg",
   expiration_date: "2099-10-20",
   is_available: true,
   farmer_public_id: "farmer-1",
@@ -22,11 +26,12 @@ export const sampleProduct: ProductDetailType = {
   },
 };
 
-export const emptyReviews = {
-  average_rating: null,
-  reviews_count: 0,
-  reviews: [],
-};
+// a média e a contagem valem para todas, a página traz só as escritas
+export function farmerReviews(written: ReceivedReview[], average: number | null, count: number) {
+  return pageBody(written, { average_rating: average, reviews_count: count });
+}
+
+export const emptyReviews = farmerReviews([], null, 0);
 
 export const managerContact = {
   recipient_name: "Carlos S.",
@@ -42,12 +47,16 @@ export function pageLoad(product = sampleProduct, reviews: unknown = emptyReview
 export function renderDetail(
   auth = fakeAuth({ user: anaAsBuyer("APROVADO") }),
   url = "/produtos/prod-123",
+  ...interests: (Interest[] | Response)[]
 ) {
-  return renderWithAuth(
+  const listed = answerMyInterests(...interests);
+  const view = renderWithAuth(
     <Routes>
       <Route path="/produtos/:publicId" element={<ProductDetail />} />
     </Routes>,
     auth,
     url,
   );
+  // as leituras do interesse, para o teste ver o que foi pedido
+  return Object.assign(view, { listed });
 }

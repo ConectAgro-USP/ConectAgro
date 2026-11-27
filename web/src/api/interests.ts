@@ -1,9 +1,31 @@
 import { apiFetch, ignoreNotFound } from "./client";
-import type { ProductDetail } from "./products";
+import { fetchAllPages, LARGEST_PAGE, pageQuery, type Page } from "./pagination";
+import type { ProductDetail, ProductUnit } from "./products";
 
 export interface InterestInput {
   product_public_id: string;
   quantity: number;
+  // a unidade mostrada na página, a API recusa se ela mudou
+  unit: ProductUnit;
+}
+
+// só a parte em andamento ou entregue, a cancelada devolve o interesse aberto
+export interface InterestPurchase {
+  public_id: string;
+  created_at: string;
+  expected_delivery_date: string;
+  status: "EM PROGRESSO" | "ENTREGUE";
+  closed_at: string | null;
+}
+
+export interface InterestProduct {
+  picture_url: string | null;
+  price: string;
+  unit: ProductUnit;
+  quantity: number;
+  expiration_date: string;
+  is_available: boolean;
+  farmer: { public_id: string; short_name: string; farm_name: string | null };
 }
 
 export interface Interest {
@@ -15,6 +37,9 @@ export interface Interest {
   quantity: number;
   created_at: string;
   updated_at: string | null;
+  purchase: InterestPurchase | null;
+  // nulo quando o agricultor apagou o produto
+  product: InterestProduct | null;
 }
 
 export interface BuildingNeed {
@@ -30,14 +55,35 @@ export function createInterest(interest: InterestInput): Promise<Interest> {
   });
 }
 
-export function listMyInterests(): Promise<Interest[]> {
-  return apiFetch<Interest[]>("/interests/me");
+export interface MyInterestsPage extends Page<Interest> {
+  // soma dos interesses abertos em produtos à venda, de todas as páginas
+  estimated_total: string;
 }
 
-export function updateInterest(publicId: string, quantity: number): Promise<Interest> {
+export function listMyInterests(page: number, pageSize?: number): Promise<MyInterestsPage> {
+  return apiFetch<MyInterestsPage>(`/interests/me?${pageQuery(page, pageSize)}`);
+}
+
+export function listAllMyInterests(): Promise<Interest[]> {
+  return fetchAllPages((page) => listMyInterests(page, LARGEST_PAGE));
+}
+
+// o morador tem no máximo um interesse por produto
+export async function findMyInterest(productPublicId: string): Promise<Interest | null> {
+  const query = pageQuery(1);
+  query.set("product_public_id", productPublicId);
+  const { items } = await apiFetch<MyInterestsPage>(`/interests/me?${query}`);
+  return items[0] ?? null;
+}
+
+export function updateInterest(
+  publicId: string,
+  quantity: number,
+  unit: ProductUnit | undefined,
+): Promise<Interest> {
   return apiFetch<Interest>(`/interests/${publicId}`, {
     method: "PATCH",
-    body: JSON.stringify({ quantity }),
+    body: JSON.stringify({ quantity, unit }),
   });
 }
 
@@ -47,6 +93,8 @@ export function deleteInterest(publicId: string): Promise<void> {
   );
 }
 
-export function listBuildingNeeds(descending: boolean): Promise<BuildingNeed[]> {
-  return apiFetch<BuildingNeed[]>(`/apartments/me/needs?descending=${descending}`);
+export function listBuildingNeeds(descending: boolean, page: number): Promise<Page<BuildingNeed>> {
+  const query = pageQuery(page);
+  query.set("descending", String(descending));
+  return apiFetch<Page<BuildingNeed>>(`/apartments/me/needs?${query}`);
 }

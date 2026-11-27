@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from src.connectors.cnpja import CnpjaConnector
 from src.connectors.models import Company
 from src.services.cnpj_service import CnpjService, normalize_cnpj
-from src.services.company_cache import CompanyCache
 from src.services.exceptions import (
     CnpjNotActiveError,
     CnpjNotFoundError,
@@ -14,6 +13,7 @@ from src.services.exceptions import (
     InvalidCnpjError,
     RateLimitedError,
 )
+from src.services.recent_cache import RecentCache
 from tests.helpers import FakeClock
 
 BANCO_DO_BRASIL = Company(name="BANCO DO BRASIL SA", registration_status="Ativa", cep="70040912")
@@ -28,7 +28,7 @@ def fake_service(
     companies.get_company.side_effect = answers
     if clock is None:
         clock = FakeClock()
-    recent_companies = CompanyCache(keep_seconds=90, clock=clock.read)
+    recent_companies = RecentCache[Company](keep_seconds=90, clock=clock.read)
     return CnpjService(companies, recent_companies), companies
 
 

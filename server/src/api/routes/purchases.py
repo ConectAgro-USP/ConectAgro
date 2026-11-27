@@ -12,10 +12,10 @@ from src.models.purchase import (
 from src.services.exceptions import (
     ProductExpiredError,
     ProductNotFoundError,
-    ProductNotNeededError,
     ProductOutOfStockError,
     ProductPriceChangedError,
     ProductUnavailableError,
+    ProductUnitChangedError,
     PurchaseAccessDeniedError,
     PurchaseAlreadyDeliveredError,
     PurchaseNotFoundError,
@@ -42,14 +42,14 @@ def create_purchase(
     except ProductUnavailableError as error:
         message = f"O produto {error} está indisponível e não pode ser comprado"
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
+    except ProductUnitChangedError as error:
+        message = f"A unidade do produto {error} mudou. Confira o carrinho antes de confirmar"
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
     except ProductPriceChangedError as error:
         message = f"O preço do produto {error} mudou, confira o resumo da compra"
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
     except ProductOutOfStockError as error:
         message = f"O produto {error} não tem a quantidade pedida"
-        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
-    except ProductNotNeededError as error:
-        message = f"O produto {error} não está nas necessidades do prédio"
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
 

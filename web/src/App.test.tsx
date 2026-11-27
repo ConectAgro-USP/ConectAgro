@@ -4,7 +4,7 @@ import { ana, anaAsBuyer, fakeAuth, renderWithAuth, stubSilentApi } from "./test
 
 describe("App", () => {
   it.each([
-    ["/", "Produtos em destaque"],
+    ["/", "Produtos disponíveis"],
     ["/perfil", "Meu perfil"],
   ])("shows the header with the page at %s", (url, heading) => {
     stubSilentApi();
@@ -17,7 +17,8 @@ describe("App", () => {
   it("shows no header before the profile is set up", () => {
     renderWithAuth(<App />, fakeAuth({ user: ana }), "/");
 
-    expect(screen.getByRole("heading", { name: "Perfil" })).toBeInTheDocument();
+    const question = "Como você vai usar o ConectAgro?";
+    expect(screen.getByRole("heading", { name: question })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Perfil" })).not.toBeInTheDocument();
   });
 

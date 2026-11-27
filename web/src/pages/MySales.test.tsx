@@ -24,6 +24,7 @@ const farmer: ProfileRead = {
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
   product_name: "Mandioca",
+  product_unit: "kg",
   quantity: 3,
   unit_price: "7.00",
   subtotal: "21.00",
@@ -31,6 +32,7 @@ const mandioca: PurchaseItem = {
 const laranja: PurchaseItem = {
   product_public_id: "produto-2",
   product_name: "Laranja",
+  product_unit: "kg",
   quantity: 2,
   unit_price: "9.00",
   subtotal: "18.00",
@@ -39,6 +41,10 @@ const sale: Sale = {
   purchase_public_id: "compra-1",
   apartment_public_id: "predio-1",
   building_name: "Cond. Village Vila Verde",
+  delivery_address: null,
+  delivery_zip_code: "09450000",
+  manager_name: "Maria Silva",
+  manager_cellphone: null,
   purchased_at: "2026-11-10T14:00:00Z",
   expected_delivery_date: "2026-11-20",
   status: "EM PROGRESSO",
@@ -94,7 +100,7 @@ describe("MySales", () => {
     const card = await findCard("Cond. Village Vila Verde");
 
     expect(within(card).getByText("Mandioca e Laranja")).toBeVisible();
-    expect(within(card).getByText("Pendente")).toBeVisible();
+    expect(within(card).getByText("A entregar")).toBeVisible();
     expect(card).toHaveTextContent(/Data do pedido:\s*10\/11/);
     expect(card).toHaveTextContent(/Valor combinado\s*R\$ 39,00/);
   });
@@ -103,7 +109,7 @@ describe("MySales", () => {
     renderSales(pageOf(sale));
 
     expect(await screen.findByText("Total entregue")).toBeInTheDocument();
-    expect(screen.getByText("Total pendente")).toBeInTheDocument();
+    expect(screen.getByText("Total a entregar")).toBeInTheDocument();
   });
 
   it("opens the items of a sale", async () => {
@@ -112,9 +118,9 @@ describe("MySales", () => {
 
     await userEvent.click(within(card).getByRole("button", { name: "Ver detalhes" }));
 
-    expect(within(card).getByText("3 × R$ 7,00")).toBeVisible();
-    expect(card).toHaveTextContent(/Mandioca\s*3 × R\$ 7,00\s*R\$ 21,00/);
-    expect(card).toHaveTextContent(/Laranja\s*2 × R\$ 9,00\s*R\$ 18,00/);
+    expect(within(card).getByText("3 kg × R$ 7,00")).toBeVisible();
+    expect(card).toHaveTextContent(/Mandioca\s*3 kg × R\$ 7,00\s*R\$ 21,00/);
+    expect(card).toHaveTextContent(/Laranja\s*2 kg × R\$ 9,00\s*R\$ 18,00/);
   });
 
   it("filters the sales by building", async () => {
@@ -155,11 +161,12 @@ describe("MySales", () => {
     expect(await screen.findByRole("heading", { name: "Minhas vendas" })).toBeInTheDocument();
   });
 
-  it("sends a manager at /vendas back to the home", () => {
+  it("tells a manager at /vendas there is no access, without calling the API", () => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsManager }), "/vendas");
 
-    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
+    const title = screen.getByRole("heading", { name: "Você não tem acesso a esta página" });
+    expect(title).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

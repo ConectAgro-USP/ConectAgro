@@ -8,6 +8,7 @@ import { anaAsFarmer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
   product_name: "Mandioca",
+  product_unit: "kg",
   quantity: 3,
   unit_price: "7.00",
   subtotal: "21.00",
@@ -16,6 +17,10 @@ export const pendingSale: Sale = {
   purchase_public_id: "compra-1",
   apartment_public_id: "predio-1",
   building_name: "Cond. Village Vila Verde",
+  delivery_address: "Rua Quatro, 251 - Vila Verde, Rio Grande da Serra",
+  delivery_zip_code: "09450000",
+  manager_name: "Maria Silva",
+  manager_cellphone: "11987654321",
   purchased_at: "2026-11-10T14:00:00Z",
   expected_delivery_date: "2026-11-20",
   status: "EM PROGRESSO",

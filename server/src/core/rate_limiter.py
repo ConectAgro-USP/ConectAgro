@@ -35,8 +35,11 @@ class RateLimiter:
         with self._lock:
             self._start_new_window_if_ended()
             attempts = self._attempts.get(key, 0)
-            if attempts > 0:
+            if attempts > 1:
                 self._attempts[key] = attempts - 1
+            else:
+                # zerada, a chave sai, e IPs forjados não enchem a memória
+                self._attempts.pop(key, None)
 
     def reset(self) -> None:
         with self._lock:

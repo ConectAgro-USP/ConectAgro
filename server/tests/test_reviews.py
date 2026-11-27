@@ -42,7 +42,10 @@ def test_manager_and_resident_review_and_farmer_gets_the_average(
     assert by_resident.status_code == status.HTTP_201_CREATED
     assert by_resident.json()["buyer_public_id"] == str(resident.public_id)
     assert by_resident.json()["comment"] == ""
-    assert public.json() == own.json()
+    body = public.json()
+    assert body["items"] == own.json()["reviews"]
+    assert body["average_rating"] == own.json()["average_rating"]
+    assert body["reviews_count"] == own.json()["reviews_count"]
     assert (own.json()["average_rating"], own.json()["reviews_count"]) == (3.5, 2)
     assert [set(review) for review in own.json()["reviews"]] == [LISTED_FIELDS, LISTED_FIELDS]
     assert [review["rating"] for review in own.json()["reviews"]] == [2, 5]
@@ -62,7 +65,7 @@ def test_review_rejects_invalid_body(
     response = client.post(reviews_url(purchase, joao), json={"rating": 5} | body)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-    assert client.get(REVIEWABLE_URL).json() != []
+    assert client.get(REVIEWABLE_URL).json()["items"] != []
 
 
 def test_only_delivered_parts_of_the_purchase_can_be_reviewed(
@@ -83,8 +86,9 @@ def test_only_delivered_parts_of_the_purchase_can_be_reviewed(
     assert outside.status_code == status.HTTP_404_NOT_FOUND
     assert unknown.status_code == status.HTTP_404_NOT_FOUND
     assert client.get(f"/api/farmers/{uuid4()}/reviews").status_code == status.HTTP_404_NOT_FOUND
-    empty = {"average_rating": None, "reviews_count": 0, "reviews": []}
-    assert client.get(f"/api/farmers/{maria.public_id}/reviews").json() == empty
+    empty = {"average_rating": None, "reviews_count": 0, "items": [], "total": 0}
+    reviews = client.get(f"/api/farmers/{maria.public_id}/reviews").json()
+    assert {key: reviews[key] for key in empty} == empty
 
 
 def test_people_outside_the_building_cannot_review(
@@ -109,12 +113,10 @@ def test_people_outside_the_building_cannot_review(
     assert client.get(REVIEWABLE_URL).status_code == forbidden
     assert client.get("/api/farmers/me/reviews").json()["average_rating"] == 5
     login(client, neighbor)
-    assert client.get(REVIEWABLE_URL).json() == []
+    assert client.get(REVIEWABLE_URL).json()["items"] == []
     assert client.get("/api/farmers/me/reviews").status_code == forbidden
     client.cookies.clear()
-    unauthorized = status.HTTP_401_UNAUTHORIZED
-    assert client.post(url, json={"rating": 1}).status_code == unauthorized
-    assert client.get(f"/api/farmers/{joao.public_id}/reviews").status_code == unauthorized
+    assert client.post(url, json={"rating": 1}).status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_only_the_author_updates_the_review(

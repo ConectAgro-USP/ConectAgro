@@ -3,15 +3,11 @@ import { approveResident, rejectResident, type Resident } from "../api/residents
 import { SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ResidentCard } from "../components/ResidentCard";
+import { ShowMore } from "../components/ShowMore";
+import { ToggleGroup } from "../components/ToggleGroup";
+import { TitleBar } from "../components/TitleBar";
 import { useAction } from "../hooks/useAction";
 import { useResidents } from "../hooks/useResidents";
-
-// no celular os três botões dividem a largura da tela
-const TAB_CLASSES =
-  "h-11 flex-1 rounded-full border border-stone-400 bg-white px-2 font-bold sm:flex-none " +
-  "sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800 aria-pressed:border-lime-800 aria-pressed:bg-lime-100 " +
-  "aria-pressed:text-lime-800 disabled:cursor-not-allowed disabled:opacity-60";
 
 // cada situação tem o nome do botão e as frases para nenhum, um e vários moradores
 const SITUATIONS: Record<LinkStatus, { tab: string; none: string; one: string; many: string }> = {
@@ -34,7 +30,10 @@ const SITUATIONS: Record<LinkStatus, { tab: string; none: string; one: string; m
     many: "pedidos recusados",
   },
 };
-const STATUSES = Object.keys(SITUATIONS) as LinkStatus[];
+const TABS = (Object.keys(SITUATIONS) as LinkStatus[]).map((status) => ({
+  value: status,
+  label: SITUATIONS[status].tab,
+}));
 
 function summarize(status: LinkStatus, count: number): string {
   const { none, one, many } = SITUATIONS[status];
@@ -51,8 +50,6 @@ export function Residents() {
   const list = useResidents();
   const answer = useAction();
   const residents = list.residents ?? [];
-  // quem acabou de receber outra resposta continua na tela, mas sai da conta
-  const count = residents.filter((resident) => resident.link_status === list.status).length;
 
   function changeStatus(status: LinkStatus) {
     // o aviso de uma resposta que falhou não vale para a outra lista
@@ -70,7 +67,7 @@ export function Residents() {
         await review(resident.public_id);
       } catch (answerError) {
         // o pedido pode ter mudado ou a sessão acabado, a lista nova mostra o que vale
-        list.reload();
+        list.restart();
         throw answerError;
       }
       list.markAnswered(resident, linkStatus);
@@ -78,29 +75,24 @@ export function Residents() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-12 text-stone-900 sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-4xl font-extrabold">Moradores</h1>
-        <div className="mt-6 flex gap-2">
-          {STATUSES.map((status) => (
-            <button
-              key={status}
-              type="button"
-              aria-pressed={status === list.status}
-              disabled={answer.pending}
-              onClick={() => changeStatus(status)}
-              className={TAB_CLASSES}
-            >
-              {SITUATIONS[status].tab}
-            </button>
-          ))}
-        </div>
+    <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
+      <TitleBar title="Moradores" />
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        <ToggleGroup
+          label="Situação dos moradores"
+          hideLabel
+          options={TABS}
+          value={list.status}
+          disabled={answer.pending}
+          onChange={changeStatus}
+          className="mt-6"
+        />
         {/* fica sempre no HTML para o leitor de tela anunciar a mudança */}
         <output className="mt-4 block text-lg text-stone-600">
           {list.loading ? "Carregando..." : ""}
         </output>
         {list.residents && (
-          <p className="text-lg text-stone-600">{summarize(list.status, count)}</p>
+          <p className="text-lg text-stone-600">{summarize(list.status, list.count)}</p>
         )}
         {list.status === "PENDENTE" && list.residents?.length === 0 && (
           <p className="mt-2 text-lg text-stone-600">
@@ -110,7 +102,7 @@ export function Residents() {
         <div className="mt-4 space-y-4">
           {/* sem rede a resposta e a lista falham juntas, e um aviso só basta */}
           <FormError message={list.error || answer.error} />
-          {list.error && <SecondaryButton onClick={list.reload}>Tentar de novo</SecondaryButton>}
+          {list.error && <SecondaryButton onClick={list.retry}>Tentar de novo</SecondaryButton>}
         </div>
         {residents.length > 0 && (
           <ul className="space-y-4 pt-4">
@@ -126,6 +118,9 @@ export function Residents() {
             ))}
           </ul>
         )}
+        <div className="flex justify-center pt-6 empty:hidden">
+          <ShowMore list={list} label="Mostrar mais moradores" />
+        </div>
       </div>
     </main>
   );

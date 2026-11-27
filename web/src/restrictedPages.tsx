@@ -2,10 +2,12 @@ import {
   ClipboardListIcon,
   HandCoinsIcon,
   HeartIcon,
+  HouseIcon,
   MapPinIcon,
   PackageIcon,
   ReceiptTextIcon,
   StarIcon,
+  UserIcon,
   UsersIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -22,48 +24,65 @@ import { NearbyFarmers } from "./pages/NearbyFarmers";
 import { Residents } from "./pages/Residents";
 import { Reviews } from "./pages/Reviews";
 
-interface RestrictedPage {
+export interface NavDestination {
   path: string;
+  // nome curto do link, o título da página pode ser mais longo
   label: string;
   icon: LucideIcon;
+}
+
+interface RestrictedPage extends NavDestination {
+  title: string;
   profiles: ProfileType[];
   element: ReactNode;
 }
 
-// as rotas e os links do cabeçalho saem daqui, então só quem pode abrir a página vê o link
+export const HOME_DESTINATION: NavDestination = { path: "/", label: "Início", icon: HouseIcon };
+export const PROFILE_DESTINATION: NavDestination = {
+  path: "/perfil",
+  label: "Perfil",
+  icon: UserIcon,
+};
+
+// as rotas e os links saem daqui, então só quem pode abrir a página vê o link
 export const RESTRICTED_PAGES: RestrictedPage[] = [
+  {
+    path: "/moradores",
+    label: "Moradores",
+    title: "Moradores",
+    icon: UsersIcon,
+    profiles: ["apartment"],
+    element: <Residents />,
+  },
   {
     path: "/agricultores",
     label: "Agricultores",
+    title: "Agricultores",
     icon: MapPinIcon,
     // a distância sai do CEP do prédio, que o síndico e o morador aprovado têm
     profiles: ["buyer", "apartment"],
     element: <NearbyFarmers />,
   },
   {
-    path: "/moradores",
-    label: "Moradores",
-    icon: UsersIcon,
-    profiles: ["apartment"],
-    element: <Residents />,
-  },
-  {
     path: "/necessidades",
-    label: "Necessidades do prédio",
+    label: "Necessidades",
+    title: "Necessidades do prédio",
     icon: ClipboardListIcon,
     profiles: ["apartment"],
     element: <BuildingNeeds />,
   },
   {
     path: "/compras",
-    label: "Compras do prédio",
+    label: "Compras",
+    title: "Compras do prédio",
     icon: ReceiptTextIcon,
     profiles: ["apartment"],
     element: <BuildingPurchases />,
   },
   {
     path: "/interesses",
-    label: "Meus interesses",
+    label: "Interesses",
+    title: "Meus interesses",
     icon: HeartIcon,
     profiles: ["buyer"],
     element: <MyInterests />,
@@ -71,27 +90,31 @@ export const RESTRICTED_PAGES: RestrictedPage[] = [
   {
     path: REVIEWS_PATH,
     label: "Avaliações",
+    title: "Avaliações",
     icon: StarIcon,
     profiles: ["apartment", "buyer"],
     element: <Reviews />,
   },
   {
     path: "/meus-produtos",
-    label: "Meus produtos",
+    label: "Produtos",
+    title: "Meus produtos",
     icon: PackageIcon,
     profiles: ["farmer"],
     element: <MyProducts />,
   },
   {
     path: "/vendas",
-    label: "Minhas vendas",
+    label: "Vendas",
+    title: "Minhas vendas",
     icon: HandCoinsIcon,
     profiles: ["farmer"],
     element: <MySales />,
   },
   {
     path: "/avaliacoes",
-    label: "Minhas avaliações",
+    label: "Avaliações",
+    title: "Minhas avaliações",
     icon: StarIcon,
     profiles: ["farmer"],
     element: <MyReviews />,
@@ -103,4 +126,25 @@ export function pagesOf(profileType: ProfileType | null): RestrictedPage[] {
     return [];
   }
   return RESTRICTED_PAGES.filter((page) => page.profiles.includes(profileType));
+}
+
+// destinos da barra inferior depois do início, os outros ficam no mais
+const BOTTOM_BAR: Record<ProfileType, string[]> = {
+  farmer: ["/meus-produtos", "/vendas", "/avaliacoes"],
+  // com cinco botões o rótulo necessidades não cabe em 360 px
+  apartment: ["/necessidades", "/compras"],
+  buyer: ["/agricultores", "/interesses", REVIEWS_PATH],
+};
+
+interface Navigation {
+  tabs: NavDestination[];
+  more: NavDestination[];
+}
+
+export function navigationOf(profileType: ProfileType | null): Navigation {
+  const pages = pagesOf(profileType);
+  const bar = profileType === null ? [] : BOTTOM_BAR[profileType];
+  const tabs = bar.flatMap((path) => pages.filter((page) => page.path === path));
+  const more = pages.filter((page) => !bar.includes(page.path));
+  return { tabs: [HOME_DESTINATION, ...tabs], more };
 }

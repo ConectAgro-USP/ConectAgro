@@ -14,7 +14,6 @@ from src.models.user import User
 from tests.helpers import add_farmer, add_interest, add_product, add_resident, add_user, login
 
 FUTURE = datetime.now(BUSINESS_TZ).date() + timedelta(days=7)
-NOT_NEEDED = "O produto {} não está nas necessidades do prédio"
 
 
 @pytest.fixture(autouse=True)
@@ -48,18 +47,17 @@ def stock_of(session: Session, product: Product) -> int:
     return product.quantity
 
 
-def test_create_purchase_refuses_product_outside_the_building_needs(
+def test_create_purchase_accepts_product_outside_the_building_needs(
     client: TestClient, session: Session, lettuce: Product
 ):
     response = buy(client, lettuce)
 
-    assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json() == {"detail": NOT_NEEDED.format("Alface")}
-    assert session.exec(select(Purchase)).all() == []
-    assert stock_of(session, lettuce) == 10
+    assert response.status_code == status.HTTP_201_CREATED
+    assert len(session.exec(select(Purchase)).all()) == 1
+    assert stock_of(session, lettuce) == 8
 
 
-def test_create_purchase_ignores_the_interest_of_a_pending_resident(
+def test_create_purchase_accepts_product_wanted_only_by_a_pending_resident(
     client: TestClient, session: Session, building: Apartment, lettuce: Product
 ):
     pending = add_resident(session, building, add_user(session, "pendente@example.com"))
@@ -67,11 +65,10 @@ def test_create_purchase_ignores_the_interest_of_a_pending_resident(
 
     response = buy(client, lettuce)
 
-    assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json() == {"detail": NOT_NEEDED.format("Alface")}
+    assert response.status_code == status.HTTP_201_CREATED
 
 
-def test_create_purchase_ignores_the_interest_of_another_building(
+def test_create_purchase_accepts_product_wanted_only_by_another_building(
     client: TestClient, session: Session, other_building: Apartment, lettuce: Product
 ):
     neighbour_user = add_user(session, "vizinho@example.com")
@@ -82,18 +79,40 @@ def test_create_purchase_ignores_the_interest_of_another_building(
 
     response = buy(client, lettuce)
 
-    assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json() == {"detail": NOT_NEEDED.format("Alface")}
+    assert response.status_code == status.HTTP_201_CREATED
 
 
-def test_create_purchase_buys_nothing_when_one_product_is_not_needed(
+def test_create_purchase_mixes_needed_and_not_needed_products(
     client: TestClient, session: Session, resident: Buyer, lettuce: Product, potato: Product
 ):
     add_interest(session, resident, lettuce)
 
     response = buy(client, lettuce, potato)
 
-    assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json() == {"detail": NOT_NEEDED.format("Batata")}
+    assert response.status_code == status.HTTP_201_CREATED
+    assert len(response.json()["purchase_parts"]) == 2
+    assert stock_of(session, lettuce) == 8
+    assert stock_of(session, potato) == 8
+
+
+def test_purchase_outside_the_needs_leaves_the_needs_as_they_were(
+    client: TestClient, session: Session, resident: Buyer, lettuce: Product, potato: Product
+):
+    add_interest(session, resident, potato)
+
+    buy(client, lettuce)
+
+    needs = client.get("/api/apartments/me/needs").json()["items"]
+    assert [need["product"]["name"] for need in needs] == ["Batata"]
+
+
+def test_only_the_manager_buys_for_the_building(
+    client: TestClient, session: Session, resident: Buyer, lettuce: Product
+):
+    login(client, resident.user)
+
+    response = buy(client, lettuce)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
     assert session.exec(select(Purchase)).all() == []
     assert stock_of(session, lettuce) == 10

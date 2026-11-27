@@ -30,7 +30,7 @@ def make_request(
 def test_wrong_passwords_block_the_email_even_with_the_right_password(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 2)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 2)
     client.post("/api/auth/register", json=SIGNUP)
     for _ in range(2):
         client.post("/api/auth/login", json=WRONG_PASSWORD)
@@ -42,7 +42,7 @@ def test_wrong_passwords_block_the_email_even_with_the_right_password(
 
 
 def test_the_email_limit_is_case_insensitive(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 2)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 2)
     client.post("/api/auth/register", json=SIGNUP)
     for email in ["CINTIA@GMAIL.COM", " Cintia@Gmail.com "]:
         client.post("/api/auth/login", json={**WRONG_PASSWORD, "email": email})
@@ -55,7 +55,7 @@ def test_the_email_limit_is_case_insensitive(client: TestClient, monkeypatch: py
 def test_the_right_password_neither_counts_nor_erases_the_failures(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 2)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 2)
     client.post("/api/auth/register", json=SIGNUP)
     client.post("/api/auth/login", json=WRONG_PASSWORD)
     for _ in range(3):
@@ -71,11 +71,12 @@ def test_the_right_password_neither_counts_nor_erases_the_failures(
 def test_a_login_counts_its_attempt_before_checking_the_password(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 1)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 1)
     blocked_while_checking = []
 
     def fake_authenticate(self, email, password):
-        blocked_while_checking.append(rate_limits.LOGIN_FAILURES_PER_EMAIL.is_blocked(email))
+        key = rate_limits.login_key(email, "testclient")
+        blocked_while_checking.append(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP.is_blocked(key))
         raise InvalidCredentialsError
 
     monkeypatch.setattr(AuthService, "authenticate", fake_authenticate)
@@ -87,7 +88,7 @@ def test_a_login_counts_its_attempt_before_checking_the_password(
 def test_a_server_error_gives_the_attempt_of_the_email_back(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 1)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 1)
 
     def failing_authenticate(self, email, password):
         raise RuntimeError("banco fora do ar")
@@ -96,7 +97,8 @@ def test_a_server_error_gives_the_attempt_of_the_email_back(
     with pytest.raises(RuntimeError):
         client.post("/api/auth/login", json=CREDENTIALS)
 
-    assert not rate_limits.LOGIN_FAILURES_PER_EMAIL.is_blocked(CREDENTIALS["email"])
+    key = rate_limits.login_key(CREDENTIALS["email"], "testclient")
+    assert not rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP.is_blocked(key)
 
 
 def test_wrong_passwords_on_many_emails_block_the_ip(
@@ -132,7 +134,7 @@ def test_a_refusal_by_the_ip_does_not_use_the_limit_of_the_email(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_IP, "max_attempts", 1)
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 2)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 2)
     for _ in range(2):
         client.post("/api/auth/login", json=WRONG_PASSWORD, headers=from_ip("200.1.1.1"))
 
@@ -144,7 +146,7 @@ def test_a_refusal_by_the_ip_does_not_use_the_limit_of_the_email(
 def test_a_refusal_by_the_email_does_not_use_the_limit_of_the_ip(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL, "max_attempts", 1)
+    monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_EMAIL_AND_IP, "max_attempts", 1)
     monkeypatch.setattr(rate_limits.LOGIN_FAILURES_PER_IP, "max_attempts", 2)
     for _ in range(3):
         client.post("/api/auth/login", json=WRONG_PASSWORD)

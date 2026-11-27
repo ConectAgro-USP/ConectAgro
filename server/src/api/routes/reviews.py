@@ -1,12 +1,16 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.deps import CurrentFarmer, CurrentReviewAuthor, ReviewServiceDep, get_current_user
+from src.api.deps import CurrentFarmer, CurrentReviewAuthor, ReviewServiceDep
+from src.models.pagination import PageParams
 from src.models.review import (
-    AuthorReviewRead,
+    AuthorReviewsPage,
+    FarmerReviewsFilters,
+    FarmerReviewsPage,
     FarmerReviewsRead,
-    ReviewableRead,
+    ReviewablesPage,
     ReviewCreate,
     ReviewRead,
     ReviewUpdate,
@@ -54,9 +58,13 @@ def create_review(
         raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
 
-@router.get("/reviews/me", response_model=list[AuthorReviewRead])
-def list_my_authored_reviews(author: CurrentReviewAuthor, review_service: ReviewServiceDep):
-    return review_service.list_by_author(author)
+@router.get("/reviews/me", response_model=AuthorReviewsPage)
+def list_my_authored_reviews(
+    params: Annotated[PageParams, Query()],
+    author: CurrentReviewAuthor,
+    review_service: ReviewServiceDep,
+):
+    return review_service.list_by_author(author, params)
 
 
 @router.patch("/reviews/{public_id}", response_model=ReviewRead)
@@ -75,9 +83,13 @@ def update_review(
         raise HTTPException(status.HTTP_403_FORBIDDEN, message) from None
 
 
-@router.get("/purchases/reviewable", response_model=list[ReviewableRead])
-def list_reviewable(author: CurrentReviewAuthor, review_service: ReviewServiceDep):
-    return review_service.list_reviewable(author)
+@router.get("/purchases/reviewable", response_model=ReviewablesPage)
+def list_reviewable(
+    params: Annotated[PageParams, Query()],
+    author: CurrentReviewAuthor,
+    review_service: ReviewServiceDep,
+):
+    return review_service.list_reviewable(author, params)
 
 
 @router.get("/farmers/me/reviews", response_model=FarmerReviewsRead)
@@ -85,13 +97,13 @@ def list_my_reviews(farmer: CurrentFarmer, review_service: ReviewServiceDep):
     return review_service.list_by_farmer(farmer)
 
 
-@router.get(
-    "/farmers/{public_id}/reviews",
-    response_model=FarmerReviewsRead,
-    dependencies=[Depends(get_current_user)],
-)
-def list_farmer_reviews(public_id: UUID, review_service: ReviewServiceDep):
+@router.get("/farmers/{public_id}/reviews", response_model=FarmerReviewsPage)
+def list_farmer_reviews(
+    public_id: UUID,
+    filters: Annotated[FarmerReviewsFilters, Query()],
+    review_service: ReviewServiceDep,
+):
     try:
-        return review_service.list_by_farmer_public_id(public_id)
+        return review_service.list_by_farmer_public_id(public_id, filters)
     except FarmerNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Agricultor não encontrado") from None

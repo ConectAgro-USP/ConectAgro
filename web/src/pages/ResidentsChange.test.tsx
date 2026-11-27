@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
+import { jsonResponse, pageResponse } from "../test/helpers";
 import { caio, davi, findCard, press, renderResidents, tita } from "../test/residents";
 
 async function open(tab: string) {
@@ -9,7 +9,7 @@ async function open(tab: string) {
 
 describe("Residents, changing a decision", () => {
   it("lists the approved residents without their e-mail", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([tita]), jsonResponse([caio]));
+    const { fetchMock } = renderResidents(pageResponse([tita]), pageResponse([caio]));
     await findCard("Tita Russell");
 
     await open("Aprovados");
@@ -19,25 +19,25 @@ describe("Residents, changing a decision", () => {
     expect(card).not.toHaveTextContent("@");
     expect(screen.getByText("1 morador aprovado")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Tita Russell" })).not.toBeInTheDocument();
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/apartments/me/buyers?status=APROVADO");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/apartments/me/buyers?page=1&status=APROVADO");
   });
 
   it("lists the refused requests", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([]), jsonResponse([davi]));
+    const { fetchMock } = renderResidents(pageResponse([]), pageResponse([davi]));
 
     await open("Recusados");
 
     expect(await findCard("Davi Rocha")).toBeInTheDocument();
     expect(screen.getByText("1 pedido recusado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recusados" })).toHaveAttribute("aria-pressed", "true");
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/apartments/me/buyers?status=RECUSADO");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/apartments/me/buyers?page=1&status=RECUSADO");
   });
 
   it.each([
     ["Aprovados", "Nenhum morador aprovado"],
     ["Recusados", "Nenhum pedido recusado"],
   ])("says when the %s list is empty", async (tab, summary) => {
-    renderResidents(jsonResponse([tita]), jsonResponse([]));
+    renderResidents(pageResponse([tita]), pageResponse([]));
 
     await open(tab);
 
@@ -46,7 +46,7 @@ describe("Residents, changing a decision", () => {
   });
 
   it("asks before taking an approved resident out of the building", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([]), jsonResponse([caio]));
+    const { fetchMock } = renderResidents(pageResponse([]), pageResponse([caio]));
     await open("Aprovados");
     const card = await findCard("Caio Nogueira");
 
@@ -58,7 +58,11 @@ describe("Residents, changing a decision", () => {
   });
 
   it("takes an approved resident out after the confirmation", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([]), jsonResponse([caio]), jsonResponse(caio));
+    const { fetchMock } = renderResidents(
+      pageResponse([]),
+      pageResponse([caio]),
+      jsonResponse(caio),
+    );
     await open("Aprovados");
     const card = await findCard("Caio Nogueira");
     await press(card, "Tirar do prédio");
@@ -72,7 +76,11 @@ describe("Residents, changing a decision", () => {
   });
 
   it("approves a refused request only after a confirmation", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([]), jsonResponse([davi]), jsonResponse(davi));
+    const { fetchMock } = renderResidents(
+      pageResponse([]),
+      pageResponse([davi]),
+      jsonResponse(davi),
+    );
     await open("Recusados");
     const card = await findCard("Davi Rocha");
 
@@ -87,7 +95,7 @@ describe("Residents, changing a decision", () => {
   });
 
   it("keeps the answer on screen while asking to undo it", async () => {
-    renderResidents(jsonResponse([tita]), jsonResponse(tita));
+    renderResidents(pageResponse([tita]), jsonResponse(tita));
     const card = await findCard("Tita Russell");
     await press(card, "Aprovar");
     const answer = await within(card).findByText("Aprovado, Tita Russell já pode usar o ConectAgro");
@@ -101,11 +109,11 @@ describe("Residents, changing a decision", () => {
   it("ignores a list that arrives after the manager chose another one", async () => {
     let answerLate: (response: Response) => void = () => {};
     const late = new Promise<Response>((resolve) => (answerLate = resolve));
-    renderResidents(late, jsonResponse([caio]));
+    renderResidents(late, pageResponse([caio]));
     await open("Aprovados");
     await findCard("Caio Nogueira");
 
-    answerLate(jsonResponse([tita]));
+    answerLate(pageResponse([tita]));
     // dá tempo de a resposta velha chegar antes de olhar a lista
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -114,7 +122,11 @@ describe("Residents, changing a decision", () => {
   });
 
   it("lets the manager undo an approval right after giving it", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([tita]), jsonResponse(tita), jsonResponse(tita));
+    const { fetchMock } = renderResidents(
+      pageResponse([tita]),
+      jsonResponse(tita),
+      jsonResponse(tita),
+    );
     const card = await findCard("Tita Russell");
     await press(card, "Aprovar");
     await within(card).findByText("Aprovado, Tita Russell já pode usar o ConectAgro");

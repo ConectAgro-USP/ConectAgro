@@ -1,10 +1,10 @@
 import { useState, type SubmitEvent } from "react";
 import type { ProfileType } from "../api/profiles";
-import { useAuth } from "../auth/AuthContext";
 import { AuthLayout } from "../components/AuthLayout";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { useAction } from "../hooks/useAction";
+import { useLogout } from "../hooks/useLogout";
 import { ApartmentForm } from "./profile/ApartmentForm";
 import { BuyerForm } from "./profile/BuyerForm";
 import { FarmerForm } from "./profile/FarmerForm";
@@ -15,14 +15,16 @@ const OPTION_CLASSES =
   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 " +
   "has-focus-visible:outline-lime-800";
 
-const OPTIONS: { type: ProfileType; label: string }[] = [
+const PROFILE_QUESTION = "Como você vai usar o ConectAgro?";
+
+const OPTIONS:{ type: ProfileType; label: string }[] = [
   { type: "buyer", label: "Quero comprar" },
   { type: "farmer", label: "Quero vender" },
   { type: "apartment", label: "Sou síndico" },
 ];
 
 export function ProfileSetup() {
-  const { logout } = useAuth();
+  const logout = useLogout();
   const { error, setError, pending, run } = useAction();
   const [chosenProfile, setChosenProfile] = useState<ProfileType>("buyer");
   const [choosing, setChoosing] = useState(true);
@@ -40,11 +42,12 @@ export function ProfileSetup() {
     setChoosing(false);
   }
 
+  // quem entra com o Google pula a conta, mas segue no passo 2
   return (
-    <AuthLayout title="Perfil">
+    <AuthLayout title={PROFILE_QUESTION} step={2}>
       <form onSubmit={handleSubmit} className="space-y-6">
         <fieldset className="space-y-3">
-          <legend className="sr-only">Como você vai usar o ConectAgro?</legend>
+          <legend className="sr-only">{PROFILE_QUESTION}</legend>
           {OPTIONS.map((option) => (
             <label key={option.type} className={OPTION_CLASSES}>
               <input

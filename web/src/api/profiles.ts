@@ -116,3 +116,7 @@ export function previewApartment(cnpj: string): Promise<ApartmentPreview> {
 export function findApartments(cnpj: string): Promise<ApartmentMatch[]> {
   return apiFetch<ApartmentMatch[]>(`/apartments?${new URLSearchParams({ cnpj })}`);
 }
+
+export function findApartmentsByName(name: string): Promise<ApartmentMatch[]> {
+  return apiFetch<ApartmentMatch[]>(`/apartments?${new URLSearchParams({ name: name.trim() })}`);
+}

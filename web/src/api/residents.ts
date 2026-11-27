@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { pageQuery, type Page } from "./pagination";
 import type { LinkStatus } from "./profiles";
 
 export interface Resident {
@@ -11,8 +12,10 @@ export interface Resident {
   user: { name: string; email: string | null };
 }
 
-export function listResidents(status: LinkStatus): Promise<Resident[]> {
-  return apiFetch<Resident[]>(`/apartments/me/buyers?${new URLSearchParams({ status })}`);
+export function listResidents(status: LinkStatus, page: number): Promise<Page<Resident>> {
+  const query = pageQuery(page);
+  query.set("status", status);
+  return apiFetch<Page<Resident>>(`/apartments/me/buyers?${query}`);
 }
 
 export function approveResident(publicId: string): Promise<Resident> {

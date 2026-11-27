@@ -11,6 +11,7 @@ import {
   renderWithAuth,
   stubFetch,
 } from "../test/helpers";
+import { answerMyInterests } from "../test/interests";
 import { Dashboard } from "./Dashboard";
 
 const mandioca: CatalogProduct = {
@@ -20,6 +21,7 @@ const mandioca: CatalogProduct = {
   picture_url: "https://example.com/mandioca.jpg",
   quantity: 30,
   price: "7.00",
+  unit: "kg",
   expiration_date: "2099-12-10",
   farmer_public_id: "agricultor-1",
   created_at: "2026-11-20T12:00:00Z",
@@ -44,6 +46,7 @@ const resident = anaAsBuyer("APROVADO");
 
 function renderHome(user = resident, ...responses: Response[]) {
   const fetchMock = stubFetch(...responses);
+  answerMyInterests();
   renderWithAuth(<Dashboard />, fakeAuth({ user }));
   return fetchMock;
 }
@@ -53,12 +56,11 @@ async function findRow(name: string): Promise<HTMLElement> {
 }
 
 describe("Dashboard, catalog of the resident and the manager", () => {
-  it("opens with ConectAgro and lists the products on sale", async () => {
+  it("opens with the slogan and lists the products on sale", async () => {
     const fetchMock = renderHome(resident, pageOf([mandioca, laranja]));
 
-    expect(screen.getByRole("heading", { level: 1, name: "ConectAgro" })).toBeInTheDocument();
     expect(screen.getByText("Conectando residências à agricultura familiar")).toBeVisible();
-    expect(screen.getByRole("heading", { level: 2, name: "Produtos em destaque" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Produtos disponíveis" })).toBeVisible();
     const row = await findRow("Mandioca");
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
     expect(within(row).getByRole("link")).toHaveAttribute("href", "/produtos/produto-1");
@@ -99,9 +101,12 @@ describe("Dashboard, catalog of the resident and the manager", () => {
   it("keeps the farmer's home without the catalog", () => {
     const fetchMock = renderHome(anaAsFarmer);
 
-    expect(screen.getByRole("heading", { name: "Olá, Ana Souza" })).toBeInTheDocument();
-    expect(screen.queryByText("Produtos em destaque")).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
+    expect(screen.queryByText("Produtos disponíveis")).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/products\?/),
+      expect.anything(),
+    );
   });
 
   it("shows more products when asked", async () => {

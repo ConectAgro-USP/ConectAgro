@@ -9,6 +9,7 @@ import { ItemLines } from "./ItemLines";
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
   product_name: "Mandioca",
+  product_unit: "kg",
   quantity: 3,
   unit_price: "7.00",
   subtotal: "21.00",
@@ -16,6 +17,7 @@ const mandioca: PurchaseItem = {
 const tomate: PurchaseItem = {
   product_public_id: "produto-2",
   product_name: "Tomate",
+  product_unit: "kg",
   quantity: 2,
   unit_price: "9.50",
   subtotal: "19.00",
@@ -91,13 +93,13 @@ describe("HistoryCard", () => {
 
   it("opens and closes the details with the items", async () => {
     const card = renderCard();
-    const price = within(card).getByText("3 × R$ 7,00");
+    const price = within(card).getByText("3 kg × R$ 7,00");
     expect(price).not.toBeVisible();
 
     await userEvent.click(within(card).getByRole("button", { name: "Ver detalhes" }));
 
     expect(price).toBeVisible();
-    expect(card).toHaveTextContent(/Tomate\s*2 × R\$ 9,50\s*R\$ 19,00/);
+    expect(card).toHaveTextContent(/Tomate\s*2 kg × R\$ 9,50\s*R\$ 19,00/);
     await userEvent.click(within(card).getByRole("button", { name: "Ocultar detalhes" }));
 
     expect(price).not.toBeVisible();

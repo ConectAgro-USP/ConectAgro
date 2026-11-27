@@ -1,13 +1,13 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
+import { jsonResponse, pageResponse } from "../test/helpers";
 import { bia, findCard, renderResidents, tita } from "../test/residents";
 
 const RETRY = "Tentar de novo";
 
 describe("Residents", () => {
   it("shows the name, e-mail, block, unit and date of each pending request", async () => {
-    const { fetchMock } = renderResidents(jsonResponse([tita, bia]));
+    const { fetchMock } = renderResidents(pageResponse([tita, bia]));
 
     const card = await findCard("Tita Russell");
 
@@ -16,11 +16,11 @@ describe("Residents", () => {
     expect(card).toHaveTextContent("Pediu em 31/10");
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Pedidos" })).toHaveAttribute("aria-pressed", "true");
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/apartments/me/buyers?status=PENDENTE");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/apartments/me/buyers?page=1&status=PENDENTE");
   });
 
   it("leaves the block out when the resident has none", async () => {
-    renderResidents(jsonResponse([bia]));
+    renderResidents(pageResponse([bia]));
 
     const card = await findCard("Bia Lima");
 
@@ -31,13 +31,13 @@ describe("Residents", () => {
     [[tita, bia], "2 pedidos esperando sua resposta"],
     [[tita], "1 pedido esperando sua resposta"],
   ])("counts the requests waiting for an answer", async (residents, summary) => {
-    renderResidents(jsonResponse(residents));
+    renderResidents(pageResponse(residents));
 
     expect(await screen.findByText(summary)).toBeInTheDocument();
   });
 
   it("says when no request is waiting and how one gets there", async () => {
-    renderResidents(jsonResponse([]));
+    renderResidents(pageResponse([]));
 
     expect(await screen.findByText("Nenhum pedido esperando resposta")).toBeInTheDocument();
     expect(screen.getByText(/Quando um morador pedir para entrar no prédio/)).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe("Residents", () => {
   });
 
   it("tells the screen reader while the requests load", async () => {
-    renderResidents(jsonResponse([tita]));
+    renderResidents(pageResponse([tita]));
 
     expect(screen.getAllByRole("status")[0]).toHaveTextContent("Carregando...");
     expect(screen.queryByText("Nenhum pedido esperando resposta")).not.toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("Residents", () => {
 
   it("shows why the requests did not load and tries again", async () => {
     const detail = "Muitas tentativas. Tente novamente mais tarde";
-    renderResidents(jsonResponse({ detail }, 429), jsonResponse([tita]));
+    renderResidents(jsonResponse({ detail }, 429), pageResponse([tita]));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(detail);
     expect(screen.queryByText("Nenhum pedido esperando resposta")).not.toBeInTheDocument();
@@ -68,7 +68,7 @@ describe("Residents", () => {
   });
 
   it("asks to try again when the server cannot be reached", async () => {
-    renderResidents(new TypeError("Failed to fetch"), jsonResponse([tita]));
+    renderResidents(new TypeError("Failed to fetch"), pageResponse([tita]));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível falar");
     await userEvent.click(screen.getByRole("button", { name: RETRY }));

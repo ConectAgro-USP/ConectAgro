@@ -20,7 +20,7 @@ def test_manager_sees_the_email_only_while_the_request_is_pending(
     add_resident(session, building, duda, unit="13", link_status=LinkStatus.RECUSADO)
     login(client, manager)
 
-    residents = client.get(URL).json()
+    residents = client.get(URL).json()["items"]
 
     emails = [resident["user"]["email"] for resident in residents]
     assert emails == ["bia@example.com", None, None]

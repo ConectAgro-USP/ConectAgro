@@ -1,3 +1,6 @@
+import type { PurchaseStatus } from "./api/history";
+import type { ProductUnit } from "./api/products";
+
 // as datas seguem o horário de Brasília, igual aos filtros da API
 const BUSINESS_TZ = "America/Sao_Paulo";
 const MONEY = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,6 +28,17 @@ const RATING = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 const PERCENT = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
+
+// o mesmo estado da API, visto por quem entrega e por quem recebe
+export const FARMER_STATUS_LABELS: Record<PurchaseStatus, string> = {
+  "EM PROGRESSO": "A entregar",
+  ENTREGUE: "Entregue",
+  CANCELADA: "Cancelada",
+};
+export const MANAGER_STATUS_LABELS: Record<PurchaseStatus, string> = {
+  ...FARMER_STATUS_LABELS,
+  "EM PROGRESSO": "A caminho",
+};
 
 export function formatMoney(value: string | number): string {
   return MONEY.format(Number(value));
@@ -71,6 +85,74 @@ export function sellerName(farmer: { short_name: string; farm_name: string | nul
 
 export function formatCount(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+interface UnitWords {
+  one: string;
+  many: string;
+  name: string;
+}
+
+const UNITS: Record<ProductUnit, UnitWords> = {
+  kg: { one: "kg", many: "kg", name: "quilo" },
+  unidade: { one: "unidade", many: "unidades", name: "unidade" },
+  duzia: { one: "dúzia", many: "dúzias", name: "dúzia" },
+  maco: { one: "maço", many: "maços", name: "maço" },
+  litro: { one: "litro", many: "litros", name: "litro" },
+};
+
+type MaybeUnit = string | null | undefined;
+
+// sem a unidade, como no interesse de produto apagado, vale o quilo
+function wordsOf(unit: MaybeUnit): UnitWords {
+  return unit && Object.hasOwn(UNITS, unit) ? UNITS[unit as ProductUnit] : UNITS.kg;
+}
+
+export function unitWord(count: number, unit: MaybeUnit): string {
+  const words = wordsOf(unit);
+  return count === 1 ? words.one : words.many;
+}
+
+export function unitPlural(unit: MaybeUnit): string {
+  return wordsOf(unit).many;
+}
+
+export function formatQuantity(count: number, unit: MaybeUnit): string {
+  return `${count} ${unitWord(count, unit)}`;
+}
+
+export function formatStock(count: number, unit: MaybeUnit): string {
+  return `${formatQuantity(count, unit)} ${count === 1 ? "disponível" : "disponíveis"}`;
+}
+
+export function isProductUnit(value: unknown): value is ProductUnit {
+  return typeof value === "string" && Object.hasOwn(UNITS, value);
+}
+
+export function unitName(unit: MaybeUnit): string {
+  return wordsOf(unit).name;
+}
+
+export function pricePer(unit: MaybeUnit): string {
+  return `por ${wordsOf(unit).name}`;
+}
+
+export function formatUnitPrice(price: string | number, unit: MaybeUnit): string {
+  return `${formatMoney(price)} ${pricePer(unit)}`;
+}
+
+export function priceLabel(unit: MaybeUnit): string {
+  return `Preço ${pricePer(unit)} (R$)`;
+}
+
+export function quantityLabel(unit: MaybeUnit): string {
+  return `Quantidade (${unitPlural(unit)})`;
+}
+
+// só com os 8 dígitos o CEP ganha o hífen, o resto fica como veio
+export function formatZipCode(zipCode: string): string {
+  const digits = zipCode.replace(/\D/g, "");
+  return digits.length === 8 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : zipCode;
 }
 
 export function formatDistance(kilometers: number): string {

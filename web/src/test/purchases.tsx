@@ -4,11 +4,19 @@ import type { PurchaseItem } from "../api/history";
 import type { BuildingPurchase, PurchasePart } from "../api/purchases";
 import type { Reviewable } from "../api/reviews";
 import { BuildingPurchases } from "../pages/BuildingPurchases";
-import { anaAsManager, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
+import {
+  anaAsManager,
+  fakeAuth,
+  jsonResponse,
+  pageResponse,
+  renderWithAuth,
+  stubFetch,
+} from "./helpers";
 
 const mandioca: PurchaseItem = {
   product_public_id: "produto-1",
   product_name: "Mandioca",
+  product_unit: "kg",
   quantity: 3,
   unit_price: "7.00",
   subtotal: "21.00",
@@ -16,6 +24,7 @@ const mandioca: PurchaseItem = {
 const laranja: PurchaseItem = {
   product_public_id: "produto-2",
   product_name: "Laranja",
+  product_unit: "kg",
   quantity: 2,
   unit_price: "4.50",
   subtotal: "9.00",
@@ -23,6 +32,7 @@ const laranja: PurchaseItem = {
 const tomate: PurchaseItem = {
   product_public_id: "produto-3",
   product_name: "Tomate",
+  product_unit: "kg",
   quantity: 2,
   unit_price: "9.00",
   subtotal: "18.00",
@@ -83,7 +93,7 @@ export function renderPurchases(firstPage: Response, ...more: Response[]) {
 }
 
 export function renderRating(firstPage: Response, reviewables: Reviewable[], ...more: Response[]) {
-  const fetchMock = stubFetch(firstPage, jsonResponse(reviewables), ...more);
+  const fetchMock = stubFetch(firstPage, pageResponse(reviewables), ...more);
   renderWithAuth(<BuildingPurchases />, fakeAuth({ user: anaAsManager }));
   return fetchMock;
 }

@@ -1,25 +1,31 @@
 from datetime import date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from uuid import UUID
 
 from sqlmodel import Field, SQLModel
 
-from src.models.pagination import PaginatedResponse
-from src.models.product import INT4_MAX
+from src.models.pagination import PageParams, PaginatedResponse
+from src.models.product import ProductUnit
 from src.models.purchase import PurchasePartRead, PurchaseProductRead, PurchaseRead, PurchaseStatus
 
 
-class PurchaseHistoryFilters(SQLModel):
+class PurchaseHistoryFilters(PageParams):
     status: PurchaseStatus | None = None
     date_from: date | None = None
     # o filtro soma um dia a esta data, e o último dia do calendário daria erro
     date_to: date | None = Field(default=None, lt=date.max)
-    page: int = Field(default=1, ge=1, le=INT4_MAX)
-    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class SalesSort(StrEnum):
+    RECENT = "recent"
+    # a entrega mais próxima primeiro, e as atrasadas antes de todas
+    DELIVERY = "delivery"
 
 
 class SalesFilters(PurchaseHistoryFilters):
     apartment_public_id: UUID | None = None
+    sort: SalesSort = SalesSort.RECENT
 
 
 class BuildingPurchasesFilters(PurchaseHistoryFilters):
@@ -28,6 +34,7 @@ class BuildingPurchasesFilters(PurchaseHistoryFilters):
 
 class PurchaseItemRead(PurchaseProductRead):
     product_name: str
+    product_unit: ProductUnit
     subtotal: Decimal
 
 
@@ -35,6 +42,10 @@ class SaleRead(SQLModel):
     purchase_public_id: UUID
     apartment_public_id: UUID
     building_name: str
+    delivery_address: str | None
+    delivery_zip_code: str
+    manager_name: str
+    manager_cellphone: str | None
     purchased_at: datetime
     expected_delivery_date: date
     status: PurchaseStatus

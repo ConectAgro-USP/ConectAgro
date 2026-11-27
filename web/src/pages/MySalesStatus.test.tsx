@@ -6,6 +6,7 @@ import { deliveredSale, findCard, pageOf, pendingSale, press, renderSales } from
 const VILLAGE = "Cond. Village Vila Verde";
 const DELIVER = "Marcar como entregue";
 const CANCEL = "Cancelar venda";
+const CONFIRM = "Confirmar entrega";
 const HINT = "Os produtos voltam para o seu estoque e o cancelamento não pode ser desfeito.";
 
 function closedSale(status: "ENTREGUE" | "CANCELADA"): Sale {
@@ -38,6 +39,7 @@ describe("MySales, delivering and cancelling", () => {
     const card = await findCard(VILLAGE);
 
     await press(card, DELIVER);
+    await press(card, CONFIRM);
 
     expect(await within(card).findByText("Entregue")).toBeVisible();
     expect(within(card).getByRole("status")).toHaveTextContent("Venda marcada como entregue");
@@ -102,11 +104,12 @@ describe("MySales, delivering and cancelling", () => {
     const card = await findCard(VILLAGE);
 
     await press(card, DELIVER);
-    await press(card, DELIVER);
+    await press(card, CONFIRM);
+    await press(card, CONFIRM);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(within(card).getByRole("button", { name: DELIVER })).toBeDisabled();
-    expect(within(card).getByRole("button", { name: CANCEL })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: CONFIRM })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
 
   it("blocks the buttons while the sales load again", async () => {
@@ -115,9 +118,10 @@ describe("MySales, delivering and cancelling", () => {
     const card = await findCard(VILLAGE);
 
     await press(card, DELIVER);
+    await press(card, CONFIRM);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(within(card).getByRole("button", { name: DELIVER })).toBeDisabled();
-    expect(within(card).getByRole("button", { name: CANCEL })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: CONFIRM })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
 });

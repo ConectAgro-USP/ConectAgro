@@ -1,14 +1,16 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Optional
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from pydantic import AfterValidator, StringConstraints, field_validator
-from sqlalchemy import CheckConstraint, DateTime
+from sqlalchemy import CheckConstraint, DateTime, String, event
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import reject_null_character
+from src.core.search_text import fold
+from src.core.text import reject_null_character
 
 if TYPE_CHECKING:
     from .farmer import Farmer
@@ -36,6 +38,14 @@ PictureUrl = Annotated[
 ]
 
 
+class ProductUnit(StrEnum):
+    KG = "kg"
+    UNIDADE = "unidade"
+    DUZIA = "duzia"
+    MACO = "maco"
+    LITRO = "litro"
+
+
 def _today() -> date:
     return datetime.now(BUSINESS_TZ).date()
 
@@ -48,6 +58,8 @@ class ProductBase(SQLModel):
     is_available: bool = Field(default=True)
     price: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
     expiration_date: date
+    # guardada como texto, para uma unidade nova não exigir migração de tipo
+    unit: ProductUnit = Field(default=ProductUnit.KG, sa_type=String(10))
 
 
 class Product(ProductBase, table=True):
@@ -64,6 +76,9 @@ class Product(ProductBase, table=True):
     )
 
     farmer_id: int = Field(foreign_key="farmers.id", index=True)
+    # cópias sem acentos nem maiúsculas, preenchidas pelo evento abaixo
+    name_search: str = Field(default="", index=True)
+    description_search: str = Field(default="")
 
     farmer: Optional["Farmer"] = Relationship(back_populates="products")
     interests: list["Interest"] = Relationship(back_populates="product")
@@ -71,6 +86,13 @@ class Product(ProductBase, table=True):
     @property
     def farmer_public_id(self) -> UUID | None:
         return self.farmer.public_id if self.farmer else None
+
+
+@event.listens_for(Product, "before_insert")
+@event.listens_for(Product, "before_update")
+def fold_search_text(_mapper, _connection, product: Product) -> None:
+    product.name_search = fold(product.name)
+    product.description_search = fold(product.description)
 
 
 class ProductCreate(ProductBase):
@@ -95,6 +117,7 @@ class ProductUpdate(SQLModel):
     is_available: bool = Field(default=None)
     price: Decimal = Field(default=None, ge=0, max_digits=8, decimal_places=2)
     expiration_date: date = Field(default=None)
+    unit: ProductUnit = Field(default=None)
 
     @field_validator("expiration_date")
     @classmethod
@@ -104,10 +127,15 @@ class ProductUpdate(SQLModel):
         return value
 
 
-class ProductRead(ProductBase):
+class ProductPublicRead(ProductBase):
     public_id: UUID
     created_at: datetime
     farmer_public_id: UUID
+
+
+class ProductRead(ProductPublicRead):
+    # a resposta para o dono diz se a unidade ainda pode mudar
+    unit_locked: bool
 
 
 class ProductFarmerRead(SQLModel):
@@ -117,11 +145,11 @@ class ProductFarmerRead(SQLModel):
     picture_url: str | None
 
 
-class ProductDetailRead(ProductRead):
+class ProductDetailRead(ProductPublicRead):
     farmer: ProductFarmerRead
 
 
-class ProductCatalogRead(ProductRead):
+class ProductCatalogRead(ProductPublicRead):
     farmer_short_name: str
     farmer_farm_name: str | None
     farmer_average_rating: float | None

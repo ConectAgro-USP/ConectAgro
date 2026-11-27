@@ -15,12 +15,10 @@ concurrency:
 jobs:
   ci:
     name: CI
-    uses: ./.github/workflows/sonarcloud.yml
+    # lint, testes e migrações, sem o SonarCloud, que não barra o deploy
+    uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
-      pull-requests: read
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   backend:
     name: Backend on Render
@@ -28,7 +26,8 @@ jobs:
     needs: [ci, build_frontend]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # o plano gratuito do Render leva minutos para buildar e trocar a versão
+    timeout-minutes: 25
     environment: producao
 
     steps:
@@ -56,6 +55,24 @@ jobs:
             exit 1
           fi
           curl --fail --silent --show-error --output /dev/null --request POST "$RENDER_DEPLOY_HOOK_URL&ref=$GITHUB_SHA"
+
+      - name: Wait for the new API
+        # a Vercel só publica o frontend depois que a API deste commit responde
+        env:
+          HEALTH_URL: https://conectagro-api.onrender.com/api/health
+        run: |
+          deadline=$((SECONDS + 20 * 60))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            commit="$(curl --silent --max-time 15 "$HEALTH_URL" | jq -r '.commit // empty' 2>/dev/null || true)"
+            if [ "$commit" = "$GITHUB_SHA" ]; then
+              echo "API is serving $GITHUB_SHA"
+              exit 0
+            fi
+            echo "API is serving '${commit:-unknown}', waiting for $GITHUB_SHA"
+            sleep 20
+          done
+          echo "::error::The API did not serve $GITHUB_SHA within 20 minutes"
+          exit 1
 
   build_frontend:
     name: Build frontend

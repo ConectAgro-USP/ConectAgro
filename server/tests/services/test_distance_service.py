@@ -1,4 +1,4 @@
-from unittest.mock import NonCallableMagicMock, call, create_autospec
+from unittest.mock import NonCallableMagicMock, create_autospec
 
 import pytest
 
@@ -6,15 +6,10 @@ from src.connectors.brasilapi import BrasilApiConnector
 from src.connectors.models import Address, Coordinates
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
-from src.services.distance_service import DistanceService
-from src.services.exceptions import CepNotFoundError, CepWithoutCoordinatesError
+from src.services.distance_service import DistanceService, km_between, saved_point
+from src.services.exceptions import BuildingWithoutCoordinatesError, CepNotFoundError
+from tests.geo import PRACA_DA_SE_ADDRESS, point_of
 
-PRACA_DA_SE = Address(
-    cep="01001000",
-    state="SP",
-    city="São Paulo",
-    coordinates=Coordinates(latitude=-23.5503898, longitude=-46.633081),
-)
 BRASILIA = Address(
     cep="70040010",
     state="DF",
@@ -31,48 +26,40 @@ def fake_service(*answers: Address | Exception) -> tuple[DistanceService, NonCal
     return DistanceService(ceps), ceps
 
 
-def old_profiles() -> tuple[Apartment, Farmer]:
-    # cadastrados antes de as coordenadas serem salvas
-    return Apartment(zip_code="01001-000"), Farmer(zip_code="70040-010")
-
-
-def test_km_between_uses_the_saved_coordinates_without_the_brasilapi():
-    service, ceps = fake_service()
-    building = Apartment(zip_code="01001-000", **PRACA_DA_SE.coordinates.model_dump())
+def test_km_between_uses_the_saved_coordinates():
+    building = Apartment(zip_code="01001-000", **PRACA_DA_SE_ADDRESS.coordinates.model_dump())
     farmer = Farmer(zip_code="70040-010", **BRASILIA.coordinates.model_dump())
 
-    assert service.km_between(building, farmer) == PRACA_DA_SE_TO_BRASILIA_KM
-    ceps.get_address.assert_not_called()
+    distance = km_between(saved_point(building), saved_point(farmer))
+
+    assert round(distance, 2) == PRACA_DA_SE_TO_BRASILIA_KM
 
 
-def test_km_between_looks_up_and_keeps_the_coordinates_of_old_profiles():
-    service, ceps = fake_service(PRACA_DA_SE, BRASILIA)
-    building, farmer = old_profiles()
-
-    assert service.km_between(building, farmer) == PRACA_DA_SE_TO_BRASILIA_KM
-    ceps.get_address.assert_has_calls([call("01001-000"), call("70040-010")])
-    assert (building.latitude, building.longitude) == (-23.5503898, -46.633081)
-    assert (farmer.latitude, farmer.longitude) == (-15.77972, -47.92972)
+def test_saved_point_is_none_for_old_profiles():
+    assert saved_point(Farmer(zip_code="70040-010")) is None
 
 
-@pytest.mark.parametrize(("missing", "lookups"), [(0, 1), (1, 2)], ids=["origem", "destino"])
-def test_km_between_stops_at_the_first_cep_without_coordinates(missing: int, lookups: int):
-    addresses = [PRACA_DA_SE, BRASILIA]
-    addresses[missing] = addresses[missing].model_copy(update={"coordinates": None})
-    service, ceps = fake_service(*addresses)
-    profiles = old_profiles()
+def test_look_up_building_keeps_the_coordinates():
+    service, ceps = fake_service(PRACA_DA_SE_ADDRESS)
+    building = Apartment(zip_code="01001-000")
 
-    with pytest.raises(CepWithoutCoordinatesError) as caught:
-        service.km_between(*profiles)
-
-    assert str(caught.value) == addresses[missing].cep
-    assert ceps.get_address.call_count == lookups
-    assert profiles[missing].latitude is None
+    assert service.look_up_building(building) == (-23.5503898, -46.633081)
+    ceps.get_address.assert_called_once_with("01001-000")
+    assert point_of(building) == (-23.5503898, -46.633081)
 
 
-def test_km_between_propagates_cep_not_found():
-    service, _ = fake_service(PRACA_DA_SE, CepNotFoundError("70040010"))
-    profiles = old_profiles()
+def test_look_up_building_rejects_a_cep_without_coordinates():
+    service, _ = fake_service(PRACA_DA_SE_ADDRESS.model_copy(update={"coordinates": None}))
+    building = Apartment(zip_code="01001-000")
 
-    with pytest.raises(CepNotFoundError):
-        service.km_between(*profiles)
+    with pytest.raises(BuildingWithoutCoordinatesError):
+        service.look_up_building(building)
+
+    assert building.latitude is None
+
+
+def test_look_up_building_rejects_a_cep_not_found():
+    service, _ = fake_service(CepNotFoundError("01001000"))
+
+    with pytest.raises(BuildingWithoutCoordinatesError):
+        service.look_up_building(Apartment(zip_code="01001-000"))

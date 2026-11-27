@@ -6,46 +6,17 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.models.farmer import Farmer
-from src.models.product import BUSINESS_TZ, Product
+from src.models.product import BUSINESS_TZ
 from src.models.purchase import Purchase
 from src.models.review import Review
-from tests.helpers import add_building, add_farmer, add_user
+from tests.catalog import add_farmer_with_name, add_product
+from tests.helpers import add_building, add_user
 
-# a busca exige login, então todos os testes rodam com a Ana logada
+# a busca não pede login, mas os testes rodam com a Ana logada como no app
 pytestmark = pytest.mark.usefixtures("ana")
 
 
-def add_product(
-    session: Session,
-    farmer: Farmer,
-    name: str,
-    description: str | None = None,
-    *,
-    quantity: int = 5,
-    price: Decimal = Decimal("3.00"),
-    days_until_expiration: int = 10,
-) -> Product:
-    product = Product(
-        name=name,
-        description=description,
-        quantity=quantity,
-        price=price,
-        expiration_date=datetime.now(BUSINESS_TZ).date()
-        + timedelta(days=days_until_expiration),
-        farmer_id=farmer.id,
-    )
-    session.add(product)
-    session.commit()
-    session.refresh(product)
-    return product
-
-
-def add_farmer_with_name(session: Session, email: str) -> Farmer:
-    return add_farmer(session, add_user(session, email))
-
-
-def test_search_matches_product_name_only_without_fuzzy_matching(
+def test_search_matches_name_or_description_without_fuzzy_matching(
     client: TestClient, session: Session
 ):
     farmer = add_farmer_with_name(session, "farmer@example.com")
@@ -65,12 +36,10 @@ def test_search_matches_product_name_only_without_fuzzy_matching(
     assert name_match.json()["items"][0]["public_id"]
     assert name_match.json()["items"][0]["farmer_public_id"] == str(farmer.public_id)
     assert fuzzy_name.json()["items"] == []
-    assert description_match.json()["items"] == []
+    assert [item["name"] for item in description_match.json()["items"]] == ["Tomate Italiano"]
 
 
-def test_search_filters_unavailable_products_and_paginates(
-    client: TestClient, session: Session
-):
+def test_search_filters_unavailable_products_and_paginates(client: TestClient, session: Session):
     farmer = add_farmer_with_name(session, "farmer@example.com")
     for index in range(22):
         add_product(session, farmer, f"Produto {index:02}", "Lote disponível")
@@ -117,9 +86,7 @@ def test_search_applies_expiration_and_minimum_quantity_filters(
     )
 
     assert response.status_code == status.HTTP_200_OK
-    assert [item["public_id"] for item in response.json()["items"]] == [
-        str(wanted.public_id)
-    ]
+    assert [item["public_id"] for item in response.json()["items"]] == [str(wanted.public_id)]
 
 
 def test_default_sort_prefers_name_prefix_before_farmer_rating(
@@ -128,15 +95,9 @@ def test_default_sort_prefers_name_prefix_before_farmer_rating(
     low_rated_farmer = add_farmer_with_name(session, "low-rated@example.com")
     high_rated_farmer = add_farmer_with_name(session, "high-rated@example.com")
     unrated_farmer = add_farmer_with_name(session, "unrated@example.com")
-    unrated_prefix = add_product(
-        session, unrated_farmer, "Tomate italiano", "Outro produto."
-    )
-    name_prefix = add_product(
-        session, low_rated_farmer, "Tomate maduro", "Tomate fresco."
-    )
-    name_contains = add_product(
-        session, high_rated_farmer, "Pimentão com tomate", "Outro produto."
-    )
+    unrated_prefix = add_product(session, unrated_farmer, "Tomate italiano", "Outro produto.")
+    name_prefix = add_product(session, low_rated_farmer, "Tomate maduro", "Tomate fresco.")
+    name_contains = add_product(session, high_rated_farmer, "Pimentão com tomate", "Outro produto.")
 
     apartment = add_building(session, add_user(session, "manager@example.com"))
     purchase = Purchase(

@@ -24,7 +24,7 @@ describe("BuildingPurchases, rating the deliveries", () => {
     const fetchMock = renderPurchases(pageOf(purchase));
 
     await findCard("Osvaldo S. e Maria F.");
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/purchases/reviewable");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/purchases/reviewable?page=1&page_size=100");
   });
 
   it("invites to rate the delivered part still without a rating, without opening it", async () => {

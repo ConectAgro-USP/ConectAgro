@@ -52,11 +52,6 @@ def test_apartment_creation(apartment : Apartment):
     assert apartment.building_cnpj == "12.345.678/0001-90"
 
 
-def test_change_manager(apartment : Apartment):
-    apartment.change_manager(456)
-    assert apartment.manager_id == 456
-
-
 def test_apartment_update_buyer_link_status(apartment : Apartment, buyer : Buyer):
     now = datetime.now(UTC)
     buyer.apartment = apartment

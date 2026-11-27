@@ -6,6 +6,7 @@ import { FormError } from "../components/FormError";
 import { FormSection } from "../components/FormSection";
 import { ProfileCard } from "../components/ProfileCard";
 import { TextField } from "../components/TextField";
+import { TitleBar } from "../components/TitleBar";
 import { useAction } from "../hooks/useAction";
 import { PhoneFields } from "./profile/PhoneFields";
 
@@ -98,9 +99,9 @@ function ProfileEditor({ user }: Readonly<{ user: ProfileRead }>) {
   }
 
   return (
-    <main className="px-6 py-12 text-stone-900">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="mb-6 text-4xl font-extrabold">Meu perfil</h1>
+    <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
+      <TitleBar title="Meu perfil" />
+      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6">
         <ProfileCard user={user} />
         <form onSubmit={handleSubmit} className="mt-6">
           {/* travados enquanto salva: o que fosse digitado não iria no pedido */}

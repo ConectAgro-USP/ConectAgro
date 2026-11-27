@@ -1,38 +1,105 @@
-import { Navigate, Outlet, Route, Routes } from "react-router";
-import { AppHeader } from "./components/AppHeader";
+import type { ReactNode } from "react";
+import { Outlet, Route, Routes } from "react-router";
+import { useAuth } from "./auth/AuthContext";
+import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { useDocumentTitle } from "./hooks/useDocumentTitle";
+import { useGoogleReturn } from "./hooks/useGoogleReturn";
+import { Cart } from "./pages/Cart";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MyProfile } from "./pages/MyProfile";
+import { NotFound } from "./pages/NotFound";
 import { ProductDetail } from "./pages/ProductDetail";
 import { SignUp } from "./pages/SignUp";
 import { RESTRICTED_PAGES } from "./restrictedPages";
 
+function Titled({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
+  useDocumentTitle(title);
+  return children;
+}
+
+function Home() {
+  const { profileType } = useAuth();
+  // o morador e o síndico começam no catálogo
+  return (
+    <Titled title={profileType === "farmer" ? "Início" : "Produtos"}>
+      <Dashboard />
+    </Titled>
+  );
+}
+
 export default function App() {
+  useGoogleReturn();
+
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/cadastro" element={<SignUp />} />
+      <Route
+        path="/login"
+        element={
+          <Titled title="Entrar">
+            <Login />
+          </Titled>
+        }
+      />
+      <Route
+        path="/cadastro"
+        element={
+          <Titled title="Criar conta">
+            <SignUp />
+          </Titled>
+        }
+      />
       <Route
         element={
-          <ProtectedRoute>
-            <AppHeader />
-            <Outlet />
+          <ProtectedRoute openToVisitors>
+            <AppShell />
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/perfil" element={<MyProfile />} />
+        <Route path="/" element={<Home />} />
         <Route path="/produtos/:publicId" element={<ProductDetail />} />
-        {RESTRICTED_PAGES.map((page) => (
+        {/* tudo neste grupo pede login, as páginas novas entram aqui */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <Outlet />
+            </ProtectedRoute>
+          }
+        >
           <Route
-            key={page.path}
-            path={page.path}
-            element={<ProtectedRoute allowedProfiles={page.profiles}>{page.element}</ProtectedRoute>}
+            path="/perfil"
+            element={
+              <Titled title="Meu perfil">
+                <MyProfile />
+              </Titled>
+            }
           />
-        ))}
+          {/* sem link no menu, o carrinho abre pelo ícone do cabeçalho */}
+          <Route
+            path="/carrinho"
+            element={
+              <ProtectedRoute allowedProfiles={["apartment"]}>
+                <Titled title="Carrinho">
+                  <Cart />
+                </Titled>
+              </ProtectedRoute>
+            }
+          />
+          {RESTRICTED_PAGES.map((page) => (
+            <Route
+              key={page.path}
+              path={page.path}
+              element={
+                <ProtectedRoute allowedProfiles={page.profiles}>
+                  <Titled title={page.title}>{page.element}</Titled>
+                </ProtectedRoute>
+              }
+            />
+          ))}
+        </Route>
+        <Route path="*" element={<NotFound />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

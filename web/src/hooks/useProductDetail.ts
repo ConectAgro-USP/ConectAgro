@@ -15,6 +15,16 @@ export function useProductDetail(publicId: string | undefined) {
     setReloadKey((key) => key + 1);
   }, []);
 
+  // relê o produto sem tirar a página da tela, e na falha ele fica como estava
+  const refresh = useCallback(() => {
+    if (!publicId) return;
+    getProduct(publicId)
+      .then((data) => {
+        setProduct((current) => (current?.public_id === data.public_id ? data : current));
+      })
+      .catch(() => undefined);
+  }, [publicId]);
+
   useEffect(() => {
     let outdated = false;
 
@@ -53,5 +63,5 @@ export function useProductDetail(publicId: string | undefined) {
     };
   }, [publicId, refreshUser, reloadKey]);
 
-  return { product, loading, error, retry };
+  return { product, loading, error, retry, refresh };
 }

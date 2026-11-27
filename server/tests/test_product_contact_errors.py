@@ -70,6 +70,7 @@ def test_get_product_contact_requires_login(
     response = client.get(f"/api/products/{lettuce.public_id}/contact")
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "cellphone" not in response.text
 
 
 @pytest.mark.usefixtures("building")

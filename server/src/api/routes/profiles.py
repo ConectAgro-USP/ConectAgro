@@ -36,7 +36,8 @@ HTTP_ERRORS = {
     CepNotFoundError: (status.HTTP_422_UNPROCESSABLE_CONTENT, "CEP não encontrado"),
     CepWithoutCoordinatesError: (
         status.HTTP_422_UNPROCESSABLE_CONTENT,
-        "Não foi possível localizar este CEP. Informe um CEP próximo",
+        "Não conseguimos localizar este CEP no mapa. Informe um CEP próximo, como o de uma "
+        "rua vizinha, ou o CEP geral da sua cidade, que termina em 000",
     ),
     ExternalServiceError: (
         status.HTTP_503_SERVICE_UNAVAILABLE,

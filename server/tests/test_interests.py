@@ -223,7 +223,7 @@ def test_resident_lists_only_their_interests(
     response = client.get("/api/interests/me")
 
     assert response.status_code == status.HTTP_200_OK
-    interests = response.json()
+    interests = response.json()["items"]
     assert len(interests) == 1
     assert interests[0]["quantity"] == 2
     assert interests[0]["buyer_public_id"] == str(resident.public_id)
@@ -256,7 +256,7 @@ def test_interest_remains_after_product_is_deleted(
     list_response = client.get("/api/interests/me")
 
     assert list_response.status_code == status.HTTP_200_OK
-    interest = list_response.json()[0]
+    interest = list_response.json()["items"][0]
     assert interest["product_public_id"] is None
     assert interest["product_name"] == "Alface"
     assert interest["product_status"] == "Indisponível"
@@ -291,7 +291,7 @@ def test_interest_shows_unavailable_when_product_runs_out(
     list_response = client.get("/api/interests/me")
 
     assert list_response.status_code == status.HTTP_200_OK
-    interest = list_response.json()[0]
+    interest = list_response.json()["items"][0]
     assert interest["product_name"] == "Alface"
     assert interest["product_status"] == "Indisponível"
 
@@ -409,7 +409,7 @@ def test_delete_interest_by_owner(
     # Confirma que foi removido
     list_response = client.get("/api/interests/me")
     assert list_response.status_code == status.HTTP_200_OK
-    assert len(list_response.json()) == 0
+    assert len(list_response.json()["items"]) == 0
 
 
 def test_delete_interest_rejects_non_owner(
@@ -482,7 +482,7 @@ def test_apartment_needs_consolidates_and_sorts(
     # Ordenação padrão (decrescente de total_quantity: tomate=15, alface=10)
     response = client.get("/api/apartments/me/needs")
     assert response.status_code == status.HTTP_200_OK
-    needs = response.json()
+    needs = response.json()["items"]
     assert len(needs) == 2
 
     assert needs[0]["product"]["name"] == "Tomate"
@@ -498,7 +498,7 @@ def test_apartment_needs_consolidates_and_sorts(
     # Invertendo a ordenação (crescente: alface=10, tomate=15)
     asc_response = client.get("/api/apartments/me/needs?descending=false")
     assert asc_response.status_code == status.HTTP_200_OK
-    asc_needs = asc_response.json()
+    asc_needs = asc_response.json()["items"]
     assert len(asc_needs) == 2
     assert asc_needs[0]["product"]["name"] == "Alface"
     assert asc_needs[1]["product"]["name"] == "Tomate"
@@ -553,7 +553,7 @@ def test_apartment_needs_filters_only_approved_residents_of_same_building(
     response = client.get("/api/apartments/me/needs")
 
     assert response.status_code == status.HTTP_200_OK
-    needs = response.json()
+    needs = response.json()["items"]
     assert len(needs) == 1
     assert needs[0]["total_quantity"] == 5
     assert needs[0]["interested_buyers_count"] == 1
@@ -590,7 +590,7 @@ def test_apartment_needs_ignores_expired_products(
     response = client.get("/api/apartments/me/needs")
 
     assert response.status_code == status.HTTP_200_OK
-    needs = response.json()
+    needs = response.json()["items"]
     assert len(needs) == 1
     assert needs[0]["product"]["name"] == "Válido"
     assert needs[0]["total_quantity"] == 4

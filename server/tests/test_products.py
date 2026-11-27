@@ -1,5 +1,3 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -7,7 +5,6 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlalchemy import event
 from sqlmodel import Session, select
 
 from src.models.apartment import Apartment
@@ -17,6 +14,7 @@ from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct
 from src.models.user import User
 from tests.helpers import add_farmer, add_product, add_resident, add_user, login
+from tests.queries import counted_queries
 
 TODAY = datetime.now(BUSINESS_TZ).date()
 FUTURE = TODAY + timedelta(days=30)
@@ -201,7 +199,7 @@ def test_farmer_lists_own_products(client: TestClient, session: Session, farmer:
 
     response = client.get("/api/products/me")
 
-    body = response.json()
+    body = response.json()["items"]
     assert response.status_code == status.HTTP_200_OK
     assert sorted(product["name"] for product in body) == ["Alface", "Couve"]
     listed_lettuce = next(product for product in body if product["name"] == "Alface")
@@ -221,7 +219,7 @@ def test_list_my_products_is_empty_when_farmer_has_none(
     response = client.get("/api/products/me")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_list_my_products_includes_expired_and_sold_out(
@@ -233,7 +231,7 @@ def test_list_my_products_includes_expired_and_sold_out(
     response = client.get("/api/products/me")
 
     assert response.status_code == status.HTTP_200_OK
-    assert sorted(product["name"] for product in response.json()) == [
+    assert sorted(product["name"] for product in response.json()["items"]) == [
         "Alface vencida",
         "Couve esgotada",
     ]
@@ -261,7 +259,8 @@ def test_list_my_products_orders_by_creation_date(
 
     response = client.get("/api/products/me")
 
-    assert [product["name"] for product in response.json()] == ["Alface", "Rúcula", "Couve"]
+    names = [product["name"] for product in response.json()["items"]]
+    assert names == ["Alface", "Rúcula", "Couve"]
 
 
 def test_list_my_products_requires_login(client: TestClient):
@@ -347,6 +346,7 @@ def test_get_product_returns_every_product_field(
         "is_available": True,
         "price": "3.20",
         "expiration_date": FUTURE.isoformat(),
+        "unit": "kg",
         "farmer_public_id": str(seller.public_id),
     }
 
@@ -420,24 +420,6 @@ def test_get_product_rejects_invalid_id(client: TestClient, public_id: str):
     assert response.json()["detail"][0]["loc"] == ["path", "public_id"]
 
 
-def test_get_product_requires_login(client: TestClient, session: Session, seller: Farmer):
-    lettuce = add_product(session, seller)
-
-    response = client.get(f"/api/products/{lettuce.public_id}")
-
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "Alface" not in response.text
-
-
-def test_catalog_requires_login(client: TestClient, session: Session, seller: Farmer):
-    add_product(session, seller)
-
-    response = client.get("/api/products")
-
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "Alface" not in response.text
-
-
 FIRST_DAY = datetime(2026, 1, 1, tzinfo=UTC)
 
 
@@ -446,21 +428,6 @@ def add_products_in_order(session: Session, farmer: Farmer, *names: str) -> list
         add_product(session, farmer, name=name, created_at=FIRST_DAY + timedelta(days=day))
         for day, name in enumerate(names)
     ]
-
-
-@contextmanager
-def recorded_queries(session: Session) -> Iterator[list[str]]:
-    queries: list[str] = []
-
-    def record(conn, cursor, statement, parameters, context, executemany):
-        queries.append(statement)
-
-    engine = session.get_bind()
-    event.listen(engine, "before_cursor_execute", record)
-    try:
-        yield queries
-    finally:
-        event.remove(engine, "before_cursor_execute", record)
 
 
 @pytest.mark.usefixtures("ana")
@@ -496,6 +463,7 @@ def test_catalog_lists_products_of_every_farmer(
             "is_available": True,
             "price": "2.50",
             "expiration_date": FUTURE.isoformat(),
+            "unit": "kg",
             "farmer_public_id": str(seller.public_id),
             "farmer_short_name": "João S.",
             "farmer_farm_name": None,
@@ -511,6 +479,7 @@ def test_catalog_lists_products_of_every_farmer(
             "is_available": True,
             "price": "4.90",
             "expiration_date": FUTURE.isoformat(),
+            "unit": "kg",
             "farmer_public_id": str(maria.public_id),
             "farmer_short_name": "Maria S.",
             "farmer_farm_name": None,
@@ -669,11 +638,11 @@ def test_catalog_queries_do_not_grow_with_the_number_of_products(
         add_product(session, add_farmer(session, user))
 
     add_farmer_with_product(0)
-    with recorded_queries(session) as one_product:
+    with counted_queries(session) as one_product:
         client.get("/api/products")
     for number in range(1, 6):
         add_farmer_with_product(number)
-    with recorded_queries(session) as six_products:
+    with counted_queries(session) as six_products:
         response = client.get("/api/products")
 
     assert len(response.json()["items"]) == 6
@@ -701,7 +670,9 @@ def test_owner_updates_only_the_fields_sent(
         "is_available": True,
         "price": "3.00",
         "expiration_date": FUTURE.isoformat(),
+        "unit": "kg",
         "farmer_public_id": str(farmer.public_id),
+        "unit_locked": False,
     }
     session.refresh(lettuce)
     assert lettuce.price == Decimal("3.00")
@@ -719,6 +690,7 @@ def test_owner_updates_every_field(client: TestClient, session: Session, farmer:
         "is_available": False,
         "price": "4.75",
         "expiration_date": (TODAY + timedelta(days=5)).isoformat(),
+        "unit": "duzia",
     }
 
     response = client.patch(f"/api/products/{lettuce.public_id}", json=changes)
@@ -730,6 +702,7 @@ def test_owner_updates_every_field(client: TestClient, session: Session, farmer:
         **changes,
         "public_id": str(lettuce.public_id),
         "farmer_public_id": str(farmer.public_id),
+        "unit_locked": False,
     }
 
 
@@ -1023,7 +996,7 @@ def test_farmer_follows_the_409_message_to_hide_a_sold_product(
     assert response.status_code == status.HTTP_200_OK
     assert client.get("/api/products").json()["items"] == []
     # some do catálogo, mas continua com o agricultor e no histórico da compra
-    assert [product["public_id"] for product in client.get("/api/products/me").json()] == [
+    assert [product["public_id"] for product in client.get("/api/products/me").json()["items"]] == [
         str(lettuce.public_id)
     ]
     assert len(session.exec(select(PurchaseProduct)).all()) == 1
@@ -1041,7 +1014,8 @@ def test_owner_removes_product(client: TestClient, session: Session, farmer: Far
     session.expire_all()
     assert session.get(Product, lettuce_id) is None
     assert session.get(Product, kale.id) is not None
-    assert [product["name"] for product in client.get("/api/products/me").json()] == ["Couve"]
+    mine = client.get("/api/products/me").json()["items"]
+    assert [product["name"] for product in mine] == ["Couve"]
     assert [product["name"] for product in client.get("/api/products").json()["items"]] == ["Couve"]
     assert client.get(lettuce_url).status_code == status.HTTP_404_NOT_FOUND
 

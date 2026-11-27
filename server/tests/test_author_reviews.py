@@ -62,9 +62,9 @@ def test_reviewable_lists_delivered_parts_not_yet_reviewed_by_the_user(
     login(client, other)
     by_other = client.patch(f"/api/reviews/{review['public_id']}", json={"rating": 1})
 
-    assert before.json() == pending
-    assert after.json() == [pending[0], pending[2]]
-    assert client.get(REVIEWABLE_URL).json() == pending
+    assert before.json()["items"] == pending
+    assert after.json()["items"] == [pending[0], pending[2]]
+    assert client.get(REVIEWABLE_URL).json()["items"] == pending
     assert by_other.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -77,7 +77,7 @@ def test_reviewable_tells_when_each_delivery_came_and_with_what(
     delivered.purchase_parts[0].closed_at = datetime(2026, 11, 19, 15, 30, tzinfo=UTC)
     session.commit()
 
-    [reviewable] = client.get(REVIEWABLE_URL).json()
+    [reviewable] = client.get(REVIEWABLE_URL).json()["items"]
 
     assert reviewable["purchase_public_id"] == str(delivered.public_id)
     assert reviewable["delivered_at"].startswith("2026-11-19T15:30:00")
@@ -101,19 +101,21 @@ def test_author_finds_own_reviews_to_edit(
     resident_reviews = client.get(MY_REVIEWS_URL)
     login(client, manager)
     before = client.get(MY_REVIEWS_URL)
-    edit = client.patch(f"/api/reviews/{before.json()[1]['public_id']}", json={"rating": 3})
+    edited_id = before.json()["items"][1]["public_id"]
+    edit = client.patch(f"/api/reviews/{edited_id}", json={"rating": 3})
     after = client.get(MY_REVIEWS_URL)
 
     assert before.status_code == status.HTTP_200_OK
-    assert [set(review) for review in before.json()] == [AUTHOR_FIELDS, AUTHOR_FIELDS]
-    assert before.json() == [
+    assert [set(review) for review in before.json()["items"]] == [AUTHOR_FIELDS, AUTHOR_FIELDS]
+    assert before.json()["items"] == [
         latest.json() | {"farmer_short_name": "Lucas R."},
         first.json() | {"farmer_short_name": "João L."},
     ]
     assert edit.status_code == status.HTTP_200_OK
-    assert (after.json()[1]["rating"], after.json()[1]["comment"]) == (3, "Ótimo")
-    assert after.json()[1]["updated_at"] is not None
-    assert resident_reviews.json() == [by_resident.json() | {"farmer_short_name": "João L."}]
+    assert (after.json()["items"][1]["rating"], after.json()["items"][1]["comment"]) == (3, "Ótimo")
+    assert after.json()["items"][1]["updated_at"] is not None
+    by_resident_listed = by_resident.json() | {"farmer_short_name": "João L."}
+    assert resident_reviews.json()["items"] == [by_resident_listed]
 
 
 def test_only_managers_and_approved_residents_list_their_reviews(
@@ -133,5 +135,5 @@ def test_only_managers_and_approved_residents_list_their_reviews(
         assert client.get(MY_REVIEWS_URL).status_code == status.HTTP_403_FORBIDDEN
     client.cookies.clear()
 
-    assert other_manager.json() == []
+    assert other_manager.json()["items"] == []
     assert client.get(MY_REVIEWS_URL).status_code == status.HTTP_401_UNAUTHORIZED
