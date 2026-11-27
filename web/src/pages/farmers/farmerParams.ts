@@ -29,7 +29,9 @@ export function withProduct(products: string[], product: string): string[] {
 export function farmerFiltersOf(params: URLSearchParams): FarmerFilters {
   return {
     name: (params.get("name") ?? "").trim().slice(0, MAX_SEARCH_TERM),
-    products: params.getAll("products").reduce(withProduct, []),
+    products: params
+      .getAll("products")
+      .reduce<string[]>((chosen, product) => withProduct(chosen, product), []),
     distance: distanceOf(params.get("max_distance_km")),
     sort: params.get("sort") === "distance" ? "distance" : "reputation",
   };

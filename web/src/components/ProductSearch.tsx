@@ -27,7 +27,7 @@ export function ProductSearch({ className = "" }: Readonly<{ className?: string 
     next.delete("q");
     if (term.trim()) next.set("q", term.trim());
     const query = next.toString();
-    navigate({ pathname: "/", search: query ? `?${query}` : "" });
+    void navigate({ pathname: "/", search: query ? `?${query}` : "" });
   }
 
   return (

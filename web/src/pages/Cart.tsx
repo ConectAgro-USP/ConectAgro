@@ -105,7 +105,8 @@ export function Cart() {
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const date = String(new FormData(event.currentTarget).get("expected_delivery_date"));
+    const date = new FormData(event.currentTarget).get("expected_delivery_date");
+    if (typeof date !== "string") return;
     run(async () => {
       // o preço, a unidade e o estoque podem ter mudado com o carrinho aberto
       const { changed, products } = await checked.check();

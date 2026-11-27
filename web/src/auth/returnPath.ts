@@ -4,7 +4,10 @@ export const RETURN_PARAM = "proximo";
 const STORAGE_KEY = "conectagro:proximo";
 
 function hasControlCharacter(value: string): boolean {
-  return [...value].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
+  return [...value].some((char) => {
+    const code = char.codePointAt(0) ?? 0;
+    return code < 32 || code === 127;
+  });
 }
 
 // só caminhos do próprio site, o resto volta ao início
