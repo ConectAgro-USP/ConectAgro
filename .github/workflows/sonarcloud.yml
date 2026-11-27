@@ -48,7 +48,7 @@ jobs:
         run: pytest -c server/pyproject.toml server/tests --cov=server/src --cov-config=server/pyproject.toml --cov-report=xml:server/coverage.xml
 
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+        uses: sonarsource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         with:
           args: >
             -Dsonar.host.url=https://sonarcloud.io
