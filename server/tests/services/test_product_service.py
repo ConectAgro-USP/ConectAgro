@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 
 from src.models.farmer import Farmer
-from src.models.product import Product
+from src.models.product import Product, ProductUnit, ProductUpdate
 from src.repository.product_repository import ProductInUseError, ProductRepository
 from src.services.exceptions import ProductHasPurchasesError
 from src.services.product_service import ProductService
@@ -21,10 +21,34 @@ def products_with_one_product() -> tuple[ProductRepository, Farmer]:
         price=Decimal("2.50"),
         expiration_date=date(2026, 12, 1),
         farmer_id=farmer.id,
+        farmer=farmer,
     )
     products = create_autospec(ProductRepository, instance=True)
     products.get_product_by_public_id.return_value = product
     return products, farmer
+
+
+def test_removal_locks_the_product_before_reading_its_purchases():
+    products, farmer = products_with_one_product()
+    products.has_purchases.return_value = False
+    service = ProductService(products)
+
+    service.delete_product(uuid4(), farmer)
+
+    steps = [call[0] for call in products.method_calls]
+    assert steps == ["get_product_by_public_id", "lock_product", "has_purchases", "delete_product"]
+
+
+def test_unit_change_locks_the_product_before_checking_its_sales():
+    products, farmer = products_with_one_product()
+    products.is_unit_locked.return_value = False
+    products.save.side_effect = lambda product: product
+    service = ProductService(products)
+
+    service.update_product(uuid4(), farmer, ProductUpdate(unit=ProductUnit.DUZIA))
+
+    steps = [call[0] for call in products.method_calls]
+    assert steps == ["get_product_by_public_id", "lock_product", "is_unit_locked", "save"]
 
 
 def test_purchase_saved_during_the_removal_is_explained_as_already_sold():

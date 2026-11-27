@@ -22,7 +22,3 @@ Antes de abrir um Pull Request, leia [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD
 
 Problemas comuns de configuração e execução estão documentados em
 [docs/TROUBLESHOOTING.MD](docs/TROUBLESHOOTING.MD).
-
-## Log de Desenvolvimento
-
-O histórico de decisões e progresso do projeto é mantido em [DEVLOG.md](DEVLOG.md).

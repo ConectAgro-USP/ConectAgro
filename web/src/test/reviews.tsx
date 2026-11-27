@@ -4,7 +4,13 @@ import type { ComponentProps } from "react";
 import type { AuthoredReview, Review, Reviewable } from "../api/reviews";
 import { ReviewForm } from "../components/reviews/ReviewForm";
 import { Reviews } from "../pages/Reviews";
-import { anaAsManager, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
+import {
+  anaAsManager,
+  fakeAuth,
+  pageResponse,
+  renderWithAuth,
+  stubFetch,
+} from "./helpers";
 
 export const lastDelivery: Reviewable = {
   purchase_public_id: "compra-2",
@@ -49,7 +55,7 @@ export function renderReviews(
   authored: AuthoredReview[],
   ...more: Response[]
 ) {
-  return renderReviewsAnswering(url, jsonResponse(reviewables), jsonResponse(authored), ...more);
+  return renderReviewsAnswering(url, pageResponse(reviewables), pageResponse(authored), ...more);
 }
 
 export const OSVALDO_URL = "/avaliar?compra=compra-2&agricultor=agricultor-1";

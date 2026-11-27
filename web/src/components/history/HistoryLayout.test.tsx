@@ -83,11 +83,11 @@ describe("HistoryLayout", () => {
     expect(lastUrl(fetchMock)).toBe("/api/orders?page=1");
   });
 
-  it("shows the title and the way back to the home", () => {
+  it("shows the title without a way back, since it has no parent page", () => {
     renderOrders(pageOf([feira]));
 
     expect(screen.getByRole("heading", { name: "Pedidos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Voltar ao início" })).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("link", { name: "Voltar ao início" })).not.toBeInTheDocument();
   });
 
   it("shows the delivered and the open totals", async () => {

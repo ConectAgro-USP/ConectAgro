@@ -52,12 +52,16 @@ def test_get_json_checks_the_deadline_on_every_chunk(monkeypatch: pytest.MonkeyP
     clock = itertools.count()
     monkeypatch.setattr(time, "monotonic", lambda: next(clock))
     sent: list[bytes] = []
-    client, _ = fake_client(httpx.Response(200, content=counted([b" "] * 20, sent)))
+    client, requests = fake_client(
+        lambda request: httpx.Response(200, content=counted([b" "] * 20, sent))
+    )
 
     with pytest.raises(ExternalServiceError, match="prazo"):
-        get_json(client, URL, timeout=3)
+        get_json(client, URL, timeout=3, retry_delay=0)
 
-    assert len(sent) == 3
+    # o prazo vence nas duas tentativas, 3 pedaços em cada uma
+    assert len(requests) == 2
+    assert len(sent) == 6
 
 
 @pytest.mark.parametrize(
@@ -70,12 +74,3 @@ def test_get_json_keeps_the_status_when_the_body_is_not_json(body: bytes):
         get_json(client, URL, timeout=5.0)
 
     assert isinstance(caught.value.__cause__, ValueError)
-
-
-def test_get_json_keeps_the_transport_error_as_cause():
-    client, _ = fake_client(httpx.ReadTimeout("demorou"))
-
-    with pytest.raises(ExternalServiceError) as caught:
-        get_json(client, URL, timeout=5.0)
-
-    assert isinstance(caught.value.__cause__, httpx.ReadTimeout)

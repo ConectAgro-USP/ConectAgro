@@ -9,10 +9,10 @@ from src.models.farmer import Farmer
 from src.models.user import User
 from tests.connectors.test_brasilapi import ACRELANDIA, PAULISTA
 from tests.connectors.test_cnpja import BANCO_DO_BRASIL
-from tests.test_profiles import APARTMENT, FARMER, answer_cep, answer_cnpj
+from tests.geo import PAULISTA_POINT
+from tests.profiles import APARTMENT, FARMER, answer_cep, answer_cnpj
 
-# coordenadas que a BrasilAPI dá nas respostas PAULISTA e ACRELANDIA
-PAULISTA_POINT = (-23.5475, -46.63611)
+# coordenadas que a BrasilAPI dá na resposta ACRELANDIA
 ACRELANDIA_POINT = (-10.07387, -67.055)
 PROFILES = [
     ("/api/profiles/farmer", FARMER, Farmer),

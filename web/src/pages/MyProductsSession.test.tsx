@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { anaAsFarmer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
-import { findCard, orange, press } from "../test/products";
+import { findCard, orange, press, productsResponse } from "../test/products";
 import { MyProducts } from "./MyProducts";
 
 function loggedOut(): Response {
@@ -17,10 +17,10 @@ function renderFarmer(...responses: Response[]) {
 
 describe("MyProducts, session ended while writing", () => {
   it("reloads the user when saving a new product", async () => {
-    const auth = renderFarmer(jsonResponse([]), loggedOut());
+    const auth = renderFarmer(productsResponse([]), loggedOut());
     await userEvent.click(await screen.findByRole("button", { name: "Cadastrar produto" }));
     await userEvent.type(screen.getByLabelText("Nome do produto"), "Laranja");
-    await userEvent.type(screen.getByLabelText("Preço (R$)"), "4.99");
+    await userEvent.type(screen.getByLabelText("Preço por quilo (R$)"), "4.99");
     await userEvent.type(screen.getByLabelText("Quantidade (kg)"), "12");
     fireEvent.change(screen.getByLabelText("Data de vencimento"), {
       target: { value: "2030-10-25" },
@@ -32,7 +32,7 @@ describe("MyProducts, session ended while writing", () => {
   });
 
   it("reloads the user when saving an edit", async () => {
-    const auth = renderFarmer(jsonResponse([orange]), loggedOut());
+    const auth = renderFarmer(productsResponse([orange]), loggedOut());
     await press(await findCard("Laranja"), "Editar");
 
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
@@ -41,7 +41,7 @@ describe("MyProducts, session ended while writing", () => {
   });
 
   it("reloads the user when removing a product", async () => {
-    const auth = renderFarmer(jsonResponse([orange]), loggedOut());
+    const auth = renderFarmer(productsResponse([orange]), loggedOut());
     const card = await findCard("Laranja");
     await press(card, "Remover");
 

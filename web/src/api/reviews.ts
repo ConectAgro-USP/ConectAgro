@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { fetchAllPages, LARGEST_PAGE, pageQuery, type Page } from "./pagination";
 
 export const RATINGS = [1, 2, 3, 4, 5];
 export const COMMENT_MAX_LENGTH = 500;
@@ -47,12 +48,17 @@ export function listReceivedReviews(): Promise<ReceivedReviews> {
   return apiFetch<ReceivedReviews>("/farmers/me/reviews");
 }
 
-export function listReviewable(): Promise<Reviewable[]> {
-  return apiFetch<Reviewable[]>("/purchases/reviewable");
+export function listReviewable(page: number, pageSize?: number): Promise<Page<Reviewable>> {
+  return apiFetch<Page<Reviewable>>(`/purchases/reviewable?${pageQuery(page, pageSize)}`);
 }
 
-export function listAuthoredReviews(): Promise<AuthoredReview[]> {
-  return apiFetch<AuthoredReview[]>("/reviews/me");
+// o histórico de compras procura a entrega de cada pedido na tela
+export function listAllReviewables(): Promise<Reviewable[]> {
+  return fetchAllPages((page) => listReviewable(page, LARGEST_PAGE));
+}
+
+export function listAuthoredReviews(page: number): Promise<Page<AuthoredReview>> {
+  return apiFetch<Page<AuthoredReview>>(`/reviews/me?${pageQuery(page)}`);
 }
 
 export function createReview(reviewable: Reviewable, review: ReviewCreate): Promise<Review> {

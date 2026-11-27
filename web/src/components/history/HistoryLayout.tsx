@@ -4,7 +4,9 @@ import { Link } from "react-router";
 import { NO_FILTERS, type HistoryFilters, type PurchaseStatus } from "../../api/history";
 import type { History } from "../../hooks/useHistory";
 import { SecondaryButton } from "../Button";
+import { buttonClasses } from "../buttonClasses";
 import { FormError } from "../FormError";
+import { ShowMore } from "../ShowMore";
 import { TitleBar } from "../TitleBar";
 import { formatMoney } from "../../format";
 import { HistoryFilterFields } from "./HistoryFilterFields";
@@ -16,10 +18,14 @@ const FILTER_BUTTON_CLASSES =
 const CLEAR_BUTTON_CLASSES =
   "mt-2 rounded py-2 font-bold text-lime-800 underline focus-visible:outline-2 " +
   "focus-visible:outline-lime-800";
-const HOME_LINK_CLASSES =
-  "flex h-14 items-center rounded-full bg-lime-800 px-8 text-base font-bold text-white " +
-  "hover:bg-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800";
+const EMPTY_LINK_CLASSES = `flex items-center text-base ${buttonClasses("primary")}`;
+
+interface EmptyLink {
+  to: string;
+  label: string;
+}
+
+const HOME: EmptyLink = { to: "/", label: "Ir para a página inicial" };
 
 function countActive(filters: HistoryFilters): number {
   return Object.values(filters).filter((value) => value !== "").length;
@@ -40,6 +46,7 @@ interface HistoryLayoutProps {
   statusLabels: Record<PurchaseStatus, string>;
   counterpartLabel: string;
   emptyMessage: string;
+  emptyLink?: EmptyLink;
   children: ReactNode;
 }
 
@@ -49,6 +56,7 @@ export function HistoryLayout({
   statusLabels,
   counterpartLabel,
   emptyMessage,
+  emptyLink = HOME,
   children,
 }: Readonly<HistoryLayoutProps>) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -107,8 +115,8 @@ export function HistoryLayout({
               {activeFilters === 0 ? emptyMessage : "Nenhum pedido com esses filtros"}
             </p>
             {activeFilters === 0 && (
-              <Link to="/" className={HOME_LINK_CLASSES}>
-                Ir para a página inicial
+              <Link to={emptyLink.to} className={EMPTY_LINK_CLASSES}>
+                {emptyLink.label}
               </Link>
             )}
           </div>
@@ -118,9 +126,7 @@ export function HistoryLayout({
           <output className="text-stone-600">{loading ? "Carregando..." : ""}</output>
           <FormError message={error} />
           {error && <SecondaryButton onClick={history.retry}>Tentar de novo</SecondaryButton>}
-          {history.hasMore && !loading && !error && (
-            <SecondaryButton onClick={history.loadMore}>Mostrar pedidos mais antigos</SecondaryButton>
-          )}
+          <ShowMore list={history} label="Mostrar pedidos mais antigos" />
         </div>
       </div>
     </main>

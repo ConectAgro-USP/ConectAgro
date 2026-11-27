@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { errorMessage, lostAccess } from "../api/client";
+import type { Page } from "../api/pagination";
 import {
   listAuthoredReviews,
   listReviewable,
@@ -7,91 +6,67 @@ import {
   type Review,
   type Reviewable,
 } from "../api/reviews";
-import { useAuth } from "../auth/AuthContext";
+import { addItem, removeItem, replaceItem } from "./pageEdits";
+import { usePages } from "./usePages";
 
-interface Lists {
-  reviewables: Reviewable[];
-  authored: AuthoredReview[];
+function reviewableKey(reviewable: Reviewable): string {
+  return `${reviewable.purchase_public_id}/${reviewable.farmer_public_id}`;
 }
 
-function sameReviewable(one: Reviewable, other: Reviewable): boolean {
-  return (
-    one.purchase_public_id === other.purchase_public_id &&
-    one.farmer_public_id === other.farmer_public_id
-  );
+function reviewKey(review: AuthoredReview): string {
+  return review.public_id;
+}
+
+// as duas listas não têm busca, só as páginas
+function loadReviewables(_search: null, page: number): Promise<Page<Reviewable>> {
+  return listReviewable(page);
+}
+
+function loadAuthored(_search: null, page: number): Promise<Page<AuthoredReview>> {
+  return listAuthoredReviews(page);
 }
 
 export function useAuthorReviews() {
-  const { refreshUser } = useAuth();
-  const [lists, setLists] = useState<Lists | null>(null);
-  const [error, setError] = useState("");
-  const [request, setRequest] = useState({});
-  // a lista que ainda chega não pode desfazer o que acabou de ser salvo
-  const stopLoading = useRef(() => {});
+  const pending = usePages(loadReviewables, null, { keyOf: reviewableKey });
+  const authored = usePages(loadAuthored, null, { keyOf: reviewKey });
+  const loaded = pending.lastPage !== undefined && authored.lastPage !== undefined;
+  const error = pending.error || authored.error;
 
-  useEffect(() => {
-    let outdated = false;
-    const stop = () => {
-      outdated = true;
-    };
-    stopLoading.current = stop;
+  // pede de novo só a página que falhou
+  function retry() {
+    if (pending.error) pending.retry();
+    if (authored.error) authored.retry();
+  }
 
-    async function load() {
-      try {
-        const [reviewables, authored] = await Promise.all([
-          listReviewable(),
-          listAuthoredReviews(),
-        ]);
-        if (!outdated) setLists({ reviewables, authored });
-      } catch (loadError) {
-        if (outdated) return;
-        setError(errorMessage(loadError));
-        if (lostAccess(loadError)) {
-          await refreshUser();
-        }
-      }
-    }
-
-    load().catch((refreshError: unknown) => console.error(refreshError));
-    return stop;
-  }, [request, refreshUser]);
-
+  // com o item recusado fora do lugar, as listas voltam da primeira página
   function reload() {
-    setError("");
-    setRequest({});
+    pending.restart();
+    authored.restart();
   }
 
   function markReviewed(reviewable: Reviewable, review: Review) {
-    stopLoading.current();
-    setError("");
-    setLists((current) => ({
-      reviewables: (current?.reviewables ?? []).filter(
-        (item) => !sameReviewable(item, reviewable),
-      ),
-      authored: [
-        { ...review, farmer_short_name: reviewable.farmer_short_name },
-        ...(current?.authored ?? []),
-      ],
-    }));
+    const same = (item: Reviewable) => reviewableKey(item) === reviewableKey(reviewable);
+    const listed = { ...review, farmer_short_name: reviewable.farmer_short_name };
+    pending.editPages(removeItem(same), { dropped: 1 });
+    authored.editPages(addItem(listed, "first"));
   }
 
   function markEdited(review: Review) {
-    stopLoading.current();
-    setError("");
-    setLists((current) => ({
-      reviewables: current?.reviewables ?? [],
-      authored: (current?.authored ?? []).map((item) =>
-        item.public_id === review.public_id ? { ...item, ...review } : item,
-      ),
-    }));
+    const current = authored.items.find((item) => item.public_id === review.public_id);
+    if (current === undefined) return;
+    const same = (item: AuthoredReview) => item.public_id === review.public_id;
+    authored.editPages(replaceItem(same, { ...current, ...review }));
   }
 
   return {
-    reviewables: lists?.reviewables ?? [],
-    authored: lists?.authored ?? [],
-    loaded: lists !== null,
-    loading: lists === null && error === "",
+    reviewables: pending.items,
+    authored: authored.items,
+    pendingPages: pending,
+    authoredPages: authored,
+    loaded,
+    loading: !loaded && error === "",
     error,
+    retry,
     reload,
     markReviewed,
     markEdited,

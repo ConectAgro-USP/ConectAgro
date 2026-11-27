@@ -15,7 +15,7 @@ from src.models.product import (
     ProductCreate,
     ProductDetailRead,
     ProductFarmerRead,
-    ProductRead,
+    ProductPublicRead,
     ProductUpdate,
 )
 from src.models.user import User
@@ -82,7 +82,7 @@ def test_product_read_from_table_exposes_farmer_public_id(session: Session, farm
     session.add(product)
     session.commit()
 
-    assert ProductRead.model_validate(product).farmer_public_id == farmer.public_id
+    assert ProductPublicRead.model_validate(product).farmer_public_id == farmer.public_id
 
 
 def test_product_create():
@@ -155,7 +155,7 @@ def test_product_create_explains_expired_product():
 
 
 def test_product_read_hides_internal_id():
-    product_read = ProductRead(
+    product_read = ProductPublicRead(
         **product_create().model_dump(),
         public_id=uuid4(),
         created_at=datetime.now(UTC),
@@ -176,7 +176,7 @@ def test_product_read_rejects_wrong_type():
     }
 
     with pytest.raises(ValidationError) as exc_info:
-        ProductRead(**data)
+        ProductPublicRead(**data)
 
     assert exc_info.value.errors()[0]["loc"] == ("name",)
 
@@ -398,6 +398,7 @@ def test_product_catalog_read_carries_only_the_farmer_id_and_summary():
         "quantity",
         "price",
         "expiration_date",
+        "unit",
         "public_id",
         "is_available",
         "created_at",

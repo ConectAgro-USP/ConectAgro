@@ -102,7 +102,7 @@ def test_manager_lists_residents_by_status(
 
     response = client.get("/api/apartments/me/buyers", params={"status": "PENDENTE"})
 
-    residents = response.json()
+    residents = response.json()["items"]
     assert response.status_code == status.HTTP_200_OK
     assert len(residents) == 1
     assert residents[0]["public_id"] == str(pending.public_id)
@@ -127,7 +127,7 @@ def test_manager_lists_every_resident_without_status(
 
     response = client.get("/api/apartments/me/buyers")
 
-    residents = response.json()
+    residents = response.json()["items"]
     assert len(residents) == 2
     assert residents[0]["unit"] == "11"
     assert residents[1]["unit"] == "12"
@@ -148,7 +148,7 @@ def test_residents_are_listed_from_the_oldest_request(
 
     response = client.get("/api/apartments/me/buyers")
 
-    residents = response.json()
+    residents = response.json()["items"]
     assert residents[0]["unit"] == "12"
     assert residents[1]["unit"] == "11"
 

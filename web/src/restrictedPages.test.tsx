@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import App from "./App";
 import type { ProfileRead, ProfileType } from "./api/profiles";
 import { AppHeader } from "./components/AppHeader";
-import { RESTRICTED_PAGES } from "./restrictedPages";
+import { HOME_DESTINATION, navigationOf, pagesOf, RESTRICTED_PAGES } from "./restrictedPages";
 import {
   anaAsBuyer,
   anaAsFarmer,
@@ -18,12 +18,11 @@ const USERS: Record<ProfileType, ProfileRead> = {
   buyer: anaAsBuyer("APROVADO"),
 };
 const PROFILES = Object.keys(USERS) as ProfileType[];
-const CATALOG_HOME = { heading: "Produtos em destaque", calls: ["/api/products?page=1"] };
-const HOMES: Record<ProfileType, { heading: string; calls: string[] }> = {
-  farmer: { heading: "Olá, Ana Souza", calls: [] },
-  apartment: CATALOG_HOME,
-  buyer: CATALOG_HOME,
-};
+const NO_ACCESS = "Você não tem acesso a esta página";
+
+function linkTargets(): (string | null)[] {
+  return screen.queryAllByRole("link").map((link) => link.getAttribute("href"));
+}
 
 describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
   const outsiders = PROFILES.filter((profile) => !page.profiles.includes(profile));
@@ -31,29 +30,31 @@ describe.each(RESTRICTED_PAGES)("restricted page $path", (page) => {
   it.each(page.profiles)("shows its link in the header to the %s profile", (profile) => {
     renderWithAuth(<AppHeader />, fakeAuth({ profileType: profile }));
 
-    expect(screen.getByRole("link", { name: page.label })).toHaveAttribute("href", page.path);
+    expect(linkTargets()).toContain(page.path);
   });
 
   it.each(outsiders)("hides its link in the header from the %s profile", (profile) => {
     renderWithAuth(<AppHeader />, fakeAuth({ profileType: profile }));
 
-    expect(screen.queryByRole("link", { name: page.label })).not.toBeInTheDocument();
+    expect(linkTargets()).not.toContain(page.path);
   });
 
   it.each(page.profiles)("opens for the %s profile", (profile) => {
     stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: USERS[profile] }), page.path);
 
-    expect(screen.getByRole("heading", { level: 1, name: page.label })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: page.title })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Voltar/ })).not.toBeInTheDocument();
   });
 
-  it.each(outsiders)("sends the %s profile back to the home without the page's API", (profile) => {
+  it.each(outsiders)("tells the %s profile it has no access, without the API", (profile) => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: USERS[profile] }), page.path);
 
-    expect(screen.getByRole("heading", { name: HOMES[profile].heading })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: page.label })).not.toBeInTheDocument();
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(HOMES[profile].calls);
+    expect(screen.getByRole("heading", { name: NO_ACCESS })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voltar ao início" })).toHaveAttribute("href", "/");
+    expect(linkTargets()).not.toContain(page.path);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -63,9 +64,23 @@ describe("header links", () => {
       const allowed = RESTRICTED_PAGES.filter((page) => page.profiles.includes(profile));
       const { unmount } = renderWithAuth(<AppHeader />, fakeAuth({ profileType: profile }));
 
-      const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
-      expect(links).toEqual(["/", "/", ...allowed.map((page) => page.path), "/perfil"]);
+      const pages = allowed.map((page) => page.path);
+      expect(linkTargets().sort()).toEqual(["/", "/", "/perfil", ...pages].sort());
       unmount();
     }
+  });
+});
+
+describe("navigationOf", () => {
+  it.each(PROFILES)("puts every page of the %s profile in the bar or in Mais", (profile) => {
+    const { tabs, more } = navigationOf(profile);
+
+    const paths = [...tabs, ...more].map((page) => page.path).sort();
+    expect(paths).toEqual([HOME_DESTINATION.path, ...pagesOf(profile).map((p) => p.path)].sort());
+    expect(tabs.length).toBeLessThanOrEqual(4);
+  });
+
+  it("gives a visitor without profile only the home", () => {
+    expect(navigationOf(null)).toEqual({ tabs: [HOME_DESTINATION], more: [] });
   });
 });

@@ -1,122 +1,78 @@
-import { useState } from "react";
-import { CheckCircleIcon } from "lucide-react";
-import { createInterest } from "../../api/interests";
+import { LogInIcon } from "lucide-react";
+import { Link, useLocation } from "react-router";
 import type { ProductDetail } from "../../api/products";
 import { useAuth } from "../../auth/AuthContext";
-import { PrimaryButton } from "../../components/Button";
-import { FormError } from "../../components/FormError";
-import { daysUntil, formatCount } from "../../format";
-import { useAction } from "../../hooks/useAction";
-import { useWriteGuard } from "../../hooks/useWriteGuard";
+import { loginPathFrom } from "../../auth/returnPath";
+import { buttonClasses } from "../../components/buttonClasses";
+import { stateOf } from "../../components/products/productState";
+import { formatStock } from "../../format";
+import { useCart } from "../../hooks/useCart";
+import { CartBox } from "./CartBox";
+import { InterestActions } from "./InterestActions";
 import { ProductContact } from "./ProductContact";
 
-const QUANTITY_CLASSES =
-  "h-14 w-full rounded-xl border border-stone-400 bg-white px-4 text-stone-900 " +
-  "focus:border-lime-800 focus:outline-1 focus:outline-lime-800 " +
-  "disabled:cursor-not-allowed disabled:bg-stone-100";
+const LOGIN_CLASSES =
+  `mt-6 flex w-full items-center justify-center gap-2 ${buttonClasses("primary")}`;
 
-interface ProductActionsProps {
-  product: ProductDetail;
+interface VisitorActionsProps {
+  isAvailable: boolean;
+  stock: string;
 }
 
-export function ProductActions({ product }: Readonly<ProductActionsProps>) {
-  const { profileType } = useAuth();
-  const isBuyer = profileType === "buyer";
-  const isAvailable =
-    product.is_available && product.quantity > 0 && daysUntil(product.expiration_date) >= 0;
-  const [selectedQuantity, setSelectedQuantity] = useState(isAvailable ? "1" : "");
-  const requestedQuantity = Number(selectedQuantity);
-  const quantityExceedsStock = requestedQuantity > product.quantity;
-  const interest = useAction();
-  const guard = useWriteGuard();
-  const [interestSuccess, setInterestSuccess] = useState(false);
-  const canRegisterInterest =
-    isAvailable && requestedQuantity > 0 && !quantityExceedsStock && !interestSuccess;
-
-  function handleRegisterInterest() {
-    interest.run(async () => {
-      await guard(
-        createInterest({ product_public_id: product.public_id, quantity: requestedQuantity }),
-      );
-      setInterestSuccess(true);
-    });
-  }
+// quem não entrou vê o estoque e entra para pedir, sem contato nem quantidade
+function VisitorActions({ isAvailable, stock }: Readonly<VisitorActionsProps>) {
+  const location = useLocation();
 
   return (
     <>
-      <div className="mt-4">
-        <div className="mb-1.5 flex items-baseline justify-between">
-          {isBuyer && (
-            <label htmlFor="quantity-input" className="text-sm font-bold text-stone-900">
-              Quantidade
-            </label>
-          )}
-          <span className="text-sm font-medium text-stone-600">
-            {isAvailable
-              ? formatCount(product.quantity, "kg disponível", "kg disponíveis")
-              : "Indisponível"}
-          </span>
-        </div>
-        {isBuyer && (
-          <>
-            <input
-              id="quantity-input"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              disabled={!isAvailable || interestSuccess}
-              value={selectedQuantity}
-              onChange={(event) => {
-                if (/\D/.test(event.target.value)) {
-                  return;
-                }
-                setSelectedQuantity(event.target.value);
-                interest.setError("");
-              }}
-              className={QUANTITY_CLASSES}
-            />
-            {isAvailable && (
-              <p className="mt-1 text-sm text-stone-500">
-                Escolha uma quantidade de até {product.quantity} kg.
-              </p>
-            )}
-            {quantityExceedsStock && (
-              <p role="alert" className="mt-1 text-sm text-red-700">
-                A quantidade informada excede o estoque disponível.
-              </p>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="mt-6 space-y-3">
-        {isBuyer && (
-          <PrimaryButton
-            type="button"
-            disabled={interest.pending || !canRegisterInterest}
-            onClick={handleRegisterInterest}
-            className="w-full"
-          >
-            {interest.pending ? "Registrando interesse..." : "Registrar interesse"}
-          </PrimaryButton>
-        )}
-
-        {isBuyer && <ProductContact productPublicId={product.public_id} recipient="síndico" />}
-        {profileType === "apartment" && (
-          <ProductContact productPublicId={product.public_id} recipient="agricultor" />
-        )}
-
-        {interestSuccess && (
-          <div
-            role="status"
-            className="flex items-center gap-2 rounded-xl bg-lime-100 p-4 text-sm font-semibold text-lime-900"
-          >
-            <CheckCircleIcon className="size-5 shrink-0 text-lime-800" />
-            <span>Interesse registrado com sucesso!</span>
-          </div>
-        )}
-        <FormError message={interest.error} />
-      </div>
+      <p className="mt-4 font-medium text-stone-700">{stock}</p>
+      {isAvailable && (
+        <Link to={loginPathFrom(location)} className={LOGIN_CLASSES}>
+          <LogInIcon aria-hidden="true" className="size-5 shrink-0" />
+          Entrar para pedir
+        </Link>
+      )}
     </>
   );
+}
+
+interface ProductActionsProps {
+  product: ProductDetail;
+  // a API recusou uma escrita, e o produto pode ter mudado
+  onConflict: () => void;
+}
+
+export function ProductActions({ product, onConflict }: Readonly<ProductActionsProps>) {
+  const { user, profileType } = useAuth();
+  const cart = useCart();
+  const isAvailable = stateOf(product) === "available";
+  const stock = isAvailable ? formatStock(product.quantity, product.unit) : "Indisponível";
+
+  if (!user) {
+    return <VisitorActions isAvailable={isAvailable} stock={stock} />;
+  }
+
+  // o morador escolhe a quantidade do interesse, que tem estados próprios
+  if (profileType === "buyer") {
+    return (
+      <>
+        <InterestActions
+          product={product}
+          isAvailable={isAvailable}
+          stock={stock}
+          onConflict={onConflict}
+        />
+        <div className="mt-3">
+          <ProductContact productPublicId={product.public_id} recipient="síndico" />
+        </div>
+      </>
+    );
+  }
+
+  if (cart.enabled) {
+    return <CartBox product={product} isAvailable={isAvailable} stock={stock} />;
+  }
+
+  // o agricultor vê só o estoque
+  return <p className="mt-4 font-medium text-stone-700">{stock}</p>;
 }

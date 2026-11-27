@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CARD_SURFACE } from "../../components/surface";
 
 const MAX_LENGTH = 250;
 
@@ -10,7 +11,7 @@ export function ProductDescription({ description }: Readonly<ProductDescriptionP
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+    <section className={`p-6 ${CARD_SURFACE}`}>
       <h2 className="text-2xl font-bold text-stone-900">Descrição</h2>
       {description ? (
         <div className="mt-4">

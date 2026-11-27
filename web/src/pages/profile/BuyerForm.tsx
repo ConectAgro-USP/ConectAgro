@@ -31,12 +31,16 @@ export function BuyerForm({ onBack }: Readonly<{ onBack: () => void }>) {
   }
 
   return (
-    <ProfileForm onSubmit={handleSubmit} onBack={onBack} error={error} pending={pending}>
+    <ProfileForm
+      title="Seu apartamento"
+      onSubmit={handleSubmit}
+      onBack={onBack}
+      error={error}
+      pending={pending}
+    >
       <PhoneFields phones={phones} onChange={setPhones} />
-      <BuildingLinkFields
-        link={link}
-        besideCnpj={<CpfField label="CPF" value={cpf} onChange={setCpf} />}
-      />
+      <CpfField label="CPF" value={cpf} onChange={setCpf} />
+      <BuildingLinkFields link={link} />
     </ProfileForm>
   );
 }

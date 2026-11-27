@@ -1,6 +1,6 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { jsonResponse } from "../test/helpers";
+import { jsonResponse, pageResponse } from "../test/helpers";
 import { lastDelivery, mine, OSVALDO_URL, renderReviews, title } from "../test/reviews";
 
 describe("Reviews form, unavailable or failing", () => {
@@ -24,14 +24,14 @@ describe("Reviews form, unavailable or failing", () => {
       [lastDelivery],
       [],
       jsonResponse({}, 500),
-      jsonResponse([lastDelivery]),
-      jsonResponse([]),
+      pageResponse([lastDelivery]),
+      pageResponse([]),
     );
 
     await userEvent.click(await screen.findByRole("button", { name: "Enviar" }));
 
     expect(await screen.findByRole("alert")).toBeVisible();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(screen.getByRole("radio", { name: "2 estrelas, Ruim" })).toBeChecked();
     expect(title()).toHaveTextContent("Avaliar agricultor");
   });
@@ -43,8 +43,8 @@ describe("Reviews form, unavailable or failing", () => {
       [lastDelivery],
       [],
       already,
-      jsonResponse([]),
-      jsonResponse([mine]),
+      pageResponse([]),
+      pageResponse([mine]),
     );
 
     await userEvent.click(await screen.findByRole("button", { name: "Enviar" }));

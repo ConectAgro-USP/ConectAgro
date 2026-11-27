@@ -1,21 +1,27 @@
 import type { ProductFarmer } from "../../api/products";
 import { FarmerRating } from "../../components/farmers/FarmerRating";
 import { useFarmerReviews } from "../../hooks/useFarmerReviews";
+import { FarmerReviewList } from "./FarmerReviewList";
 
 interface ProductFarmerInfoProps {
   farmer: ProductFarmer;
 }
 
 function Reviews({ farmerPublicId }: Readonly<{ farmerPublicId: string }>) {
-  const { reviews, loading } = useFarmerReviews(farmerPublicId);
+  const { rating, written, loading, pages } = useFarmerReviews(farmerPublicId);
 
   if (loading) {
-    return <p className="text-sm text-stone-500">Carregando avaliações...</p>;
+    return <p className="text-stone-600">Carregando avaliações...</p>;
   }
-  if (reviews === null) {
-    return <p className="text-sm text-stone-500">Avaliações indisponíveis</p>;
+  if (rating === null) {
+    return <p className="text-stone-600">Avaliações indisponíveis</p>;
   }
-  return <FarmerRating average={reviews.average_rating} count={reviews.reviews_count} />;
+  return (
+    <>
+      <FarmerRating average={rating.average} count={rating.count} />
+      <FarmerReviewList reviews={written} pages={pages} />
+    </>
+  );
 }
 
 export function ProductFarmerInfo({ farmer }: Readonly<ProductFarmerInfoProps>) {
@@ -47,7 +53,7 @@ export function ProductFarmerInfo({ farmer }: Readonly<ProductFarmerInfoProps>) 
           )}
         </div>
       </div>
-      <Reviews farmerPublicId={farmer.public_id} />
+      <Reviews key={farmer.public_id} farmerPublicId={farmer.public_id} />
     </div>
   );
 }

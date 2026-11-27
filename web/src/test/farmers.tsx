@@ -2,6 +2,8 @@ import { screen } from "@testing-library/react";
 import type { FarmerProduct, NearbyFarmer } from "../api/farmers";
 import { NearbyFarmers } from "../pages/NearbyFarmers";
 import { anaAsBuyer, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "./helpers";
+import { answerMyInterests } from "./interests";
+import { Address } from "./RouterProbe";
 
 export const RETRY = "Tentar de novo";
 export const FIRST_SEARCH = "/api/farmers?max_distance_km=15&page=1&page_size=100";
@@ -35,6 +37,7 @@ export const laranja: FarmerProduct = {
   picture_url: "https://example.com/laranja.jpg",
   quantity: 30,
   price: "4.99",
+  unit: "kg",
   expiration_date: "2026-12-10",
 };
 export const mandioca: FarmerProduct = {
@@ -44,6 +47,7 @@ export const mandioca: FarmerProduct = {
   picture_url: null,
   quantity: 1,
   price: "7.00",
+  unit: "kg",
   expiration_date: "2026-11-30",
 };
 
@@ -51,8 +55,14 @@ export function pageOf<Item>(items: Item[], page = 1, totalPages = 1, total = it
   return jsonResponse({ items, total, page, page_size: 100, total_pages: totalPages });
 }
 
+type Answer = Response | Error | Promise<Response>;
+
 // o erro simula a rede fora do ar, e a promessa deixa a resposta para depois
-export function renderFarmers(...answers: (Response | Error | Promise<Response>)[]) {
+export function renderFarmers(...answers: Answer[]) {
+  return renderFarmersAt("/agricultores", ...answers);
+}
+
+export function renderFarmersAt(url: string, ...answers: Answer[]) {
   const fetchMock = stubFetch();
   for (const answer of answers) {
     if (answer instanceof Error) {
@@ -61,8 +71,16 @@ export function renderFarmers(...answers: (Response | Error | Promise<Response>)
       fetchMock.mockReturnValueOnce(Promise.resolve(answer));
     }
   }
+  answerMyInterests();
   const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
-  renderWithAuth(<NearbyFarmers />, auth);
+  renderWithAuth(
+    <>
+      <NearbyFarmers />
+      <Address />
+    </>,
+    auth,
+    url,
+  );
   return { fetchMock, auth };
 }
 

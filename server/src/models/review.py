@@ -6,7 +6,9 @@ from pydantic import AfterValidator, Strict
 from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import reject_null_character, short_name
+from src.core.text import reject_null_character
+
+from .pagination import PageParams, PaginatedResponse
 
 if TYPE_CHECKING:
     from .apartment import Apartment
@@ -114,7 +116,7 @@ class Review(ReviewBase, table=True):
 
     @property
     def farmer_short_name(self) -> str | None:
-        return short_name(self.farmer.user.name) if self.farmer else None
+        return self.farmer.short_name if self.farmer else None
 
     @property
     def purchase_public_id(self) -> UUID | None:
@@ -171,3 +173,18 @@ class FarmerReviewsRead(SQLModel):
     average_rating: float | None
     reviews_count: int
     reviews: list[FarmerReviewRead]
+
+
+class FarmerReviewsFilters(PageParams):
+    # a página do produto só mostra as avaliações escritas
+    with_comment: bool = False
+
+
+class FarmerReviewsPage(PaginatedResponse[FarmerReviewRead]):
+    # a média e a contagem valem para todas as avaliações do agricultor
+    average_rating: float | None
+    reviews_count: int
+
+
+AuthorReviewsPage = PaginatedResponse[AuthorReviewRead]
+ReviewablesPage = PaginatedResponse[ReviewableRead]

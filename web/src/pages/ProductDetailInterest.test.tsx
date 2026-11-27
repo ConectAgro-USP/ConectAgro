@@ -28,7 +28,7 @@ function renderProduct(...more: Response[]) {
 }
 
 describe("ProductDetail, interest", () => {
-  it("lets the resident register interest in a quantity, only once", async () => {
+  it("lets the resident register interest in a quantity, then edit it", async () => {
     const fetchMock = renderProduct(jsonResponse(interest, 201));
     const quantity = await screen.findByLabelText("Quantidade");
     expect(quantity).toHaveValue("1");
@@ -37,11 +37,16 @@ describe("ProductDetail, interest", () => {
     await userEvent.type(quantity, "5");
     await userEvent.click(screen.getByRole("button", { name: "Registrar interesse" }));
 
-    expect(await screen.findByText("Interesse registrado com sucesso!")).toBeInTheDocument();
+    expect(await screen.findByText("Interesse registrado")).toBeInTheDocument();
     expect(fetchMock.mock.calls[3][0]).toBe("/api/interests");
-    expect(sentBody(fetchMock, 3)).toEqual({ product_public_id: "prod-123", quantity: 5 });
-    expect(screen.getByRole("button", { name: "Registrar interesse" })).toBeDisabled();
-    expect(quantity).toBeDisabled();
+    expect(sentBody(fetchMock, 3)).toEqual({
+      product_public_id: "prod-123",
+      quantity: 5,
+      unit: "kg",
+    });
+    expect(screen.queryByRole("button", { name: "Registrar interesse" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Atualizar interesse" })).toBeDisabled();
+    expect(screen.getByLabelText("Quantidade")).toHaveValue("5");
   });
 
   it("accepts only digits, up to the stock", async () => {
@@ -81,7 +86,7 @@ describe("ProductDetail, interest", () => {
 
     await waitFor(() => expect(auth.refreshUser).toHaveBeenCalledOnce());
     expect(await screen.findByText("Não autenticado")).toBeInTheDocument();
-    expect(screen.queryByText("Interesse registrado com sucesso!")).not.toBeInTheDocument();
+    expect(screen.queryByText("Interesse registrado")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -92,18 +97,19 @@ describe("ProductDetail, interest", () => {
 
     renderDetail();
 
-    expect(await screen.findByText("Indisponível")).toBeInTheDocument();
-    expect(screen.getByLabelText("Quantidade")).toBeDisabled();
+    expect(await screen.findByLabelText("Quantidade")).toBeDisabled();
+    expect(screen.getByText("Indisponível")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar interesse" })).toBeDisabled();
   });
 
-  it("shows the stock to the manager, without the quantity or the interest", async () => {
+  it("shows the stock to the manager, with the cart instead of the interest", async () => {
     stubFetch(...pageLoad());
 
     renderDetail(fakeAuth({ user: anaAsManager }));
 
     expect(await screen.findByText("25 kg disponíveis")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Quantidade")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Quantidade")).toHaveValue("1");
+    expect(screen.getByRole("button", { name: "Adicionar ao carrinho" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Registrar interesse" })).not.toBeInTheDocument();
   });
 });

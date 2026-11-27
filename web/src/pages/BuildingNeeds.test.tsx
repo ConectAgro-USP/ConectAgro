@@ -1,7 +1,14 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { BuildingNeed } from "../api/interests";
-import { anaAsManager, fakeAuth, jsonResponse, renderWithAuth, stubFetch } from "../test/helpers";
+import {
+  anaAsManager,
+  fakeAuth,
+  jsonResponse,
+  pageResponse,
+  renderWithAuth,
+  stubFetch,
+} from "../test/helpers";
 import { sampleProduct } from "../test/productDetail";
 import { BuildingNeeds } from "./BuildingNeeds";
 
@@ -50,7 +57,7 @@ function productNames() {
 
 describe("BuildingNeeds", () => {
   it("lists the product, farmer, total quantity and residents of each need", async () => {
-    const { fetchMock } = renderNeeds(jsonResponse([mandioca, laranja]));
+    const { fetchMock } = renderNeeds(pageResponse([mandioca, laranja]));
 
     expect(screen.getByRole("status")).toHaveTextContent("Carregando...");
     const card = await findCard("Mandioca");
@@ -62,7 +69,7 @@ describe("BuildingNeeds", () => {
     expect(within(nameless).getByText("Agricultor")).toBeVisible();
     expect(within(nameless).getByText("1 kg no total, de 1 morador interessado")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
-      `${NEEDS_URL}?descending=true`,
+      `${NEEDS_URL}?page=1&descending=true`,
       expect.anything(),
     );
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
@@ -70,8 +77,8 @@ describe("BuildingNeeds", () => {
 
   it("asks the API for the other order and keeps the selection", async () => {
     const { fetchMock } = renderNeeds(
-      jsonResponse([mandioca, alface, laranja]),
-      jsonResponse([laranja, alface, mandioca]),
+      pageResponse([mandioca, alface, laranja]),
+      pageResponse([laranja, alface, mandioca]),
     );
     await findCard("Mandioca");
     await toggle("Mandioca");
@@ -79,7 +86,7 @@ describe("BuildingNeeds", () => {
     await userEvent.click(screen.getByRole("button", { name: "Menor primeiro" }));
 
     await waitFor(() => expect(productNames()).toEqual(["Laranja", "Alface", "Mandioca"]));
-    expect(fetchMock.mock.calls[1][0]).toBe(`${NEEDS_URL}?descending=false`);
+    expect(fetchMock.mock.calls[1][0]).toBe(`${NEEDS_URL}?page=1&descending=false`);
     expect(screen.getByRole("button", { name: "Menor primeiro" })).toBePressed();
     expect(screen.getByRole("button", { name: "Maior primeiro" })).not.toBePressed();
     const mandiocaBox = { name: "Selecionar Mandioca de João Vikator, Sítio LabXP" };
@@ -87,7 +94,7 @@ describe("BuildingNeeds", () => {
   });
 
   it("counts the products and the farmers selected for a purchase", async () => {
-    renderNeeds(jsonResponse([mandioca, alface, laranja]));
+    renderNeeds(pageResponse([mandioca, alface, laranja]));
     await findCard("Mandioca");
 
     await toggle("Mandioca");
@@ -103,7 +110,7 @@ describe("BuildingNeeds", () => {
   });
 
   it("says clearly when no resident has shown interest", async () => {
-    renderNeeds(jsonResponse([]));
+    renderNeeds(pageResponse([]));
 
     expect(await screen.findByText(/Ainda não há interesses dos moradores/)).toBeVisible();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
@@ -112,9 +119,9 @@ describe("BuildingNeeds", () => {
   it("shows why the other order did not load and tries it again", async () => {
     const detail = "Muitas tentativas. Tente novamente mais tarde";
     const { fetchMock } = renderNeeds(
-      jsonResponse([mandioca]),
+      pageResponse([mandioca]),
       jsonResponse({ detail }, 429),
-      jsonResponse([mandioca]),
+      pageResponse([mandioca]),
     );
     await findCard("Mandioca");
     await userEvent.click(screen.getByRole("button", { name: "Menor primeiro" }));
@@ -126,7 +133,7 @@ describe("BuildingNeeds", () => {
 
     expect(await findCard("Mandioca")).toBeVisible();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(fetchMock.mock.calls[2][0]).toBe(`${NEEDS_URL}?descending=false`);
+    expect(fetchMock.mock.calls[2][0]).toBe(`${NEEDS_URL}?page=1&descending=false`);
   });
 
   it.each([401, 403])("reloads the user when the API answers %i", async (status) => {

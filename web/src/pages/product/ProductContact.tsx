@@ -1,18 +1,8 @@
-import { MessageCircleIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { errorMessage } from "../../api/client";
 import { getProductContact, type ProductContact as Contact } from "../../api/products";
 import { FormError } from "../../components/FormError";
-
-const CONTACT_CLASSES =
-  "flex h-14 w-full items-center justify-center gap-2 rounded-full bg-stone-800 font-bold " +
-  "text-white hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-stone-800 disabled:cursor-not-allowed disabled:opacity-60";
-
-// a API guarda o celular com DDD, sem o código do país
-function whatsAppUrl(cellphone: string, message: string): string {
-  return `https://wa.me/55${cellphone}?text=${encodeURIComponent(message)}`;
-}
+import { WhatsAppContact } from "../../components/WhatsAppContact";
 
 interface ProductContactProps {
   productPublicId: string;
@@ -37,33 +27,14 @@ export function ProductContact({ productPublicId, recipient }: Readonly<ProductC
     };
   }, [productPublicId]);
 
-  const label = (
-    <>
-      <MessageCircleIcon aria-hidden="true" className="size-5" />
-      Falar com o {recipient}
-    </>
-  );
-
-  if (contact?.cellphone) {
-    return (
-      <a
-        href={whatsAppUrl(contact.cellphone, contact.message)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={CONTACT_CLASSES}
-      >
-        {label}
-      </a>
-    );
-  }
   return (
     <>
-      <button type="button" disabled className={CONTACT_CLASSES}>
-        {label}
-      </button>
-      {contact && (
-        <p className="text-sm text-stone-600">O {recipient} ainda não cadastrou um telefone.</p>
-      )}
+      <WhatsAppContact
+        recipient={recipient}
+        cellphone={contact?.cellphone ?? null}
+        message={contact?.message ?? ""}
+        loaded={contact !== null}
+      />
       <FormError message={error} />
     </>
   );

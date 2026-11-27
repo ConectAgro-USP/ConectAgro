@@ -8,6 +8,7 @@ from src.core.security import create_access_token
 from src.models.apartment import Apartment
 from src.models.buyer import Buyer, LinkStatus
 from src.models.farmer import Farmer
+from src.models.interest import Interest
 from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseProduct, PurchaseStatus
 from src.models.user import User
@@ -99,6 +100,15 @@ def add_resident(
     session.commit()
     session.refresh(resident)
     return resident
+
+
+def add_interest(
+    session: Session, resident: Buyer, product: Product, quantity: int = 1
+) -> Interest:
+    interest = Interest(buyer_id=resident.id, product_id=product.id, quantity=quantity)
+    session.add(interest)
+    session.commit()
+    return interest
 
 
 def add_purchase(

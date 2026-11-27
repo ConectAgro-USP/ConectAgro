@@ -13,6 +13,7 @@ export function CpfField({ label, value, onChange }: Readonly<CpfFieldProps>) {
       inputMode="numeric"
       autoComplete="off"
       spellCheck={false}
+      hint="Usamos o CPF só para garantir um perfil por pessoa."
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />

@@ -85,6 +85,16 @@ export function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// uma página só, como a API devolve as listas curtas
+export function pageBody<Item>(items: Item[], extra: object = {}) {
+  const total = items.length;
+  return { items, total, page: 1, page_size: 20, total_pages: total > 0 ? 1 : 0, ...extra };
+}
+
+export function pageResponse<Item>(items: Item[], extra: object = {}): Response {
+  return jsonResponse(pageBody(items, extra));
+}
+
 export function stubFetch(...responses: Response[]) {
   const fetchMock = vi.fn<typeof fetch>();
   for (const response of responses) {

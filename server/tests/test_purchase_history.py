@@ -90,6 +90,7 @@ def test_manager_sees_purchase_with_parts_items_and_totals(
                     {
                         "product_public_id": str(lettuce.public_id),
                         "product_name": "Alface",
+                        "product_unit": "kg",
                         "quantity": 4,
                         "unit_price": "2.50",
                         "subtotal": "10.00",

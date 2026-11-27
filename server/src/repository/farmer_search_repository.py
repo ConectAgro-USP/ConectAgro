@@ -4,10 +4,11 @@ from sqlalchemy.orm import joinedload
 from sqlmodel import Session, col, func, select
 
 from src.models.farmer import Farmer
+from src.models.farmer_search import BoundingBox
 from src.models.product import BUSINESS_TZ, Product
 from src.models.purchase import Purchase, PurchasePart, PurchaseStatus
 from src.models.review import Review
-from src.models.user import User
+from src.repository.product_repository import on_sale
 
 
 def business_date(moment: datetime) -> date:
@@ -21,19 +22,21 @@ class FarmerSearchRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def search(self, name: str | None, products: list[str], today: date) -> list[Farmer]:
-        query = select(Farmer).join(User).options(joinedload(Farmer.user)).order_by(Farmer.id)
+    def search(self, products: list[str], today: date, box: BoundingBox | None) -> list[Farmer]:
+        query = select(Farmer).options(joinedload(Farmer.user)).order_by(Farmer.id)
 
-        if name:
-            query = query.where(col(User.name).icontains(name, autoescape=True))
-            # o email salvo como nome fica de fora, para a busca não revelar o endereço
-            query = query.where(col(User.name).not_like("%@%"))
+        if box is not None:
+            # quem não tem coordenadas salvas fica fora da busca por raio
+            query = query.where(
+                col(Farmer.latitude).between(box.min_latitude, box.max_latitude),
+                col(Farmer.longitude).between(box.min_longitude, box.max_longitude),
+            )
 
+        # os termos chegam sem acentos nem maiúsculas, como a coluna de busca
         for product in products:
             sellers = select(Product.farmer_id).where(
-                col(Product.name).icontains(product, autoescape=True),
-                Product.quantity > 0,
-                Product.expiration_date >= today,
+                col(Product.name_search).contains(product, autoescape=True),
+                on_sale(today),
             )
             query = query.where(col(Farmer.id).in_(sellers))
 
@@ -49,8 +52,7 @@ class FarmerSearchRepository:
             select(Product.farmer_id, func.count(Product.id))
             .where(
                 col(Product.farmer_id).in_(farmer_ids),
-                Product.quantity > 0,
-                Product.expiration_date >= today,
+                on_sale(today),
             )
             .group_by(Product.farmer_id)
         )

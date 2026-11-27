@@ -1,6 +1,13 @@
 const BASE_URL = "/api";
 const UNEXPECTED_ERROR = "Algo deu errado. Tente novamente";
 const CONNECTION_ERROR = "Não foi possível falar com o servidor. Tente novamente";
+// o produto tem campos com o mesmo nome de campos do perfil
+const PRODUCT_FIELD_MESSAGES = new Map([
+  ["name", "Informe o nome do produto, com até 100 caracteres"],
+  ["unit", "Escolha por qual unidade o produto é vendido"],
+]);
+// a busca de prédios também manda um campo name, que não é o nome da pessoa
+const BUILDING_NAME_MESSAGE = "Informe o nome do prédio, com até 150 caracteres";
 
 // a lista de erros do 422 vem do Pydantic, em inglês; a tela mostra estes
 const INVALID_FIELD_MESSAGES = new Map([
@@ -86,8 +93,12 @@ async function readErrorMessage(response: Response, path: string): Promise<strin
   }
   const invalidField = detail[0];
   const field = String(invalidField.loc.at(-1));
-  if (field === "name" && (path === "/products" || path.startsWith("/products/"))) {
-    return "Informe o nome do produto, com até 100 caracteres";
+  const productMessage = PRODUCT_FIELD_MESSAGES.get(field);
+  if (productMessage && (path === "/products" || path.startsWith("/products/"))) {
+    return productMessage;
+  }
+  if (field === "name" && path.startsWith("/apartments")) {
+    return BUILDING_NAME_MESSAGE;
   }
   if (
     field === "expiration_date" &&

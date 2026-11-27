@@ -23,6 +23,10 @@ class CepWithoutCoordinatesError(Exception):
     pass
 
 
+class BuildingWithoutCoordinatesError(Exception):
+    pass
+
+
 class CnpjNotActiveError(Exception):
     pass
 
@@ -59,6 +63,10 @@ class ProductHasPurchasesError(Exception):
     pass
 
 
+class ProductUnitLockedError(Exception):
+    pass
+
+
 class ProductExpiredError(Exception):
     pass
 
@@ -68,6 +76,10 @@ class ProductUnavailableError(Exception):
 
 
 class ProductPriceChangedError(Exception):
+    pass
+
+
+class ProductUnitChangedError(Exception):
     pass
 
 
@@ -119,9 +131,29 @@ class InterestNotFoundError(Exception):
     pass
 
 
+class InterestInPurchaseError(Exception):
+    pass
+
+
 class NotInterestOwnerDeleteError(Exception):
     pass
 
 
 class NotInterestOwnerUpdateError(Exception):
+    pass
+
+
+class ProductPictureNotFoundError(Exception):
+    pass
+
+
+class PictureTooLargeError(Exception):
+    pass
+
+
+class UnsupportedPictureTypeError(Exception):
+    pass
+
+
+class BuildingNameTooShortError(Exception):
     pass

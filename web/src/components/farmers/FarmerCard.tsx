@@ -2,18 +2,11 @@ import { ChevronDownIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { NearbyFarmer } from "../../api/farmers";
 import { formatCount, formatDistance, formatPercent } from "../../format";
+import type { InterestLookup } from "../../hooks/useInterestLookup";
+import { Avatar } from "../Avatar";
+import { CARD_PANEL, CARD_SURFACE, CARD_TAB, CARD_TOGGLE } from "../surface";
 import { FarmerProducts } from "./FarmerProducts";
 import { FarmerRating } from "./FarmerRating";
-
-const DISTANCE_TAB_CLASSES =
-  "absolute top-0 right-0 rounded-tr-4xl rounded-bl-2xl bg-lime-700 px-5 py-1.5 text-lg " +
-  "font-bold text-white tabular-nums";
-const AVATAR_CLASSES =
-  "flex size-14 shrink-0 items-center justify-center rounded-full bg-stone-800 text-xl " +
-  "text-white uppercase ring-4 ring-stone-200 sm:size-16";
-const PRODUCTS_BUTTON_CLASSES =
-  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg hover:bg-stone-300 " +
-  "focus-visible:outline-2 focus-visible:outline-lime-800";
 
 // sem o nome do Google a API manda o nome vazio, e aí o sítio identifica o agricultor
 function namesOf(farmer: NearbyFarmer): { title: string; subtitle: string | null } {
@@ -30,7 +23,14 @@ function productsText(count: number): string {
   return formatCount(count, "produto disponível", "produtos disponíveis");
 }
 
-export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
+interface FarmerCardProps {
+  farmer: NearbyFarmer;
+  interests: InterestLookup;
+}
+
+export function FarmerCard({ farmer, interests }: Readonly<FarmerCardProps>) {
+  // no celular a aba da distância fica por cima do nome
+  const topSpace = farmer.distance_km === null ? "pt-6" : "pt-14";
   const [open, setOpen] = useState(false);
   const [opened, setOpened] = useState(false);
   const productsId = useId();
@@ -44,16 +44,16 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
   }
 
   return (
-    <li className="relative rounded-4xl bg-stone-200 px-6 pt-14 pb-4 sm:px-10 sm:pt-8">
-      <p className={DISTANCE_TAB_CLASSES}>
-        <span className="sr-only">Distância: </span>
-        {formatDistance(farmer.distance_km)}
-      </p>
+    <li className={`relative px-6 pb-4 sm:px-10 sm:pt-8 ${CARD_SURFACE} ${topSpace}`}>
+      {farmer.distance_km !== null && (
+        <p className={`${CARD_TAB} bg-lime-700 tabular-nums`}>
+          <span className="sr-only">Distância: </span>
+          {formatDistance(farmer.distance_km)}
+        </p>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
-          <span aria-hidden="true" className={AVATAR_CLASSES}>
-            {title.charAt(0)}
-          </span>
+          <Avatar name={title} />
           <div className="min-w-0">
             <h2 id={nameId} className="text-2xl break-words sm:text-3xl">
               {title}
@@ -87,14 +87,20 @@ export function FarmerCard({ farmer }: Readonly<{ farmer: NearbyFarmer }>) {
           aria-controls={productsId}
           aria-describedby={nameId}
           onClick={toggleProducts}
-          className={PRODUCTS_BUTTON_CLASSES}
+          className={CARD_TOGGLE}
         >
           {open ? "Ocultar produtos" : "Ver produtos"}
           <ChevronDownIcon aria-hidden="true" className={open ? "rotate-180" : ""} />
         </button>
       </div>
-      <div id={productsId} hidden={!open} className="mt-2 border-t border-stone-400 py-4">
-        {opened && <FarmerProducts key={farmer.public_id} farmerPublicId={farmer.public_id} />}
+      <div id={productsId} hidden={!open} className={CARD_PANEL}>
+        {opened && (
+          <FarmerProducts
+            key={farmer.public_id}
+            farmerPublicId={farmer.public_id}
+            interests={interests}
+          />
+        )}
       </div>
     </li>
   );

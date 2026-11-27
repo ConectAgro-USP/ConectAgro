@@ -10,6 +10,11 @@ export interface Sale {
   purchase_public_id: string;
   apartment_public_id: string;
   building_name: string;
+  delivery_address: string | null;
+  // só os dígitos, como 01310200
+  delivery_zip_code: string;
+  manager_name: string;
+  manager_cellphone: string | null;
   purchased_at: string;
   expected_delivery_date: string;
   status: PurchaseStatus;
@@ -18,6 +23,13 @@ export interface Sale {
   purchase_products: PurchaseItem[];
 }
 
-export function listSales(filters: HistoryFilters, page: number): Promise<HistoryPage<Sale>> {
-  return fetchHistory("/farmers/me/sales", "apartment_public_id", filters, page);
+// a ordem da API, que sem escolha traz as compras mais novas primeiro
+export type SaleSort = "delivery";
+
+export function listSales(
+  filters: HistoryFilters,
+  page: number,
+  sort?: SaleSort,
+): Promise<HistoryPage<Sale>> {
+  return fetchHistory("/farmers/me/sales", "apartment_public_id", filters, page, sort);
 }

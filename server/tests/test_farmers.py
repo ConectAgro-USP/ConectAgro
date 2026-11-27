@@ -19,28 +19,23 @@ from tests.helpers import add_farmer, add_resident, add_user, login
 KM_PER_DEGREE = haversine((0, 0), (1, 0))
 
 
-def setup_fake_http_connectors(
-    monkeypatch,
-    building_cep: str,
-    farmer_ceps_distances: dict[str, float],
-):
-    """
-    Substitui a BrasilAPI por respostas determinísticas.
-    `farmer_ceps_distances` é um dicionário {cep_agricultor: distancia_em_metros}.
-    """
+def place_north_of_building(farmer: Farmer, meters: float) -> None:
+    # a busca usa só as coordenadas salvas do agricultor
+    farmer.latitude = -23.5505 + meters / 1000.0 / KM_PER_DEGREE
+    farmer.longitude = -46.6333
+
+
+def setup_fake_http_connectors(monkeypatch, building_cep: str):
+    """Substitui a BrasilAPI por uma resposta fixa para o CEP do prédio."""
     clean_building_cep = building_cep.replace("-", "")
-    clean_farmer_ceps = {cep.replace("-", ""): dist for cep, dist in farmer_ceps_distances.items()}
 
     def handler(request: httpx.Request) -> httpx.Response:
         url_str = str(request.url)
 
-        # Intercepção BrasilAPI (Coordenadas de CEP)
         if "brasilapi.com.br" in url_str:
             cep_in_url = url_str.rstrip("/").split("/")[-1].replace("-", "")
 
-            if cep_in_url == clean_building_cep or cep_in_url in clean_farmer_ceps:
-                # o agricultor fica ao norte do prédio, na distância pedida em linha reta
-                lat_offset = clean_farmer_ceps.get(cep_in_url, 0.0) / 1000.0 / KM_PER_DEGREE
+            if cep_in_url == clean_building_cep:
                 return httpx.Response(
                     200,
                     json={
@@ -48,10 +43,7 @@ def setup_fake_http_connectors(
                         "state": "SP",
                         "city": "São Paulo",
                         "location": {
-                            "coordinates": {
-                                "latitude": str(-23.5505 + lat_offset),
-                                "longitude": "-46.6333",
-                            }
+                            "coordinates": {"latitude": "-23.5505", "longitude": "-46.6333"}
                         },
                     },
                 )
@@ -93,7 +85,9 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
     create_approved_buyer(session, ana, building)
 
     # Agricultor 1 (Ana) - CEP 05508-020
-    farmer_1 = Farmer(user_id=ana.id, zip_code="05508-020")
+    farmer_1 = Farmer(
+        user_id=ana.id, zip_code="05508-020", latitude=-23.62245, longitude=-46.6333
+    )
     session.add(farmer_1)
 
     # Agricultor 2 (Carlos) - CEP 01311-000
@@ -101,38 +95,14 @@ def test_list_farmers_ordering_by_distance_ascending(client, ana, building, sess
     session.add(carlos)
     session.flush()
 
-    farmer_2 = Farmer(user_id=carlos.id, zip_code="01311-000")
+    farmer_2 = Farmer(
+        user_id=carlos.id, zip_code="01311-000", latitude=-23.52802, longitude=-46.6333
+    )
     session.add(farmer_2)
     session.commit()
 
     authenticate_user(client, ana)
-
-    # Coordenadas distintas para cada agricultor ficar a uma distância do prédio (lat -23.5505)
-    # CEP Ana (05508-020) -> lat -23.62245, 8 km em linha reta
-    # CEP Carlos (01311-000) -> lat -23.52802, 2,5 km em linha reta
-    def handler(request: httpx.Request) -> httpx.Response:
-        url_str = str(request.url)
-        if "brasilapi.com.br" in url_str:
-            cep_in_url = url_str.rstrip("/").split("/")[-1].replace("-", "")
-            lat = "-23.5505"
-            if cep_in_url == "05508020":
-                lat = "-23.62245"
-            elif cep_in_url == "01311000":
-                lat = "-23.52802"
-
-            return httpx.Response(
-                200,
-                json={
-                    "cep": cep_in_url,
-                    "state": "SP",
-                    "city": "São Paulo",
-                    "location": {"coordinates": {"latitude": lat, "longitude": "-46.6333"}},
-                },
-            )
-        return httpx.Response(404)
-
-    fake_httpx, _ = fake_client(handler)
-    monkeypatch.setattr("src.api.deps.http_client", fake_httpx)
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get("/api/farmers?max_distance_km=10")
 
@@ -152,6 +122,7 @@ def test_list_farmers_counts_only_available_products(client, ana, building, sess
     """
     create_approved_buyer(session, ana, building)
     farmer = Farmer(user_id=ana.id, zip_code="05508-020")
+    place_north_of_building(farmer, 3500.0)
     session.add(farmer)
     session.flush()
 
@@ -196,11 +167,7 @@ def test_list_farmers_counts_only_available_products(client, ana, building, sess
     session.commit()
 
     authenticate_user(client, ana)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={"05508-020": 3500.0},
-    )
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get("/api/farmers?max_distance_km=10")
 
@@ -217,15 +184,12 @@ def test_list_farmers_returns_expected_fields_and_values(
     ):
     create_approved_buyer(session, ana, building)
     farmer = Farmer(user_id=ana.id, zip_code="05508-020")
+    place_north_of_building(farmer, 3500.0)
     session.add(farmer)
     session.commit()
 
     authenticate_user(client, ana)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={"05508-020": 3500.0},
-    )
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get("/api/farmers?max_distance_km=10")
 
@@ -252,38 +216,14 @@ def test_list_farmers_returns_expected_fields_and_values(
 def test_list_farmers_excludes_farmer_outside_radius(client, ana, building, session, monkeypatch):
     create_approved_buyer(session, ana, building)
     farmer = Farmer(user_id=ana.id, zip_code="05508-020")
+    place_north_of_building(farmer, 6000.0)
     session.add(farmer)
     session.commit()
 
     authenticate_user(client, ana)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={"05508-020": 6000.0},
-    )
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get("/api/farmers?max_distance_km=5")
-
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json()["items"] == []
-
-
-def test_list_farmers_ignores_farmer_with_cep_without_coordinates(
-        client, ana, building, session, monkeypatch
-    ):
-    create_approved_buyer(session, ana, building)
-    farmer = Farmer(user_id=ana.id, zip_code="00000-000")
-    session.add(farmer)
-    session.commit()
-
-    authenticate_user(client, ana)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={},
-    )
-
-    response = client.get("/api/farmers?max_distance_km=15")
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["items"] == []
@@ -297,11 +237,7 @@ def test_list_farmers_accepts_supported_max_distance_values(
     session.commit()
 
     authenticate_user(client, ana)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={},
-    )
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get(f"/api/farmers?max_distance_km={valid_distance}")
 
@@ -325,12 +261,10 @@ def test_list_farmers_rejects_unsupported_max_distance_values(
 
 def test_manager_lists_farmers_near_the_building(client, manager, building, session, monkeypatch):
     farmer = add_farmer(session, add_user(session, "carlos@example.com", name="Carlos Souza"))
+    place_north_of_building(farmer, 0.0)
+    session.commit()
     login(client, manager)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={farmer.zip_code: 0.0},
-    )
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get("/api/farmers?max_distance_km=5")
 
@@ -367,31 +301,15 @@ def test_list_farmers_hides_email_saved_as_farmer_name(
 ):
     email = "carlos@example.com"
     farmer = add_farmer(session, add_user(session, email, name=email))
+    place_north_of_building(farmer, 0.0)
+    session.commit()
     login(client, manager)
-    setup_fake_http_connectors(
-        monkeypatch,
-        building_cep=building.zip_code,
-        farmer_ceps_distances={farmer.zip_code: 0.0},
-    )
+    setup_fake_http_connectors(monkeypatch, building_cep=building.zip_code)
 
     response = client.get("/api/farmers?max_distance_km=5")
 
     assert [item["name"] for item in response.json()["items"]] == [""]
     assert email not in response.text
-
-
-def test_list_farmers_ignores_farmer_with_invalid_cep(client, ana, building, session, monkeypatch):
-    add_resident(session, building, ana, link_status=LinkStatus.APROVADO)
-    session.add(Farmer(user_id=ana.id, zip_code="CEP"))
-    session.commit()
-    setup_fake_http_connectors(
-        monkeypatch, building_cep=building.zip_code, farmer_ceps_distances={}
-    )
-
-    response = client.get("/api/farmers?max_distance_km=15")
-
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json()["items"] == []
 
 
 def test_list_farmers_fails_when_external_service_is_down(

@@ -1,32 +1,91 @@
-import type { ComponentProps } from "react";
+import { HeartIcon, ShoppingCartIcon } from "lucide-react";
+import { useState, type ComponentProps } from "react";
 import { Link } from "react-router";
 import type { FarmerProduct } from "../../api/farmers";
-import { formatCount, formatFullDate, formatMoney } from "../../format";
+import type { Interest } from "../../api/interests";
+import { formatFullDate, formatMoney, formatQuantity, formatStock, pricePer } from "../../format";
+import { CART_FULL, useCart } from "../../hooks/useCart";
+import { IN_PURCHASE, chosenText, deliveredText, interestState } from "../../interestState";
+import { PrimaryButton } from "../Button";
 import { ProductPicture } from "../ProductPicture";
+import { CARD_SURFACE } from "../surface";
 import { FarmerRating } from "./FarmerRating";
 
-const PICTURE_CLASSES = "min-h-24 w-24 shrink-0 self-stretch sm:w-40";
+const PICTURE_CLASSES = "m-3 w-24 shrink-0 rounded-2xl sm:m-4 sm:w-40";
 const NAME_LINK_CLASSES =
   "rounded text-lime-800 underline focus-visible:outline-2 focus-visible:outline-lime-800";
+const MARK_CLASSES =
+  "mt-2 inline-flex items-center gap-1.5 rounded-full bg-lime-100 px-3 py-1 font-bold " +
+  "text-lime-900";
 const PRICE_CLASSES =
-  "flex items-baseline gap-2 px-4 pt-1 pb-3 sm:w-44 sm:shrink-0 sm:flex-col sm:items-center " +
-  "sm:justify-center sm:gap-0 sm:bg-stone-500 sm:p-4 sm:text-white";
+  "flex flex-wrap items-center gap-x-2 gap-y-2 px-4 pt-1 pb-3 sm:w-44 sm:shrink-0 " +
+  "sm:flex-col sm:flex-nowrap sm:justify-center sm:gap-0 sm:bg-stone-500 sm:p-4 sm:text-white";
+
+// botão compacto do síndico, que soma um de cada vez
+function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
+  const cart = useCart();
+  const [full, setFull] = useState(false);
+  if (!cart.enabled) return null;
+  const inCart = cart.quantityOf(product.public_id);
+  const item = {
+    productPublicId: product.public_id,
+    quantity: 1,
+    unitPrice: product.price,
+    unit: product.unit,
+  };
+
+  return (
+    <div className="ml-auto flex flex-col items-end gap-1 sm:mt-3 sm:ml-0 sm:items-center">
+      <PrimaryButton
+        type="button"
+        size="compact"
+        aria-label={`Adicionar ${product.name} ao carrinho`}
+        disabled={inCart >= product.quantity}
+        onClick={() => setFull(!cart.add(item, product.quantity))}
+        className="flex items-center gap-2 px-4"
+      >
+        <ShoppingCartIcon aria-hidden="true" className="size-5 shrink-0" />
+        Adicionar
+      </PrimaryButton>
+      <output className="block font-bold empty:hidden">
+        {inCart > 0 ? `No carrinho: ${formatQuantity(inCart, product.unit)}` : ""}
+      </output>
+      {full && (
+        <p role="alert" className="font-bold text-red-700 sm:text-white">
+          {CART_FULL}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function markText(interest: Interest, unit: string): string {
+  const state = interestState(interest);
+  if (interest.purchase && state === "delivered") return deliveredText(interest.purchase);
+  if (state === "purchase") return IN_PURCHASE;
+  return chosenText(interest.quantity, unit);
+}
+
+// marca para o morador o que ele já escolheu
+function InterestMark({ interest, unit }: Readonly<{ interest: Interest; unit: string }>) {
+  return (
+    <p className={MARK_CLASSES}>
+      <HeartIcon aria-hidden="true" className="size-4 shrink-0" />
+      {markText(interest, unit)}
+    </p>
+  );
+}
 
 interface ProductRowProps {
   product: FarmerProduct;
   seller?: string;
   rating?: ComponentProps<typeof FarmerRating>;
-  className?: string;
+  interest?: Interest;
 }
 
-export function ProductRow({
-  product,
-  seller,
-  rating,
-  className = "bg-stone-50",
-}: Readonly<ProductRowProps>) {
+export function ProductRow({ product, seller, rating, interest }: Readonly<ProductRowProps>) {
   return (
-    <li className={`flex overflow-hidden rounded-3xl text-left ${className}`}>
+    <li className={`flex overflow-hidden text-left ${CARD_SURFACE}`}>
       <ProductPicture url={product.picture_url} className={PICTURE_CLASSES} />
       <div className="flex min-w-0 flex-1 flex-col sm:flex-row">
         <div className="min-w-0 flex-1 px-4 pt-3 sm:px-6 sm:py-5">
@@ -46,14 +105,18 @@ export function ProductRow({
             <p className="line-clamp-2 break-words text-stone-600">{product.description}</p>
           )}
           <p className="text-stone-600">
-            {formatCount(product.quantity, "kg disponível", "kg disponíveis")} · Vence{" "}
+            {formatStock(product.quantity, product.unit)} · Vence{" "}
             <span className="tabular-nums">{formatFullDate(product.expiration_date)}</span>
           </p>
+          {interest && <InterestMark interest={interest} unit={product.unit} />}
         </div>
-        <p className={PRICE_CLASSES}>
-          <span className="text-2xl font-bold tabular-nums">{formatMoney(product.price)}</span>{" "}
-          <span className="text-sm">por quilo</span>
-        </p>
+        <div className={PRICE_CLASSES}>
+          <p className="flex items-baseline gap-2 sm:flex-col sm:items-center sm:gap-0">
+            <span className="text-2xl font-bold tabular-nums">{formatMoney(product.price)}</span>{" "}
+            <span className="text-sm">{pricePer(product.unit)}</span>
+          </p>
+          <AddToCart product={product} />
+        </div>
       </div>
     </li>
   );

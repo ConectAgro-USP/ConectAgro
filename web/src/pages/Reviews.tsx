@@ -1,4 +1,4 @@
-import { startTransition, useId } from "react";
+import { startTransition, useEffect, useId } from "react";
 import {
   Link,
   useLocation,
@@ -6,6 +6,7 @@ import {
   useNavigationType,
   useSearchParams,
 } from "react-router";
+import { ApiError } from "../api/client";
 import {
   createReview,
   RATINGS,
@@ -13,10 +14,13 @@ import {
   type AuthoredReview,
   type Reviewable,
 } from "../api/reviews";
+import { Avatar } from "../components/Avatar";
 import { SecondaryButton } from "../components/Button";
+import { buttonClasses } from "../components/buttonClasses";
+import { CARD_SURFACE } from "../components/surface";
 import { FormError } from "../components/FormError";
+import { ShowMore, type PagedList } from "../components/ShowMore";
 import { TitleBar } from "../components/TitleBar";
-import { FarmerAvatar } from "../components/reviews/FarmerAvatar";
 import {
   editReviewPath,
   FROM_APP,
@@ -32,13 +36,12 @@ import { useAuthorReviews } from "../hooks/useAuthorReviews";
 const SENT = "Avaliação enviada. Obrigado por ajudar outros prédios a escolher!";
 const EDITED = "Avaliação atualizada.";
 const BACK_TO_LIST = { to: REVIEWS_PATH, label: "Voltar às avaliações" };
-const LINK_BUTTON_CLASSES =
-  "inline-flex h-12 items-center rounded-full border border-stone-400 bg-white px-6 " +
-  "font-bold hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-lime-800";
-const CARD_CLASSES = "rounded-4xl bg-stone-200 px-6 py-6 sm:px-10";
+const LINK_BUTTON_CLASSES = `inline-flex items-center ${buttonClasses("secondary", "compact")}`;
+const CARD_CLASSES = `px-6 py-6 sm:px-10 ${CARD_SURFACE}`;
 const NOT_WAITING = "Esta entrega não está esperando sua avaliação. Ela pode já ter sido avaliada.";
 const NOT_FOUND = "Não encontramos esta avaliação entre as suas.";
+// recusas de um item que pode ter saído da lista ou mudado de lugar
+const MOVED = new Set([404, 409]);
 
 type View =
   | { kind: "list" }
@@ -86,7 +89,7 @@ function PendingCard({ reviewable }: Readonly<{ reviewable: Reviewable }>) {
     <li className={CARD_CLASSES}>
       <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-2">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
-          <FarmerAvatar name={name} />
+          <Avatar name={name} />
           <div className="min-w-0">
             <h3 className="text-2xl sm:text-3xl">{name}</h3>
             <p className="line-clamp-2 text-stone-600">{formatNames(reviewable.product_names)}</p>
@@ -114,7 +117,7 @@ function AuthoredCard({ review }: Readonly<{ review: AuthoredReview }>) {
     <li className={CARD_CLASSES}>
       <div className="flex flex-wrap items-center justify-between gap-x-10 gap-y-4">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-5">
-          <FarmerAvatar name={name} />
+          <Avatar name={name} />
           <div className="min-w-0 space-y-1">
             <h3 id={nameId} className="text-2xl sm:text-3xl">
               {name}
@@ -150,9 +153,18 @@ function AuthoredCard({ review }: Readonly<{ review: AuthoredReview }>) {
 interface ListsProps {
   reviewables: Reviewable[];
   authored: AuthoredReview[];
+  pendingPages: PagedList;
+  authoredPages: PagedList;
 }
 
-function ReviewLists({ reviewables, authored }: Readonly<ListsProps>) {
+const MORE_CLASSES = "mt-6";
+
+function ReviewLists({
+  reviewables,
+  authored,
+  pendingPages,
+  authoredPages,
+}: Readonly<ListsProps>) {
   const pendingId = useId();
   const authoredId = useId();
 
@@ -177,6 +189,7 @@ function ReviewLists({ reviewables, authored }: Readonly<ListsProps>) {
             ))}
           </ul>
         )}
+        <ShowMore list={pendingPages} label="Mostrar mais entregas" className={MORE_CLASSES} />
       </section>
       <section className="pt-12">
         <h2 id={authoredId} className="text-3xl font-bold">
@@ -191,6 +204,7 @@ function ReviewLists({ reviewables, authored }: Readonly<ListsProps>) {
             ))}
           </ul>
         )}
+        <ShowMore list={authoredPages} label="Mostrar mais avaliações" className={MORE_CLASSES} />
       </section>
     </>
   );
@@ -215,6 +229,28 @@ export function Reviews() {
   const navigationType = useNavigationType();
   const view = viewOf(params);
   const { fromApp, message = "" } = reviewsStateOf(location.state);
+  const reviewable =
+    view.kind === "create"
+      ? reviews.reviewables.find(
+          (item) =>
+            item.purchase_public_id === view.purchase && item.farmer_public_id === view.farmer,
+        )
+      : undefined;
+  const review =
+    view.kind === "edit"
+      ? reviews.authored.find((item) => item.public_id === view.review)
+      : undefined;
+  // o link pode levar a um item de outra página, que é buscada até achar
+  let searched: PagedList | null = null;
+  if (view.kind === "create" && !reviewable) searched = reviews.pendingPages;
+  if (view.kind === "edit" && !review) searched = reviews.authoredPages;
+  const searching = reviews.loaded && searched !== null && searched.hasMore && !searched.error;
+  // a busca parou numa página que falhou, e o item pode estar nas que faltam
+  const searchFailed = searched !== null && searched.error !== "";
+
+  useEffect(() => {
+    if (searching && searched && !searched.loading) searched.loadMore();
+  });
 
   function leave() {
     if (fromApp) {
@@ -232,20 +268,20 @@ export function Reviews() {
     try {
       await save();
     } catch (sendError) {
-      reviews.reload();
+      if (sendError instanceof ApiError && MOVED.has(sendError.status)) {
+        reviews.reload();
+      } else {
+        reviews.retry();
+      }
       throw sendError;
     }
   }
 
   function content() {
-    if (!reviews.loaded) {
+    if (!reviews.loaded || searching || searchFailed) {
       return null;
     }
     if (view.kind === "create") {
-      const reviewable = reviews.reviewables.find(
-        (item) =>
-          item.purchase_public_id === view.purchase && item.farmer_public_id === view.farmer,
-      );
       if (!reviewable) {
         return <Unavailable message={NOT_WAITING} />;
       }
@@ -269,7 +305,6 @@ export function Reviews() {
       );
     }
     if (view.kind === "edit") {
-      const review = reviews.authored.find((item) => item.public_id === view.review);
       if (!review) {
         return <Unavailable message={NOT_FOUND} />;
       }
@@ -290,7 +325,14 @@ export function Reviews() {
         />
       );
     }
-    return <ReviewLists reviewables={reviews.reviewables} authored={reviews.authored} />;
+    return (
+      <ReviewLists
+        reviewables={reviews.reviewables}
+        authored={reviews.authored}
+        pendingPages={reviews.pendingPages}
+        authoredPages={reviews.authoredPages}
+      />
+    );
   }
 
   return (
@@ -298,15 +340,15 @@ export function Reviews() {
       <TitleBar title={TITLES[view.kind]} back={view.kind === "list" ? undefined : BACK_TO_LIST} />
       <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         <output className="block text-lg text-stone-600">
-          {reviews.loading ? "Carregando..." : ""}
+          {reviews.loading || searching ? "Carregando..." : ""}
         </output>
         <output className="block text-lg font-bold text-lime-800">
           {view.kind === "list" && navigationType !== "POP" ? message : ""}
         </output>
-        {reviews.error && (view.kind === "list" || !reviews.loaded) && (
+        {reviews.error && (view.kind === "list" || !reviews.loaded || searchFailed) && (
           <div className="space-y-4 pt-4">
             <FormError message={reviews.error} />
-            <SecondaryButton onClick={reviews.reload}>Tentar de novo</SecondaryButton>
+            <SecondaryButton onClick={reviews.retry}>Tentar de novo</SecondaryButton>
           </div>
         )}
         {content()}

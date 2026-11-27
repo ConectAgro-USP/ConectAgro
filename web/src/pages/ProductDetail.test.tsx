@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail as ProductDetailType } from "../api/products";
 import { anaAsBuyer, fakeAuth, jsonResponse, stubFetch } from "../test/helpers";
-import { pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
+import { farmerReviews, pageLoad, renderDetail, sampleProduct } from "../test/productDetail";
 
 describe("ProductDetail", () => {
   it("renders product information including photo, name, description, price, expiration, quantity and farmer", async () => {
@@ -18,7 +18,7 @@ describe("ProductDetail", () => {
 
     expect(document.querySelector("img")).toHaveAttribute("src", "https://example.com/mandioca.jpg");
 
-    expect(screen.getByText("R$ 20,00/kg")).toBeInTheDocument();
+    expect(screen.getByText("por quilo").parentElement).toHaveTextContent("R$ 20,00 por quilo");
     expect(screen.getByText("20/10/2099")).toBeInTheDocument();
     expect(screen.getByText("25 kg disponíveis")).toBeInTheDocument();
     expect(screen.getByText(/João Vikator/)).toBeInTheDocument();
@@ -56,14 +56,15 @@ describe("ProductDetail", () => {
   });
 
   it("shows the farmer's average and count next to who sells", async () => {
-    const reviews = { average_rating: 4.5, reviews_count: 2, reviews: [] };
+    const reviews = farmerReviews([], 4.5, 2);
     const fetchMock = stubFetch(...pageLoad(sampleProduct, reviews));
 
     renderDetail();
 
     const seller = (await screen.findByText("Vendido por")).parentElement!.parentElement!;
     await waitFor(() => expect(seller).toHaveTextContent("4,5 de 5 (2 avaliações)"));
-    expect(fetchMock.mock.calls[2][0]).toBe("/api/farmers/farmer-1/reviews");
+    const reviewsUrl = "/api/farmers/farmer-1/reviews?page=1&with_comment=true";
+    expect(fetchMock.mock.calls[2][0]).toBe(reviewsUrl);
   });
 
   it("names the farmer by the farm, or just Agricultor, without a short name", async () => {

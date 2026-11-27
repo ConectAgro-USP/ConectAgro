@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
+from src.core.text import hide_email
 from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.models.product import BUSINESS_TZ, INT4_MAX
@@ -32,12 +33,12 @@ from src.services.exceptions import (
     ProductOutOfStockError,
     ProductPriceChangedError,
     ProductUnavailableError,
+    ProductUnitChangedError,
     PurchaseAccessDeniedError,
     PurchaseAlreadyDeliveredError,
     PurchaseNotFoundError,
     PurchasePartClosedError,
 )
-from src.services.text_service import short_name
 
 
 class PurchaseService:
@@ -49,7 +50,6 @@ class PurchaseService:
         products = self.purchases.lock_products(list(items))
         if len(products) != len(items):
             raise ProductNotFoundError
-
         today = datetime.now(BUSINESS_TZ).date()
         purchase = Purchase(
             apartment_id=apartment.id,
@@ -62,6 +62,8 @@ class PurchaseService:
                 raise ProductExpiredError(product.name)
             if not product.is_available:
                 raise ProductUnavailableError(product.name)
+            if item.unit is not None and item.unit != product.unit:
+                raise ProductUnitChangedError(product.name)
             if product.price != item.unit_price:
                 raise ProductPriceChangedError(product.name)
             if product.quantity < item.quantity:
@@ -77,6 +79,8 @@ class PurchaseService:
             parts[product.farmer_id].purchase_products.append(purchase_product)
 
         self.purchases.add(purchase)
+        # interesses depois dos produtos, na ordem da remoção do produto
+        self.purchases.link_open_interests(apartment.id, purchase.purchase_parts)
         self.purchases.commit()
         return self.purchases.get_by_public_id(purchase.public_id)
 
@@ -138,7 +142,7 @@ class PurchaseService:
         totals = self.purchases.building_totals(apartment.id, filters, since, until)
         items = [BuildingPurchaseRead.model_validate(purchase) for purchase in purchases]
         farmers = [
-            CounterpartRead(public_id=farmer.public_id, name=short_name(farmer.user.name))
+            CounterpartRead(public_id=farmer.public_id, name=farmer.short_name)
             for farmer in self.purchases.list_purchase_farmers(apartment.id)
         ]
         farmers.sort(key=lambda farmer: farmer.name)
@@ -200,12 +204,17 @@ def _day_start(day: date) -> datetime:
 
 def _sale_read(part: PurchasePart) -> SaleRead:
     purchase = part.purchase
+    building = purchase.apartment
     return SaleRead.model_validate(
         part,
         update={
             "purchase_public_id": purchase.public_id,
-            "apartment_public_id": purchase.apartment_public_id,
-            "building_name": purchase.apartment.building_name,
+            "apartment_public_id": building.public_id,
+            "building_name": building.building_name,
+            "delivery_address": building.address,
+            "delivery_zip_code": building.zip_code,
+            "manager_name": hide_email(building.manager.name),
+            "manager_cellphone": building.manager.cellphone,
             "purchased_at": purchase.created_at,
             "expected_delivery_date": purchase.expected_delivery_date,
         },

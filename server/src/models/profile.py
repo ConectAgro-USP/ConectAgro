@@ -6,9 +6,10 @@ from uuid import UUID
 from pydantic import AfterValidator, ConfigDict, StringConstraints, model_validator
 from sqlmodel import Field, SQLModel
 
-from src.services.text_service import reject_null_character
+from src.core.text import reject_null_character
 
 from .buyer import LinkStatus
+from .pagination import PageParams, PaginatedResponse
 from .user import CellPhone, Cpf, HomePhone, PersonName
 
 # só limitam o tamanho; o formato do CEP e do CNPJ é conferido depois
@@ -27,6 +28,11 @@ Block = Annotated[
 Unit = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=10),
+    AfterValidator(reject_null_character),
+]
+BuildingNameQuery = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=150),
     AfterValidator(reject_null_character),
 ]
 FORBID_UNKNOWN_FIELDS = ConfigDict(extra="forbid")
@@ -141,3 +147,10 @@ class ResidentRead(BuyerSummary):
         if self.link_status != LinkStatus.PENDENTE:
             self.user = self.user.model_copy(update={"email": None})
         return self
+
+
+class ResidentsFilters(PageParams):
+    status: LinkStatus | None = None
+
+
+ResidentsPage = PaginatedResponse[ResidentRead]

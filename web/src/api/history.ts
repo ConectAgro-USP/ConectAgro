@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { ProductUnit } from "./products";
 
 export type PurchaseStatus = "EM PROGRESSO" | "ENTREGUE" | "CANCELADA";
 
@@ -6,6 +7,7 @@ export type PurchaseStatus = "EM PROGRESSO" | "ENTREGUE" | "CANCELADA";
 export interface PurchaseItem {
   product_public_id: string;
   product_name: string;
+  product_unit: ProductUnit;
   quantity: number;
   unit_price: string;
   subtotal: string;
@@ -19,6 +21,8 @@ export interface Counterpart {
 
 export interface HistoryPage<Item> {
   items: Item[];
+  // quantos pedidos há em todas as páginas
+  total: number;
   page: number;
   total_pages: number;
   realized_total: string;
@@ -46,6 +50,7 @@ export function fetchHistory<Item>(
   counterpartParam: string,
   filters: HistoryFilters,
   page: number,
+  sort?: string,
 ): Promise<HistoryPage<Item>> {
   const query = new URLSearchParams({ page: String(page) });
   const chosen = {
@@ -59,5 +64,6 @@ export function fetchHistory<Item>(
       query.set(name, value);
     }
   }
+  if (sort) query.set("sort", sort);
   return apiFetch<HistoryPage<Item>>(`${path}?${query}`);
 }

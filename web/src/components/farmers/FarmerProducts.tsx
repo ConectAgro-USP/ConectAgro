@@ -1,10 +1,17 @@
 import { listFarmerProducts } from "../../api/farmers";
 import { usePages } from "../../hooks/usePages";
+import type { InterestLookup } from "../../hooks/useInterestLookup";
 import { SecondaryButton } from "../Button";
 import { FormError } from "../FormError";
+import { ShowMore } from "../ShowMore";
 import { ProductRow } from "./ProductRow";
 
-export function FarmerProducts({ farmerPublicId }: Readonly<{ farmerPublicId: string }>) {
+interface FarmerProductsProps {
+  farmerPublicId: string;
+  interests: InterestLookup;
+}
+
+export function FarmerProducts({ farmerPublicId, interests }: Readonly<FarmerProductsProps>) {
   const products = usePages(listFarmerProducts, farmerPublicId, {
     keyOf: (product) => product.public_id,
   });
@@ -16,7 +23,11 @@ export function FarmerProducts({ farmerPublicId }: Readonly<{ farmerPublicId: st
       {products.items.length > 0 && (
         <ul className="space-y-3">
           {products.items.map((product) => (
-            <ProductRow key={product.public_id} product={product} />
+            <ProductRow
+              key={product.public_id}
+              product={product}
+              interest={interests.get(product.public_id)}
+            />
           ))}
         </ul>
       )}
@@ -30,9 +41,7 @@ export function FarmerProducts({ farmerPublicId }: Readonly<{ farmerPublicId: st
         {products.error && (
           <SecondaryButton onClick={products.retry}>Tentar de novo</SecondaryButton>
         )}
-        {products.hasMore && !products.loading && !products.error && (
-          <SecondaryButton onClick={products.loadMore}>Mostrar mais produtos</SecondaryButton>
-        )}
+        <ShowMore list={products} label="Mostrar mais produtos" />
       </div>
     </>
   );

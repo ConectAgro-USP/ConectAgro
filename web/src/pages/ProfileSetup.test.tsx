@@ -33,6 +33,11 @@ async function choose(option: string) {
   await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
 }
 
+async function chooseBuyerByCnpj() {
+  await choose("Quero comprar");
+  await userEvent.click(screen.getByRole("radio", { name: "Pelo CNPJ" }));
+}
+
 async function fillIn(label: string, text: string) {
   await userEvent.type(screen.getByLabelText(label), text);
 }
@@ -253,7 +258,7 @@ describe("ProfileSetup", () => {
     const buyer: ProfileRead = { ...ana, profile_type: "buyer" };
     const fetchMock = stubFetch(jsonResponse([villageVilaVerdeMatch]), jsonResponse(buyer, 201));
     const auth = renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("Celular", "11944644502");
     await fillIn("CNPJ do Prédio", CNPJ);
@@ -282,7 +287,7 @@ describe("ProfileSetup", () => {
       jsonResponse({ ...ana, profile_type: "buyer" }, 201),
     );
     const auth = renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("Celular", "11944644502");
     await fillIn("CNPJ do Prédio", CNPJ);
@@ -302,7 +307,7 @@ describe("ProfileSetup", () => {
   it("tells apart the buildings that share the CNPJ by their manager", async () => {
     stubFetch(jsonResponse([villageVilaVerdeMatch, copyOfVillage]));
     renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("CNPJ do Prédio", CNPJ);
 
@@ -319,7 +324,7 @@ describe("ProfileSetup", () => {
   it("shows the manager of the only building with the CNPJ", async () => {
     stubFetch(jsonResponse([villageVilaVerdeMatch]));
     renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("CNPJ do Prédio", CNPJ);
 
@@ -329,7 +334,7 @@ describe("ProfileSetup", () => {
   it("hides the manager line when the API sends no manager name", async () => {
     stubFetch(jsonResponse([{ ...villageVilaVerdeMatch, manager_short_name: "" }]));
     renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("CNPJ do Prédio", CNPJ);
 
@@ -340,7 +345,7 @@ describe("ProfileSetup", () => {
   it("does not create the buyer profile before the building is confirmed", async () => {
     const fetchMock = stubFetch(jsonResponse([villageVilaVerdeMatch]));
     renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("Celular", "11944644502");
     await fillIn("CNPJ do Prédio", CNPJ);
@@ -355,7 +360,7 @@ describe("ProfileSetup", () => {
   it("tells the buyer when no building has the CNPJ", async () => {
     const fetchMock = stubFetch(jsonResponse([]));
     renderSetup();
-    await choose("Quero comprar");
+    await chooseBuyerByCnpj();
 
     await fillIn("Celular", "11944644502");
     await fillIn("CNPJ do Prédio", CNPJ);

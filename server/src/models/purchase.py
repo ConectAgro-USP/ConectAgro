@@ -8,9 +8,7 @@ from pydantic import field_validator
 from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.services.text_service import short_name
-
-from .product import BUSINESS_TZ, INT4_MAX
+from .product import BUSINESS_TZ, INT4_MAX, ProductUnit
 
 if TYPE_CHECKING:
     from .apartment import Apartment
@@ -101,7 +99,7 @@ class PurchasePart(SQLModel, table=True):
 
     @property
     def farmer_short_name(self) -> str | None:
-        return short_name(self.farmer.user.name) if self.farmer else None
+        return self.farmer.short_name if self.farmer else None
 
     @property
     def total(self) -> Decimal:
@@ -131,6 +129,10 @@ class PurchaseProduct(PurchaseProductBase, table=True):
         return self.product.name if self.product else None
 
     @property
+    def product_unit(self) -> ProductUnit | None:
+        return self.product.unit if self.product else None
+
+    @property
     def subtotal(self) -> Decimal:
         return self.quantity * self.unit_price
 
@@ -139,6 +141,7 @@ class PurchaseItemCreate(SQLModel):
     product_public_id: UUID
     quantity: int = Field(gt=0, le=INT4_MAX)
     unit_price: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
+    unit: ProductUnit | None = None
 
 
 class PurchaseCreate(PurchaseBase):

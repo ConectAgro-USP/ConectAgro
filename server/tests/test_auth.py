@@ -30,7 +30,7 @@ def test_register(client: TestClient):
     response = client.post("/api/auth/register", json=signup_payload)
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.json() == {"message": "Conta criada com sucesso", "user_id": 1}
+    assert response.json() == {"message": "Conta criada com sucesso"}
 
 
 def test_register_duplicate_email(client: TestClient):

@@ -46,11 +46,11 @@ describe("BuildingPurchases", () => {
 
     const osvaldo = within(card).getByRole("heading", { name: "Osvaldo S." }).closest("section")!;
     expect(within(osvaldo).getByText("A caminho")).toBeVisible();
-    expect(osvaldo).toHaveTextContent(/Mandioca\s*3 × R\$ 7,00\s*R\$ 21,00/);
+    expect(osvaldo).toHaveTextContent(/Mandioca\s*3 kg × R\$ 7,00\s*R\$ 21,00/);
     expect(osvaldo).toHaveTextContent(/Subtotal\s*R\$ 30,00/);
     const maria = within(card).getByRole("heading", { name: "Maria F." }).closest("section")!;
     expect(within(maria).getByText("Entregue em 11/11")).toBeVisible();
-    expect(maria).toHaveTextContent(/Tomate\s*2 × R\$ 9,00\s*R\$ 18,00/);
+    expect(maria).toHaveTextContent(/Tomate\s*2 kg × R\$ 9,00\s*R\$ 18,00/);
   });
 
   it("leaves the subtotal out of a part with a single product", async () => {
@@ -92,15 +92,18 @@ describe("BuildingPurchases", () => {
     expect(card).toHaveTextContent(/Entrega prevista:\s*20\/11/);
   });
 
-  it("invites the manager without purchases to the home", async () => {
+  it("invites the manager without purchases to the needs of the building", async () => {
     renderPurchases(pageOf());
 
     expect(
       await screen.findByText(
-        "Você ainda não fez compras, confira a página inicial e faça a sua primeira compra hoje",
+        "Você ainda não fez compras, veja as necessidades do prédio e feche a sua primeira compra",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ir para a página inicial" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver as necessidades do prédio" })).toHaveAttribute(
+      "href",
+      "/necessidades",
+    );
   });
 
   it("opens at /compras for the manager", async () => {
@@ -110,11 +113,12 @@ describe("BuildingPurchases", () => {
     expect(await screen.findByRole("heading", { name: "Compras do prédio" })).toBeInTheDocument();
   });
 
-  it("sends a resident at /compras back to the home", () => {
+  it("tells a resident at /compras there is no access, without calling the API", () => {
     const fetchMock = stubSilentApi();
     renderWithAuth(<App />, fakeAuth({ user: anaAsBuyer("APROVADO") }), "/compras");
 
-    expect(screen.getByRole("heading", { name: "Produtos em destaque" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/products?page=1", expect.anything());
+    const title = screen.getByRole("heading", { name: "Você não tem acesso a esta página" });
+    expect(title).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

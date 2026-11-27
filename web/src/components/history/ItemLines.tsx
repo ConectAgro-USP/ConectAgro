@@ -1,5 +1,5 @@
 import type { PurchaseItem } from "../../api/history";
-import { formatMoney } from "../../format";
+import { formatMoney, formatQuantity } from "../../format";
 
 export function ItemLines({ items }: Readonly<{ items: PurchaseItem[] }>) {
   return (
@@ -12,7 +12,7 @@ export function ItemLines({ items }: Readonly<{ items: PurchaseItem[] }>) {
           <span>
             <span className="font-bold">{item.product_name}</span>{" "}
             <span className="text-stone-600">
-              {item.quantity} × {formatMoney(item.unit_price)}
+              {formatQuantity(item.quantity, item.product_unit)} × {formatMoney(item.unit_price)}
             </span>
           </span>
           <span className="font-bold tabular-nums">{formatMoney(item.subtotal)}</span>

@@ -8,7 +8,7 @@ import {
   sentBody,
   stubFetch,
 } from "../test/helpers";
-import { findCard, laranja, mandioca, renderInterests } from "../test/interests";
+import { findCard, interestsResponse, laranja, mandioca, renderInterests } from "../test/interests";
 import { MyInterests } from "./MyInterests";
 
 const QUANTITY = "Quantidade (kg)";
@@ -28,7 +28,7 @@ function saveButton(card: HTMLElement): HTMLElement {
 describe("MyInterests, quantity", () => {
   it("saves a new quantity", async () => {
     const saved = { ...mandioca, quantity: 8 };
-    const fetchMock = renderInterests(jsonResponse([laranja, mandioca]), jsonResponse(saved));
+    const fetchMock = renderInterests(interestsResponse([laranja, mandioca]), jsonResponse(saved));
     const card = await findCard("Mandioca");
     expect(within(card).getByLabelText(QUANTITY)).toHaveValue("5");
     expect(saveButton(card)).toBeDisabled();
@@ -42,12 +42,12 @@ describe("MyInterests, quantity", () => {
     expect(await findCard("Laranja")).toHaveTextContent("3 kg");
     expect(fetchMock.mock.calls[1][0]).toBe("/api/interests/interesse-1");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("PATCH");
-    expect(sentBody(fetchMock, 1)).toEqual({ quantity: 8 });
+    expect(sentBody(fetchMock, 1)).toEqual({ quantity: 8, unit: "kg" });
     expect(saveButton(card)).toBeDisabled();
   });
 
   it("sends one request while the save is pending", async () => {
-    const fetchMock = renderInterests(jsonResponse([mandioca]));
+    const fetchMock = renderInterests(interestsResponse([mandioca]));
     fetchMock.mockReturnValueOnce(new Promise(() => {}));
     const card = await findCard("Mandioca");
     await type(card, "8");
@@ -60,7 +60,7 @@ describe("MyInterests, quantity", () => {
   });
 
   it("forgets the saved note on the next edit", async () => {
-    renderInterests(jsonResponse([mandioca]), jsonResponse({ ...mandioca, quantity: 8 }));
+    renderInterests(interestsResponse([mandioca]), jsonResponse({ ...mandioca, quantity: 8 }));
     const card = await findCard("Mandioca");
     await type(card, "8");
     await userEvent.click(saveButton(card));
@@ -73,7 +73,7 @@ describe("MyInterests, quantity", () => {
   });
 
   it.each(["", "0"])("explains the quantity %j and blocks saving", async (value) => {
-    renderInterests(jsonResponse([mandioca]));
+    renderInterests(interestsResponse([mandioca]));
     const card = await findCard("Mandioca");
 
     await type(card, value);
@@ -83,7 +83,7 @@ describe("MyInterests, quantity", () => {
   });
 
   it("accepts only digits, up to nine", async () => {
-    renderInterests(jsonResponse([mandioca]));
+    renderInterests(interestsResponse([mandioca]));
     const card = await findCard("Mandioca");
 
     expect(await type(card, "1a2")).toHaveValue("12");
@@ -92,7 +92,7 @@ describe("MyInterests, quantity", () => {
 
   it("shows the API message inside the card when saving fails", async () => {
     const refusal = jsonResponse({ detail: "Interesse não encontrado" }, 404);
-    renderInterests(jsonResponse([mandioca]), refusal);
+    renderInterests(interestsResponse([mandioca]), refusal);
     const card = await findCard("Mandioca");
     await type(card, "8");
 
@@ -103,7 +103,7 @@ describe("MyInterests, quantity", () => {
   });
 
   it("reloads the user when the session ended before the save", async () => {
-    stubFetch(jsonResponse([mandioca]), jsonResponse({ detail: "Não autenticado" }, 401));
+    stubFetch(interestsResponse([mandioca]), jsonResponse({ detail: "Não autenticado" }, 401));
     const auth = fakeAuth({ user: anaAsBuyer("APROVADO") });
     renderWithAuth(<MyInterests />, auth);
     const card = await findCard("Mandioca");
@@ -115,7 +115,7 @@ describe("MyInterests, quantity", () => {
   });
 
   it("only shows the quantity of an unavailable product", async () => {
-    renderInterests(jsonResponse([laranja]));
+    renderInterests(interestsResponse([laranja]));
     const card = await findCard("Laranja");
 
     expect(within(card).queryByLabelText(QUANTITY)).not.toBeInTheDocument();
@@ -126,7 +126,7 @@ describe("MyInterests, quantity", () => {
 
   it("stops the editing when the saved interest comes back unavailable", async () => {
     const unavailable = { ...mandioca, quantity: 8, product_status: "Indisponível" };
-    renderInterests(jsonResponse([mandioca]), jsonResponse(unavailable));
+    renderInterests(interestsResponse([mandioca]), jsonResponse(unavailable));
     const card = await findCard("Mandioca");
     await type(card, "8");
 

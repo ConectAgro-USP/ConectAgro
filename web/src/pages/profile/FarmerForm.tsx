@@ -28,23 +28,27 @@ export function FarmerForm({ onBack }: Readonly<{ onBack: () => void }>) {
   }
 
   return (
-    <ProfileForm onSubmit={handleSubmit} onBack={onBack} error={error} pending={pending}>
+    <ProfileForm
+      title="Dados do sítio"
+      onSubmit={handleSubmit}
+      onBack={onBack}
+      error={error}
+      pending={pending}
+    >
       <PhoneFields phones={phones} onChange={setPhones} />
       <TextField
         label="Nome do sítio ou da horta"
         value={farmName}
         onChange={(event) => setFarmName(event.target.value)}
       />
-      <div className="grid grid-cols-2 gap-4">
-        <TextField
-          label="CEP do sítio"
-          inputMode="numeric"
-          autoComplete="postal-code"
-          value={zipCode}
-          onChange={(event) => setZipCode(event.target.value)}
-        />
-        <CpfField label="CPF" value={cpf} onChange={setCpf} />
-      </div>
+      <TextField
+        label="CEP do sítio"
+        inputMode="numeric"
+        autoComplete="postal-code"
+        value={zipCode}
+        onChange={(event) => setZipCode(event.target.value)}
+      />
+      <CpfField label="CPF" value={cpf} onChange={setCpf} />
     </ProfileForm>
   );
 }

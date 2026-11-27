@@ -1,42 +1,78 @@
 import { useState } from "react";
-import type { Product, ProductInput } from "../api/products";
+import { useSearchParams } from "react-router";
+import { ApiError, errorMessage } from "../api/client";
+import { changedFields, type MyProduct, type ProductInput } from "../api/products";
 import { PrimaryButton, SecondaryButton } from "../components/Button";
 import { FormError } from "../components/FormError";
 import { ProductCard } from "../components/products/ProductCard";
 import { ProductForm } from "../components/products/ProductForm";
+import { inTab } from "../components/products/productState";
+import { ProductTabs } from "../components/products/ProductTabs";
+import { ShowMore } from "../components/ShowMore";
+import { TitleBar } from "../components/TitleBar";
 import { useProducts } from "../hooks/useProducts";
 
 export function MyProducts() {
   const products = useProducts();
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const empty = !products.loading && products.error === "" && products.data.length === 0;
+  const [params, setParams] = useSearchParams();
+  // a página inicial abre o cadastro direto pelo endereço
+  const [showForm, setShowForm] = useState(params.get("novo") === "1");
+  const [editing, setEditing] = useState<MyProduct | null>(null);
+  // o que o formulário mostrou ao abrir, com o que ele já mandou por cima
+  const [base, setBase] = useState<MyProduct | null>(null);
+  const { tab, counts } = products;
+  const empty = counts?.all === 0;
+  // quem sai da aba por uma escrita some na hora, sem pedir a lista de novo
+  const shown = products.items.filter((product) => inTab(tab, product));
+  const emptyTab = shown.length === 0 && !products.loading && !products.hasMore && !products.error;
 
-  function openForm(product: Product | null) {
+  function openForm(product: MyProduct | null) {
     setEditing(product);
+    setBase(product);
     setShowForm(true);
   }
 
-  function save(input: ProductInput) {
-    if (editing) {
-      return products.update(editing.public_id, input);
+  function closeForm() {
+    setShowForm(false);
+    if (params.has("novo")) setParams({}, { replace: true });
+  }
+
+  async function save(input: ProductInput, picture: Blob | null) {
+    const changes = editing ? changedFields(base ?? editing, input) : input;
+    const saved = editing
+      ? await products.update(editing, changes)
+      : await products.create(input);
+    // salvar de novo depois de a foto falhar altera o produto, sem duplicar
+    setEditing(saved);
+    // a nova tentativa compara com o formulário, não com o estoque da resposta
+    setBase((current) => ({ ...(current ?? saved), ...changes }));
+    if (picture) {
+      await products.uploadPicture(saved.public_id, picture).catch((uploadError: unknown) => {
+        const status = uploadError instanceof ApiError ? uploadError.status : 0;
+        const reason = errorMessage(uploadError);
+        throw new ApiError(status, `O produto foi salvo, mas a foto não foi enviada. ${reason}`);
+      });
     }
-    return products.create(input);
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-12 text-stone-900 sm:px-6">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-stone-50 pb-16 text-stone-900">
+      <TitleBar
+        title="Meus produtos"
+        back={
+          showForm
+            ? { label: "Voltar aos meus produtos", onClick: closeForm }
+            : undefined
+        }
+      />
+      <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
         {showForm ? (
-          <ProductForm product={editing} onSave={save} onClose={() => setShowForm(false)} />
+          <ProductForm product={editing} onSave={save} onClose={closeForm} />
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <h1 className="text-4xl font-extrabold">Meus produtos</h1>
-              <PrimaryButton type="button" onClick={() => openForm(null)}>
-                Cadastrar produto
-              </PrimaryButton>
-            </div>
+            <PrimaryButton type="button" onClick={() => openForm(null)}>
+              Cadastrar produto
+            </PrimaryButton>
             <output className="mt-4 block text-lg text-stone-600">
               {products.loading ? "Carregando..." : ""}
             </output>
@@ -47,17 +83,31 @@ export function MyProducts() {
               )}
             </div>
             {empty && <p className="text-lg">Você ainda não cadastrou produtos.</p>}
-            {products.data.length > 0 && (
-              <ul className="mt-2 space-y-6">
-                {products.data.map((product) => (
-                  <ProductCard
-                    key={product.public_id}
-                    product={product}
-                    onEdit={() => openForm(product)}
-                    onRemove={() => products.remove(product.public_id)}
-                  />
-                ))}
-              </ul>
+            {counts !== null && counts.all > 0 && (
+              <>
+                <ProductTabs counts={counts} chosen={tab} onChoose={products.changeTab} />
+                {emptyTab && (
+                  <p className="mt-6 text-lg">
+                    {tab === "available"
+                      ? "Nenhum produto à venda agora."
+                      : "Todos os seus produtos estão à venda."}
+                  </p>
+                )}
+                <ul className="mt-6 space-y-6">
+                  {shown.map((product) => (
+                    <ProductCard
+                      key={product.public_id}
+                      product={product}
+                      onEdit={() => openForm(product)}
+                      onRemove={() => products.remove(product)}
+                      onSetAvailable={(available) => products.setAvailable(product, available)}
+                    />
+                  ))}
+                </ul>
+                <div className="flex justify-center pt-8">
+                  <ShowMore list={products} label="Mostrar mais produtos" />
+                </div>
+              </>
             )}
           </>
         )}
