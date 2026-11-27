@@ -1,5 +1,5 @@
 import { SearchIcon } from "lucide-react";
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { MAX_SEARCH_TERM } from "../api/pagination";
 import { useSyncedValue } from "../hooks/useSyncedValue";
@@ -20,7 +20,7 @@ export function ProductSearch({ className = "" }: Readonly<{ className?: string 
   const onCatalog = pathname === "/";
   const [term, setTerm] = useSyncedValue(onCatalog ? (params.get("q") ?? "") : "");
 
-  function search(event: FormEvent<HTMLFormElement>) {
+  function search(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     // no catálogo a busca nova mantém a ordem e os filtros escolhidos
     const next = new URLSearchParams(onCatalog ? params : undefined);

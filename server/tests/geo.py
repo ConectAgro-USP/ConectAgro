@@ -4,6 +4,7 @@ from sqlmodel import Session
 
 from src.connectors.models import Address, Coordinates
 from src.models.apartment import Apartment
+from src.models.farmer import Farmer
 from src.services.distance_service import EARTH_RADIUS_KM
 
 # a Praça da Sé, onde os testes da busca põem o prédio
@@ -22,6 +23,10 @@ def km_north(km: float, origin: tuple[float, float] = PRACA_DA_SE) -> tuple[floa
     # o ponto a essa distância em linha reta, seguindo o meridiano
     latitude, longitude = origin
     return latitude + degrees(km / EARTH_RADIUS_KM), longitude
+
+
+def point_of(profile: Apartment | Farmer) -> tuple[float | None, float | None]:
+    return profile.latitude, profile.longitude
 
 
 def locate(session: Session, building: Apartment) -> None:

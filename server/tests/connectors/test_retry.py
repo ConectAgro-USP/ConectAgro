@@ -130,8 +130,9 @@ def test_cnpja_tries_again_after_a_5xx():
 )
 def test_cnpja_does_not_spend_the_quota_again_on_client_errors(response, error):
     client, requests = fake_client(response)
+    connector = CnpjaConnector(client)
 
     with pytest.raises(error):
-        CnpjaConnector(client).get_company("00000000000191")
+        connector.get_company("00000000000191")
 
     assert len(requests) == 1

@@ -10,7 +10,7 @@ from src.models.purchase import PurchaseStatus
 from src.models.review import Review
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
-from tests.geo import PAULISTA_POINT, km_north, locate
+from tests.geo import PAULISTA_POINT, km_north, locate, point_of
 from tests.helpers import add_farmer, add_purchase_from, add_user, login
 from tests.profiles import answer_cep
 
@@ -118,7 +118,7 @@ def test_sort_by_distance_looks_up_the_building_once(
     assert response.json()["items"][0]["distance_km"] is not None
     assert len(cep_requests) == 1
     session.refresh(building)
-    assert (building.latitude, building.longitude) == PAULISTA_POINT
+    assert point_of(building) == PAULISTA_POINT
 
 
 def test_sort_by_distance_rejects_a_building_that_cannot_be_located(

@@ -11,7 +11,7 @@ from src.services.cep_service import CepService
 from src.services.recent_cache import RecentCache
 from tests.connectors.fakes import fake_client
 from tests.connectors.test_brasilapi import ACRELANDIA, NOT_FOUND, PAULISTA
-from tests.geo import PAULISTA_POINT
+from tests.geo import PAULISTA_POINT, point_of
 from tests.helpers import add_building, add_farmer, add_user
 
 ANSWERS = {
@@ -61,7 +61,7 @@ def test_fills_farmers_and_buildings_asking_each_cep_once(
 
     for profile in (first, second, building):
         session.refresh(profile)
-        assert (profile.latitude, profile.longitude) == PAULISTA_POINT
+        assert point_of(profile) == PAULISTA_POINT
     assert summary.filled == 3
     assert summary.skipped == []
     assert len(cep_requests) == 1
@@ -77,7 +77,7 @@ def test_skips_ceps_without_coordinates_or_not_found(session: Session, run):
     session.refresh(no_point)
     session.refresh(found)
     assert no_point.latitude is None
-    assert (found.latitude, found.longitude) == PAULISTA_POINT
+    assert point_of(found) == PAULISTA_POINT
     assert summary.filled == 1
     assert summary.skipped == [
         f"agricultor {no_point.public_id}, CEP 69945000: CEP sem coordenadas",
@@ -110,7 +110,7 @@ def test_leaves_profiles_with_coordinates_alone(
     summary = run()
 
     session.refresh(building)
-    assert (building.latitude, building.longitude) == (-10.0, -60.0)
+    assert point_of(building) == (-10.0, -60.0)
     assert summary.filled == 0
     assert cep_requests == []
 

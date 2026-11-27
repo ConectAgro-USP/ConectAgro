@@ -47,9 +47,9 @@ function AddToCart({ product }: Readonly<{ product: FarmerProduct }>) {
         <ShoppingCartIcon aria-hidden="true" className="size-5 shrink-0" />
         Adicionar
       </PrimaryButton>
-      <p role="status" className="font-bold empty:hidden">
+      <output className="block font-bold empty:hidden">
         {inCart > 0 ? `No carrinho: ${formatQuantity(inCart, product.unit)}` : ""}
-      </p>
+      </output>
       {full && (
         <p role="alert" className="font-bold text-red-700 sm:text-white">
           {CART_FULL}

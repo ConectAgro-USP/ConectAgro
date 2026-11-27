@@ -115,14 +115,14 @@ export function InterestActions({
     <>
       {body}
       {/* fica sempre no HTML para o leitor de tela anunciar a mudança */}
-      <div role="status" className="mt-3 empty:hidden">
+      <output className="mt-3 block empty:hidden">
         {notice && (
-          <p className={NOTICE_CLASSES}>
+          <span className={NOTICE_CLASSES}>
             <CheckCircleIcon aria-hidden="true" className="size-5 shrink-0 text-lime-800" />
             {notice}
-          </p>
+          </span>
         )}
-      </div>
+      </output>
       <div className="mt-3 empty:hidden">
         <FormError message={action.error} />
       </div>

@@ -3,7 +3,7 @@ import { ApiError, errorMessage, lostAccess } from "../../api/client";
 import { getProduct, type ProductDetail, type ProductUnit } from "../../api/products";
 import { useAuth } from "../../auth/AuthContext";
 import { stateOf, type ProductState } from "../../components/products/productState";
-import type { useCart } from "../../hooks/useCart";
+import type { CartItem, useCart } from "../../hooks/useCart";
 
 export type Problem = Exclude<ProductState, "available">;
 
@@ -29,23 +29,53 @@ export function problemOf(product: ProductDetail): Problem | null {
 }
 
 // o produto apagado volta como null, como o id guardado que a API recusa
-const GONE_STATUSES = [404, 422];
+const GONE_STATUSES = new Set([404, 422]);
+
+function readProduct(id: string): Promise<ProductDetail | null> {
+  return getProduct(id).catch((error: unknown) => {
+    if (error instanceof ApiError && GONE_STATUSES.has(error.status)) return null;
+    throw error;
+  });
+}
 
 async function fetchProducts(ids: string[]): Promise<Map<string, ProductDetail | null>> {
   const found = new Map<string, ProductDetail | null>();
   for (let start = 0; start < ids.length; start += BATCH) {
     const batch = ids.slice(start, start + BATCH);
-    const products = await Promise.all(
-      batch.map((id) =>
-        getProduct(id).catch((error: unknown) => {
-          if (error instanceof ApiError && GONE_STATUSES.includes(error.status)) return null;
-          throw error;
-        }),
-      ),
-    );
+    const products = await Promise.all(batch.map((id) => readProduct(id))); // NOSONAR
     batch.forEach((id, index) => found.set(id, products[index]));
   }
   return found;
+}
+
+// o carrinho segue o preço, a unidade e o estoque de agora, e diz se mudou
+function follow(
+  cart: ReturnType<typeof useCart>,
+  item: CartItem,
+  product: ProductDetail,
+  next: CheckNotes,
+): boolean {
+  const { productPublicId: id, quantity, unitPrice, unit } = item;
+  let changed = false;
+  if (Number(product.price) !== Number(unitPrice)) {
+    cart.change(id, { unitPrice: product.price });
+    next.oldPrices[id] = unitPrice;
+    changed = true;
+  }
+  if (unit !== product.unit) {
+    cart.change(id, { unit: product.unit });
+    // o carrinho antigo não tinha a unidade, que passa a ser a de agora
+    if (unit !== undefined) {
+      next.oldUnits[id] = unit;
+      changed = true;
+    }
+  }
+  if (quantity > product.quantity) {
+    cart.change(id, { quantity: product.quantity });
+    next.clamped[id] = quantity;
+    changed = true;
+  }
+  return changed;
 }
 
 export function useCartCheck(cart: ReturnType<typeof useCart>) {
@@ -62,7 +92,8 @@ export function useCartCheck(cart: ReturnType<typeof useCart>) {
     const found = await fetchProducts(items.map((item) => item.productPublicId));
     const next: CheckNotes = { oldPrices: {}, oldUnits: {}, clamped: {}, gone: [] };
     let changed = false;
-    for (const { productPublicId: id, quantity, unitPrice, unit } of items) {
+    for (const item of items) {
+      const id = item.productPublicId;
       const product = found.get(id);
       const before = seen.current[id];
       if (!product) {
@@ -77,24 +108,7 @@ export function useCartCheck(cart: ReturnType<typeof useCart>) {
       }
       // o produto que a página não mostrou ou que estava fora entra no total
       if (before === undefined || problemOf(before) !== null) changed = true;
-      if (Number(product.price) !== Number(unitPrice)) {
-        cart.change(id, { unitPrice: product.price });
-        next.oldPrices[id] = unitPrice;
-        changed = true;
-      }
-      if (unit !== product.unit) {
-        cart.change(id, { unit: product.unit });
-        // o carrinho antigo não tinha a unidade, que passa a ser a de agora
-        if (unit !== undefined) {
-          next.oldUnits[id] = unit;
-          changed = true;
-        }
-      }
-      if (quantity > product.quantity) {
-        cart.change(id, { quantity: product.quantity });
-        next.clamped[id] = quantity;
-        changed = true;
-      }
+      if (follow(cart, item, product, next)) changed = true;
     }
     const kept = [...found].filter((entry): entry is [string, ProductDetail] => entry[1] !== null);
     seen.current = { ...seen.current, ...Object.fromEntries(kept) };

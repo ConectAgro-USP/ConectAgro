@@ -23,7 +23,8 @@ def test_picture_is_served_with_its_type_and_cache_headers(
     assert response.headers["cache-control"] == "public, max-age=86400"
     assert response.headers["x-content-type-options"] == "nosniff"
     etag = response.headers["etag"]
-    assert etag.startswith('"') and etag.endswith('"')
+    assert etag.startswith('"')
+    assert etag.endswith('"')
     assert picture_url.endswith(f"?v={etag[1:13]}")
 
 

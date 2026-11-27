@@ -37,11 +37,10 @@ export function ToggleGroup<Value>({
   const labelId = useId();
 
   return (
-    <div
-      role="group"
+    <fieldset
       aria-labelledby={hideLabel ? undefined : labelId}
       aria-label={hideLabel ? label : undefined}
-      className={`flex flex-wrap items-center gap-2 ${className}`}
+      className={`flex min-w-0 flex-wrap items-center gap-2 ${className}`}
     >
       {!hideLabel && (
         <span id={labelId} className={`w-full text-lg font-bold sm:mr-2 ${labelClassName}`}>
@@ -60,6 +59,6 @@ export function ToggleGroup<Value>({
           {option.label}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }

@@ -20,7 +20,7 @@ interface ProductTabsProps {
 
 export function ProductTabs({ counts, chosen, onChoose }: Readonly<ProductTabsProps>) {
   return (
-    <div role="group" aria-label="Mostrar produtos" className="flex flex-wrap gap-2">
+    <fieldset aria-label="Mostrar produtos" className="flex min-w-0 flex-wrap gap-2">
       {TABS.map((tab) => (
         <button
           key={tab.id}
@@ -33,6 +33,6 @@ export function ProductTabs({ counts, chosen, onChoose }: Readonly<ProductTabsPr
           <span className="tabular-nums">{counts[tab.id]}</span>
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }

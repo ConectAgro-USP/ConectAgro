@@ -99,7 +99,7 @@ class ProductRepository:
         if query is not None:
             # acerto no nome vem antes do acerto só na descrição
             return statement.order_by(
-                Product.name_search.startswith(query, autoescape=True).desc(),
+                Product.name_search.startswith(query, autoescape=True).desc(),  # NOSONAR
                 Product.name_search.contains(query, autoescape=True).desc(),
                 rating_order,
                 Product.created_at,

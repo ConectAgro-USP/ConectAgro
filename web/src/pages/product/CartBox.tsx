@@ -81,9 +81,9 @@ export function CartBox({ product, isAvailable, stock }: Readonly<CartBoxProps>)
         </PrimaryButton>
         <ProductContact productPublicId={product.public_id} recipient="agricultor" />
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <p role="status" className="font-bold text-stone-800">
+          <output className="block font-bold text-stone-800">
             {inCart > 0 ? `No carrinho: ${formatQuantity(inCart, product.unit)}` : ""}
-          </p>
+          </output>
           {inCart > 0 && (
             <Link to="/carrinho" className={TEXT_LINK_CLASSES}>
               Ver o carrinho

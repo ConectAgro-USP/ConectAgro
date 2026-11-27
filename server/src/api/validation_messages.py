@@ -3,6 +3,12 @@ from collections.abc import Callable
 from typing import Any
 
 INVALID_VALUE = "Valor inválido"
+NOT_AN_INTEGER = "Informe um número inteiro"
+NOT_A_NUMBER = "Informe um número"
+INVALID_DATE = "Informe uma data válida"
+INVALID_DATETIME = "Informe uma data e hora válidas"
+INVALID_URL = "Informe uma URL válida"
+NOT_AN_OBJECT = "Envie um objeto JSON"
 # num literal de enum o pydantic mostra o repr do membro, e fica só o valor
 ENUM_MEMBER_REPR = re.compile(r"<\w+\.\w+: (.+?)>(?=, | or |$)")
 
@@ -43,13 +49,13 @@ MESSAGES: dict[str, str | Message] = {
     "string_unicode": "Texto inválido",
     "too_short": _list_too_short,
     "too_long": _list_too_long,
-    "int_type": "Informe um número inteiro",
-    "int_parsing": "Informe um número inteiro",
-    "int_from_float": "Informe um número inteiro",
-    "float_type": "Informe um número",
-    "float_parsing": "Informe um número",
-    "decimal_type": "Informe um número",
-    "decimal_parsing": "Informe um número",
+    "int_type": NOT_AN_INTEGER,
+    "int_parsing": NOT_AN_INTEGER,
+    "int_from_float": NOT_AN_INTEGER,
+    "float_type": NOT_A_NUMBER,
+    "float_parsing": NOT_A_NUMBER,
+    "decimal_type": NOT_A_NUMBER,
+    "decimal_parsing": NOT_A_NUMBER,
     "finite_number": "Informe um número finito",
     "greater_than": lambda ctx: f"Informe um valor maior que {ctx['gt']}",
     "greater_than_equal": lambda ctx: f"Informe um valor maior ou igual a {ctx['ge']}",
@@ -69,24 +75,24 @@ MESSAGES: dict[str, str | Message] = {
     "bool_parsing": "Informe verdadeiro ou falso",
     "uuid_type": "Identificador inválido",
     "uuid_parsing": "Identificador inválido",
-    "date_type": "Informe uma data válida",
-    "date_parsing": "Informe uma data válida",
-    "date_from_datetime_parsing": "Informe uma data válida",
+    "date_type": INVALID_DATE,
+    "date_parsing": INVALID_DATE,
+    "date_from_datetime_parsing": INVALID_DATE,
     "date_from_datetime_inexact": "Informe só a data, sem a hora",
-    "datetime_type": "Informe uma data e hora válidas",
-    "datetime_parsing": "Informe uma data e hora válidas",
-    "datetime_from_date_parsing": "Informe uma data e hora válidas",
-    "url_type": "Informe uma URL válida",
-    "url_parsing": "Informe uma URL válida",
-    "url_scheme": "Informe uma URL válida",
+    "datetime_type": INVALID_DATETIME,
+    "datetime_parsing": INVALID_DATETIME,
+    "datetime_from_date_parsing": INVALID_DATETIME,
+    "url_type": INVALID_URL,
+    "url_parsing": INVALID_URL,
+    "url_scheme": INVALID_URL,
     "url_too_long": "A URL é longa demais",
     "enum": lambda ctx: _options(ctx["expected"]),
     "literal_error": lambda ctx: _options(ctx["expected"]),
     "json_invalid": "O corpo do pedido não é um JSON válido",
     "json_type": "O corpo do pedido não é um JSON válido",
-    "dict_type": "Envie um objeto JSON",
-    "model_type": "Envie um objeto JSON",
-    "model_attributes_type": "Envie um objeto JSON",
+    "dict_type": NOT_AN_OBJECT,
+    "model_type": NOT_AN_OBJECT,
+    "model_attributes_type": NOT_AN_OBJECT,
     "list_type": "Envie uma lista",
 }
 

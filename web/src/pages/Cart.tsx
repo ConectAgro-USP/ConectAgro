@@ -226,13 +226,13 @@ export function Cart() {
       <TitleBar title="Carrinho" />
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         {checked.notes.gone.length > 0 && (
-          <p role="status" className="pt-8 text-lg font-bold text-amber-800">
+          <output className="block pt-8 text-lg font-bold text-amber-800">
             {formatCount(
               checked.notes.gone.length,
               "produto saiu do catálogo e foi tirado do carrinho",
               "produtos saíram do catálogo e foram tirados do carrinho",
             )}
-          </p>
+          </output>
         )}
         {content}
         <div className="flex flex-col items-center gap-4 pt-10">

@@ -8,7 +8,7 @@ from src.models.apartment import Apartment
 from src.models.farmer import Farmer
 from src.services.distance_service import DistanceService, km_between, saved_point
 from src.services.exceptions import BuildingWithoutCoordinatesError, CepNotFoundError
-from tests.geo import PRACA_DA_SE_ADDRESS
+from tests.geo import PRACA_DA_SE_ADDRESS, point_of
 
 BRASILIA = Address(
     cep="70040010",
@@ -45,7 +45,7 @@ def test_look_up_building_keeps_the_coordinates():
 
     assert service.look_up_building(building) == (-23.5503898, -46.633081)
     ceps.get_address.assert_called_once_with("01001-000")
-    assert (building.latitude, building.longitude) == (-23.5503898, -46.633081)
+    assert point_of(building) == (-23.5503898, -46.633081)
 
 
 def test_look_up_building_rejects_a_cep_without_coordinates():

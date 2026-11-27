@@ -1,5 +1,5 @@
 import { FunnelIcon } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type SubmitEvent } from "react";
 import { CATALOG_SORTS, type CatalogFilters, type CatalogSort } from "../../api/products";
 import { PrimaryButton } from "../../components/Button";
 import { TextField } from "../../components/TextField";
@@ -33,7 +33,7 @@ export function CatalogControls({ filters, onChange }: Readonly<CatalogControlsP
   const [day, setDay] = useSyncedValue(filters.expirationFrom);
   const [quantity, setQuantity] = useSyncedValue(String(filters.minQuantity ?? ""));
 
-  function apply(event: FormEvent<HTMLFormElement>) {
+  function apply(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     onChange({ ...filters, expirationFrom: day, minQuantity: parseQuantity(quantity) });
     setOpen(false);

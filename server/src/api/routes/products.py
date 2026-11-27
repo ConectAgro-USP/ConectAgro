@@ -81,7 +81,7 @@ def get_farmer_products(
 def search_products(
     filters: Annotated[ProductSearchFilters, Query()],
     product_search: ProductSearchServiceDep,
-) -> ProductSearchResponse:
+):
     return product_search.search(filters)
 
 

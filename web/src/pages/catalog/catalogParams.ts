@@ -16,8 +16,10 @@ export const SORT_LABELS: Record<CatalogSort, string> = {
   highest_rating: "Melhor avaliados",
 };
 
+const SORTS: readonly (string | null)[] = CATALOG_SORTS;
+
 function isSort(value: string | null): value is CatalogSort {
-  return CATALOG_SORTS.some((sort) => sort === value);
+  return SORTS.includes(value);
 }
 
 function isDay(value: string): boolean {

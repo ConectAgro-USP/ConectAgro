@@ -1,4 +1,4 @@
-import { useId, type FormEvent } from "react";
+import { useId, type SubmitEvent } from "react";
 import {
   DISTANCES,
   MAX_PRODUCTS,
@@ -51,7 +51,7 @@ function TextSearch({
   const id = useId();
   const [value, setValue] = useSyncedValue(applied);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(value);
     if (clearOnSubmit) setValue("");

@@ -6,7 +6,7 @@ from sqlmodel import Session
 from src.models.apartment import Apartment
 from src.models.user import User
 from tests.connectors.test_brasilapi import PAULISTA
-from tests.geo import PAULISTA_POINT, PRACA_DA_SE
+from tests.geo import PAULISTA_POINT, PRACA_DA_SE, point_of
 from tests.helpers import add_farmer, add_user, login
 from tests.profiles import answer_cep
 
@@ -51,4 +51,4 @@ def test_search_saves_the_building_coordinates_it_looks_up(
     assert second.json() == first.json()
     assert [item["distance_km"] for item in second.json()["items"]] == [0.0]
     session.refresh(building)
-    assert (building.latitude, building.longitude) == PAULISTA_POINT
+    assert point_of(building) == PAULISTA_POINT
